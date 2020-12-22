@@ -64,10 +64,12 @@ parameters:
 
 - name: buildPool
   type: object
-  default: 'On-Prem-General'
+  default:
+    vmImage: 'Ubuntu-16.04'
 - name: deployPool
   type: object
-  default: 'On-Prem-Deploy-Pipeline'
+  default:
+    vmImage: 'ubuntu-18.04'
 
 stages:
 - template: ../pipeline.yaml
