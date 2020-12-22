@@ -1,0 +1,25 @@
+parameters:
+- name: postSteps # Insert stepList before publish and clean
+  type: stepList
+  default: []
+- name: clean # Enable post build clean task
+  type: boolean
+  default: false
+- name: publish # path to a file or polder
+  type: string
+  default: ''
+- name: artifact # Name of artifact to publish
+  type: string
+  default: ''
+
+steps:
+- ${{ if gt(length(parameters.postSteps), 0) }}:
+  - ${{ parameters.postSteps }}
+- ${{ if parameters.publish }}:
+  - publish: ${{ parameters.publish }}
+    displayName: Publish Pipeline Artifact ${{ parameters.artifact }}
+    ${{ if parameters.artifact }}:
+      artifact: ${{ parameters.artifact }}
+- ${{ if parameters.clean }}:
+  - task: PostBuildCleanup@3
+    displayName: Clean Agent Directories

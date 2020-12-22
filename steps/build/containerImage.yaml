@@ -1,0 +1,232 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+- name: downloadPath
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishArtifact
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+# dotNet Publish project to copy output to Docker image
+- name: dotNetType
+  type: string
+  default: runtime
+  values:
+  - sdk
+  - runtime
+- name: dotNetVersion # Optional param to enable use dotNet task 
+  type: string
+  default: '3.1.x'
+- name: dotNetProject # Required param to restore and publish a dotNet project
+  type: string
+  default: ''
+- name: dotNetProjectArguments
+  type: string
+  default: ''
+- name: dotNetFeed
+  type: string
+  default: ''
+- name: dotNetPublishWebProjects
+  type: boolean
+  default: false
+# Docker Tasks
+- name: dockerInstall # Optional task to install Docker on agent
+  type: boolean
+  default: false
+- name: dockerVersion # Default version for docker install task
+  type: string
+  default: '17.09.0-ce'
+- name: dockerFile # Path to Dockerfile
+  type: string
+  default: '**.dockerfile'
+- name: dockerContext
+  type: string
+  default: '$(Pipeline.Workspace)'
+- name: dockerArgs # Optional param to pass build arguments to Docker
+  type: string
+  default: ''
+- name: dockerTags # Default tags to set in addition to pipeline metadata tags
+  type: object
+  default: $(Build.BuildNumber)
+- name: dockerPush # Enable push image to containerRegistry/containerRepository
+  type: boolean
+  default: true
+- name: dockerSave # Save the docker image built as an archive file to publish
+  type: boolean
+  default: false
+- name: containerRegistry # Service connection name. Container registry for Docker build and push
+  type: string
+  default: ''
+- name: containerRegistryUrl # Option URL of registry. Required if dockerSave: true
+  type: string
+  default: ''
+- name: containerRepository # Container repo path in registry for Docker push
+  type: string
+  default: ''
+- name: loginRegistry # Service connection name. Login to a private registry that the Docker image is built FROM
+  type: string
+  default: ''
+# Twistlock Scan of Docker Image on ADO agent
+- name: twistlockService # Azure Service Connection name for Twistlock
+  type: string
+  default: ''
+- name: twistlockArtifact # Optional to set image to scan. Default scans image in build task
+  type: string
+  default: '$(Build.BuildNumber)'
+- name: twistlockContinue # continueOnError param for twistlock task
+  type: boolean
+  default: false
+- name: twistlockEnabled # true inserts twistlock task
+  type: boolean
+  default: false
+# Task to Archive and Pipeline Publish Artifact of dotNet project
+- name: deleteRoot
+  type: string
+  default: $(Pipeline.Workspace)
+- name: deleteContents # Default files to delete from archive artifact
+  type: object
+  default: ''
+- name: archiveArtifacts
+  type: boolean
+  default: false
+- name: archiveRoot # Default path to dotNet publish output
+  type: string
+  default: '$(Pipeline.Workspace)'
+- name: archiveFile
+  type: string
+  default: '$(Build.BuildNumber)'
+- name: archiveType
+  type: string
+  default: 'tar.gz'
+  values:
+  - 'tar.gz'
+  - 'zip'
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    ${{ if and(not(parameters.downloadPath), parameters.downloadArtifact) }}:
+      download: ${{ parameters.download }}
+      artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if and(parameters.downloadPath, parameters.downloadArtifact) }}:
+  - task: DownloadPipelineArtifact@2
+    displayName: Download Pipeline Artifact ${{ parameters.downloadArtifact }}
+    inputs:
+      artifact: ${{ parameters.downloadArtifact }}
+      path: ${{ parameters.downloadPath }}
+- ${{ if parameters.dotNetProject }}:
+  - template: dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      dotNetCommand: publish
+      dotNetType: ${{ parameters.dotNetType }}
+      dotNetVersion: ${{ parameters.dotNetVersion }}
+      dotNetProjects: ${{ parameters.dotNetProject }}
+      dotNetFeed: ${{ parameters.dotNetFeed }}
+      dotNetArguments: ${{ parameters.dotNetProjectArguments}}
+      dotNetPublishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
+- ${{ if and(parameters.dockerInstall, parameters.dockerVersion) }}:
+  - task: DockerInstaller@0
+    displayName: 'Install Docker'
+    target: host
+    inputs:
+      dockerVersion: '${{ parameters.dockerVersion }}'
+      releaseType: stable
+- ${{ if and(parameters.containerRegistry, parameters.containerRepository) }}:
+  - ${{ if parameters.loginRegistry }}:
+    - task: Docker@2
+      displayName: 'Login to ${{ parameters.loginRegistry }}'
+      inputs:
+        command: login
+        containerRegistry: '${{ parameters.loginRegistry }}'
+  - task: Docker@2
+    displayName: 'Login to ${{ parameters.containerRegistry }}'
+    inputs:
+      command: login
+      containerRegistry: '${{ parameters.containerRegistry }}'
+  - task: Docker@2
+    displayName: 'Build Docker Image'
+    target: host
+    inputs:
+      containerRegistry: '${{ parameters.containerRegistry }}'
+      repository: '${{ parameters.containerRepository }}'
+      command: build
+      Dockerfile: '${{ parameters.dockerFile }}'
+      buildContext: '${{ parameters.dockerContext }}'
+      ${{ if parameters.dockerArgs }}:
+        arguments: '${{ parameters.dockerArgs }}'
+      tags: ${{ parameters.dockerTags }}
+  - ${{ if and(parameters.twistlockEnabled, parameters.twistlockArtifact, parameters.twistlockService) }}:
+    - task: prisma-cloud-compute-scan@3
+      displayName: 'Prisma Cloud Compute Scan'
+      continueOnError: ${{ parameters.twistlockContinue }}
+      inputs:
+        scanType: 'images'
+        twistlockService: '${{ parameters.twistlockService }}'
+        artifact: '${{ parameters.twistlockArtifact }}'
+  - ${{ if parameters.dockerPush }}:
+    - task: Docker@2
+      displayName: 'Push Docker Image to ${{ parameters.containerRegistry }}'
+      target: host
+      inputs:
+        containerRegistry: '${{ parameters.containerRegistry }}'
+        repository: '${{ parameters.containerRepository }}'
+        command: push
+        tags: ${{ parameters.dockerTags }}
+- ${{ if and(parameters.dockerSave, parameters.containerRegistryUrl) }}:
+  - script: |
+      docker save ${{ parameters.containerRegistryUrl }}/${{ parameters.containerRepository }}:latest -o ${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}
+    displayName: 'Docker Save ${{ parameters.containerRepository }}'
+- ${{ if and(parameters.dotNetProject, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
+  - ${{ if parameters.deleteContents }}:
+    - task: DeleteFiles@1
+      displayName: 'Delete Unwanted Files'
+      inputs:
+        SourceFolder: '${{ parameters.deleteRoot }}'
+        Contents: ${{ parameters.deleteContents }}
+  - task: ArchiveFiles@2
+    displayName: 'Archive Published Artifacts'
+    inputs:
+      rootFolderOrFile: '${{ parameters.archiveRoot }}'
+      includeRootFolder: false
+      ${{ if eq(parameters.archiveType, 'tar.gz') }}:
+        archiveType: tar
+        tarCompression: gz
+      ${{ if eq(parameters.archiveType, 'zip') }}:
+        archiveType: zip
+      archiveFile: '${{ parameters.archiveFile }}.${{ parameters.archiveType }}'
+      replaceExistingArchive: true
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if or(parameters.archiveArtifacts, parameters.dockerSave) }}:
+      publish: '${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}'
+      artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

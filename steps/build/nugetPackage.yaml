@@ -1,0 +1,106 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: artifactName # projectFile or artifactName param required
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+# dotNet type and version
+- name: dotNetType
+  type: string
+  default: 'sdk'
+  values:
+  - 'sdk'
+  - 'runtime'
+- name: dotNetVersion
+  type: string
+  default: '3.1.x'
+# dotNet Restore and Build
+- name: projectFile # projectFile or artifactName param required
+  type: string
+  default: ''
+- name: dotNetFeed # Default ADO VSTS artifact feed for restore and push
+  type: string
+  default: ''
+- name: dotNetBuildArguments 
+  type: string
+  default: ''
+# dotNet Pack
+- name: includeSymbols # Publish Symbols
+  type: boolean
+  default: true
+- name: versioningScheme # byEnvVar is default, set value or EnvVar
+  type: string
+  default: 'byEnvVar'
+  values:
+  - 'off'
+  - 'byPrereleaseNumber'
+  - 'byEnvVar'
+  - 'byBuildNumber'
+- name: versionEnvVar # Name of environment variable to use for version number
+  type: string
+  default: 'NugetVersion'
+- name: dotNetPackConfig
+  type: string
+  default: 'Debug'
+- name: dotNetPush # enables dotNet push after dotNet pack
+  type: boolean
+  default: true
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.artifactName }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if and(not(parameters.artifactName), parameters.projectFile) }}:
+  - template: ../build/dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      dotNetCommand: build
+      dotNetType: ${{ parameters.dotNetType }}
+      dotNetVersion: ${{ parameters.dotNetVersion }}
+      dotNetProjects: ${{ parameters.projectFile }}
+      dotNetFeed: ${{ parameters.dotNetFeed }}
+      dotNetArguments: ${{ parameters.dotNetBuildArguments}}
+- ${{ if or(parameters.projectFile, parameters.artifactName) }}:
+  - template: ../build/dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      dotNetCommand: pack
+      dotNetPush: ${{ parameters.dotNetPush}}
+      dotNetPackConfig: ${{ parameters.dotNetPackConfig}}
+      dotNetFeed: ${{ parameters.dotNetFeed }}
+      includeSymbols: ${{ parameters.includeSymbols}}
+      versioningScheme: ${{ parameters.versioningScheme }}
+      versionEnvVar: ${{ parameters.versionEnvVar }}
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    publish: ''
+    artifact: ''
+    clean: ${{ parameters.clean }}

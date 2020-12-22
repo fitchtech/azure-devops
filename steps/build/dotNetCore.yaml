@@ -1,0 +1,169 @@
+parameters:
+- name: clean # When nesting the dotNetCore.yaml into another steps template set clean: false
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout # When nesting the dotNetCore.yaml into another steps template set checkout: false
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download # When nesting the dotNetCore.yaml into another steps template set download: false
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+- name: downloadPath
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishArtifact
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+- name: publishEnabled
+  type: boolean
+  default: false
+# Use dotNet
+- name: dotNetType
+  type: string
+  default: sdk
+  values:
+  - sdk
+  - runtime
+- name: dotNetVersion
+  type: string
+  default: '3.1.x'
+# dotNet Core CLI
+- name: dotNetCommand
+  type: string
+  default: build
+  values:
+  - build
+  - publish
+  - pack
+- name: dotNetProjects # Required param to restore and publish a dotNet project
+  type: string
+  default: ''
+- name: dotNetArguments
+  type: string
+  default: ''
+- name: dotNetFeed
+  type: string
+  default: ''
+- name: dotNetPublishWebProjects
+  type: boolean
+  default: false
+# dotNet Pack
+- name: includeSymbols # Publish Symbols
+  type: boolean
+  default: true
+- name: versioningScheme # byEnvVar is default, set value or EnvVar
+  type: string
+  default: byEnvVar
+  values:
+  - off
+  - byPrereleaseNumber
+  - byEnvVar
+  - byBuildNumber
+- name: versionEnvVar # Name of environment variable to use for version number
+  type: string
+  default: NugetVersion
+- name: dotNetPackConfig
+  type: string
+  default: Debug
+- name: dotNetPush # enables dotNet push after dotNet pack
+  type: boolean
+  default: true
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.dotNetVersion }}:
+  - task: UseDotNet@2
+    displayName: 'Use dotNet Core ${{ parameters.dotNetType }} ${{ parameters.dotNetVersion }}'
+    inputs:
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+- task: DotNetCoreCLI@2
+  displayName: 'dotNet restore ${{ parameters.dotNetProjects }}'
+  inputs:
+    command: restore
+    projects: '${{ parameters.dotNetProjects }}'
+    feedsToUse: 'select'
+    vstsFeed: '${{ parameters.dotNetFeed }}'
+    includeNuGetOrg: true
+- ${{ if in(parameters.dotNetCommand, 'build', 'publish') }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
+    inputs:
+      command: ${{ parameters.dotNetCommand }}
+      ${{ if parameters.dotNetFeed }}:
+        vstsFeed: ${{ parameters.dotNetFeed }}
+      projects: '${{ parameters.dotNetProjects }}'
+      includeNuGetOrg: true
+      ${{ if eq(parameters.dotNetCommand, 'build') }}:
+        arguments: --no-restore --output $(Pipeline.Workspace)/Build ${{ parameters.dotNetArguments }}'
+      ${{ if eq(parameters.dotNetCommand, 'publish') }}:
+        arguments: '--no-restore --output $(Pipeline.Workspace)/Publish ${{ parameters.dotNetArguments }}'
+        publishWebProjects: '${{ parameters.dotNetPublishWebProjects }}'
+- ${{ if eq(parameters.dotNetCommand, 'pack') }}:
+  - task: DotNetCoreCLI@2
+    displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
+    inputs:
+      command: ${{ parameters.dotNetCommand }}
+      ${{ if parameters.dotNetFeed }}:
+        vstsFeed: ${{ parameters.dotNetFeed }}
+      projects: '${{ parameters.dotNetProjects }}'
+      includeNuGetOrg: true
+      arguments: --no-restore --output $(Pipeline.Workspace)/Build ${{ parameters.dotNetArguments }}'
+  - ${{ if parameters.includeSymbols }}:
+    - task: PublishSymbols@2
+      displayName: 'Publish Symbols Path'
+      inputs:
+        SearchPattern: '$(Pipeline.Workspace)/*.pdb'
+        SymbolServerType: TeamServices
+  - task: DotNetCoreCLI@2
+    displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
+    inputs:
+      command: ${{ parameters.dotNetCommand }}
+      ${{ if parameters.dotNetFeed }}:
+        vstsFeed: ${{ parameters.dotNetFeed }}
+      includeNuGetOrg: true
+      packagesToPack: '${{ parameters.dotNetProjects }}'
+      configuration: '${{ parameters.dotNetPackConfig }}'
+      packDirectory: '$(Pipeline.Workspace)/NuGet'
+      includesymbols: '${{ parameters.includeSymbols }}'
+      versioningScheme: '${{ parameters.versioningScheme }}'
+      ${{ if eq(parameters.versioningScheme, 'byEnvVar') }}:
+        versionEnvVar: '${{ parameters.versionEnvVar }}'
+  - ${{ if parameters.dotNetPush }}:
+    - task: DotNetCoreCLI@2
+      displayName: 'dotNet Push NuGet'
+      inputs:
+        command: push
+        packagesToPush: '$(Pipeline.Workspace)/NuGet/*.nupkg'
+        publishVstsFeed: '${{ parameters.dotNetFeed }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if and(parameters.publishEnabled, in(parameters.dotNetCommand, 'build', 'publish')) }}:
+      artifact: '${{ parameters.publishArtifact }}'
+      ${{ if eq(parameters.dotNetCommand, 'build') }}:
+        publish: '$(Pipeline.Workspace)/Build'
+      ${{ if eq(parameters.dotNetCommand, 'publish') }}:
+        publish: '$(Pipeline.Workspace)/Publish'
+    clean: ${{ parameters.clean }}

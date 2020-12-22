@@ -1,0 +1,297 @@
+parameters:
+# code StageList
+- name: codeStages
+  type: stageList
+  default:
+  - stage: codeAnalysis # codeAnalysis jobList param inserted to this stage
+    dependsOn: []
+    condition: succeeded()
+- name: codeAnalysis # jobsList inserted into codeAnalysis stage in codeStages
+  type: jobList
+  default: []
+#
+# dev stageList
+- name: devStages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: devBuild # devBuild jobList param inserted to this stage
+    dependsOn: codeAnalysis
+    condition: succeeded()
+  - stage: devDeploy # devDeploy jobList param inserted to this stage
+    dependsOn: devBuild
+    condition: succeeded()
+  - stage: devPromote # devPromote jobList param inserted to this stage
+    dependsOn: devDeploy
+    condition: succeeded()
+  - stage: devTests # devTests jobList param inserted to this stage
+    dependsOn: devPromote
+    condition: succeeded()
+# dev jobsLists
+- name: devBuild # jobsList inserted into devBuild stage in devStages
+  type: jobList
+  default: []
+- name: devDeploy # deploymentList inserted into devDeploy stage in devStages
+  type: deploymentList
+  default: []
+- name: devPromote # deploymentList inserted into devPromote stage in devStages
+  type: deploymentList
+  default: []
+- name: devTests # jobList inserted into devTests stage in devStages
+  type: jobList
+  default: []
+#
+# dint stageList
+- name: dintStages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: dintDeploy
+    dependsOn: devBuild
+    condition: succeeded()
+  - stage: dintPromote
+    dependsOn: dintDeploy
+    condition: succeeded()
+  - stage: dintTests
+    dependsOn: dintPromote
+    condition: succeeded()
+# dint jobsLists
+- name: dintBuild # dintBuild jobList param inserted to this stage
+  type: jobList
+  default: []
+- name: dintDeploy # dintDeploy jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: dintPromote # dintPromote jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: dintTests # dintTests jobList param inserted to this stage
+  type: jobList
+  default: []
+#
+# acpt stageList
+- name: acptStages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: acptBuild
+    dependsOn:
+      - devTests
+      - dintTests
+    condition: succeeded()
+  - stage: acptDeploy
+    dependsOn: acptBuild
+    condition: succeeded()
+  - stage: acptPromote
+    dependsOn: acptDeploy
+    condition: succeeded()
+  - stage: acptTests
+    dependsOn: acptPromote
+    condition: succeeded()
+# acpt jobsLists
+- name: acptBuild # acptBuild jobList param inserted to this stage
+  type: jobList
+  default: []
+- name: acptDeploy # acptDeploy jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: acptPromote # acptPromote jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: acptTests # acptTests jobList param inserted to this stage
+  type: jobList
+  default: []
+#
+# prod stageList
+- name: prodStages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: prodBuild
+    dependsOn: acptTests
+    condition: succeeded()
+  - stage: prodDeploy
+    dependsOn: prodBuild
+    condition: succeeded()
+  - stage: prodPromote
+    dependsOn: prodDeploy
+    condition: succeeded()
+  - stage: prodTests
+    dependsOn: prodPromote
+    condition: succeeded()
+# prod jobsLists
+- name: prodBuild # prodBuild jobList param inserted to this stage
+  type: jobList
+  default: []
+- name: prodDeploy # prodDeploy jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: prodPromote # prodPromote jobList param inserted to this stage
+  type: deploymentList
+  default: []
+- name: prodTests # prodTests jobList param inserted to this stage
+  type: jobList
+  default: []
+
+stages:
+# Insert each stage in the codeStages stageList
+- ${{ each stage in parameters.codeStages }}:
+  ## Insert codeAnalysis stage in codeStages if jobs in codeAnalysis jobList
+  - ${{ if and(eq(stage.stage, 'codeAnalysis'), gt(length(parameters.codeAnalysis), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert codeAnalysis jobList into codeAnalysis stage
+        ${{ parameters.codeAnalysis }}
+  ## Insert any additions stages from stageList
+  - ${{ if ne(stage.stage, 'codeAnalysis') }}:
+    - ${{ stage }}
+#
+# Insert each stage in the devStages stageList
+- ${{ each stage in parameters.devStages }}:
+  ## Insert devBuild stage in devStages if jobs in devBuild jobList
+  - ${{ if and(eq(stage.stage, 'devBuild'), gt(length(parameters.devBuild), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert devBuild jobList into devBuild stage
+        ${{ parameters.devBuild }}
+  ## Insert devDeploy stage in devStages if jobs in devDeploy jobList
+  - ${{ if and(eq(stage.stage, 'devDeploy'), gt(length(parameters.devDeploy), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert devDeploy jobList into devDeploy stage
+        ${{ parameters.devDeploy }}
+  ## Insert devPromote stage in devStages if jobs in devPromote jobList
+  - ${{ if and(eq(stage.stage, 'devPromote'), gt(length(parameters.devPromote), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert devPromote jobList into devPromote stage
+        ${{ parameters.devPromote }}
+  ## Insert devTests stage in devStages if jobs in devTests jobList
+  - ${{ if and(eq(stage.stage, 'devTests'), gt(length(parameters.devTests), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert devTests jobList into devTests stage
+        ${{ parameters.devTests }}
+  ## Insert any additions stages from stageList
+  - ${{ if not(in(stage.stage, 'devBuild', 'devDeploy', 'devPromote', 'devTests')) }}:
+    - ${{ stage }}
+#
+# Insert each stage in the dintStages stageList
+- ${{ each stage in parameters.dintStages }}:
+  ## Insert dintBuild stage in dintStages if jobs in dintBuild jobList
+  - ${{ if and(eq(stage.stage, 'dintBuild'), gt(length(parameters.dintBuild), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert dintBuild jobList into dintBuild stage
+        ${{ parameters.dintBuild }}
+  ## Insert dintDeploy stage in dintStages if jobs in dintDeploy jobList
+  - ${{ if and(eq(stage.stage, 'dintDeploy'), gt(length(parameters.dintDeploy), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert dintDeploy jobList into dintDeploy stage
+        ${{ parameters.dintDeploy }}
+  ## Insert dintPromote stage in dintStages if jobs in dintPromote jobList
+  - ${{ if and(eq(stage.stage, 'dintPromote'), gt(length(parameters.dintPromote), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert dintPromote jobList into dintPromote stage
+        ${{ parameters.dintPromote }}
+  ## Insert dintTests stage in dintStages if jobs in dintTests jobList
+  - ${{ if and(eq(stage.stage, 'dintTests'), gt(length(parameters.dintTests), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert dintTests jobList into dintTests stage
+        ${{ parameters.dintTests }}
+  ## Insert any additions stages from stageList
+  - ${{ if not(in(stage.stage, 'dintBuild', 'dintDeploy', 'dintPromote', 'dintTests')) }}:
+    - ${{ stage }}
+#
+# Insert each stage in the acptStages stageList
+- ${{ each stage in parameters.acptStages }}:
+  ## Insert acptBuild stage in acptStages if jobs in acptBuild jobList
+  - ${{ if and(eq(stage.stage, 'acptBuild'), gt(length(parameters.acptBuild), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert acptBuild jobList into acptBuild stage
+        ${{ parameters.acptBuild }}
+  ## Insert acptDeploy stage in acptStages if jobs in acptDeploy jobList
+  - ${{ if and(eq(stage.stage, 'acptDeploy'), gt(length(parameters.acptDeploy), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert acptDeploy jobList into acptDeploy stage
+        ${{ parameters.acptDeploy }}
+  ## Insert acptPromote stage in acptStages if jobs in acptPromote jobList
+  - ${{ if and(eq(stage.stage, 'acptPromote'), gt(length(parameters.acptPromote), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert acptPromote jobList into acptPromote stage
+        ${{ parameters.acptPromote }}
+  ## Insert acptTests stage in acptStages if jobs in acptTests jobList
+  - ${{ if and(eq(stage.stage, 'acptTests'), gt(length(parameters.acptTests), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert acptTests jobList into acptTests stage
+        ${{ parameters.acptTests }}
+  ## Insert any additions stages from stageList
+  - ${{ if not(in(stage.stage, 'acptBuild', 'acptDeploy', 'acptPromote', 'acptTests')) }}:
+    - ${{ stage }}
+#
+# Insert each stage in the prodStages stageList
+- ${{ each stage in parameters.prodStages }}:
+  ## Insert prodBuild stage in prodStages if jobs in prodBuild jobList
+  - ${{ if and(eq(stage.stage, 'prodBuild'), gt(length(parameters.prodBuild), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert prodBuild jobList into prodBuild stage
+        ${{ parameters.prodBuild }}
+  ## Insert prodDeploy stage in prodStages if jobs in prodDeploy jobList
+  - ${{ if and(eq(stage.stage, 'prodDeploy'), gt(length(parameters.prodDeploy), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert prodDeploy jobList into prodDeploy stage
+        ${{ parameters.prodDeploy }}
+  ## Insert prodPromote stage in prodStages if jobs in prodPromote jobList
+  - ${{ if and(eq(stage.stage, 'prodPromote'), gt(length(parameters.prodPromote), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert prodPromote jobList into prodPromote stage
+        ${{ parameters.prodPromote }}
+  ## Insert prodTests stage in prodStages if jobs in prodTests jobList
+  - ${{ if and(eq(stage.stage, 'prodTests'), gt(length(parameters.prodTests), 0)) }}:
+    - ${{ each item in stage }}:
+        ${{ if ne(item.key, 'jobs') }}:
+          ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ### Insert prodTests jobList into prodTests stage
+        ${{ parameters.prodTests }}
+  ## Insert any additions stages from stageList
+  - ${{ if not(in(stage.stage, 'prodBuild', 'prodDeploy', 'prodPromote', 'prodTests')) }}:
+    - ${{ stage }}

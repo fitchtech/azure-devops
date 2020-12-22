@@ -1,0 +1,265 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: artifactName # Optional to set a specific artifact to download
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+# Get Azure KeyVault Params
+- name: keyVaultSubscription
+  type: string
+  default: ''
+- name: keyVaultName
+  type: string
+  default: ''
+- name: keyVaultSecretFilter
+  type: string
+  default: '*'
+- name: secretArgs # Kube createSecret secretArgs for Azure KeyVault secrets
+  type: object
+  default: {}
+# Create imagePullSecret
+- name: dockerRegistryEndpoint # Required to enable task. Service connection name to container registry
+  type: string
+  default: ''
+- name: imagePullSecret # Required to enable task. Name of secret to create in Kubernetes
+  type: string
+  default: ''
+# Kube Deployment Params
+- name: kubectlVersion # Kube installer if param defined
+  type: string
+  default: '1.18.6'
+- name: kubernetesServiceConnection # Required for imagePullSecret create and deployment task. Except when using an ADO Environment Resource then it's not required for the deployment task
+  type: string
+  default: ''
+- name: namespace # Required, namespace in kubernetes cluster
+  type: string
+- name: kubeManifests
+  type: object
+  default: ''
+- name: containers # Update the image tag of a container listed in a manifest spec. e.g. containers: registryURL/repoName/imageName:imageTag would look in the manifest and if it find registryURL/repoName/imageName and update the imageTag
+  type: string
+  default: ''
+- name: rolloutStatusTimeout # Used when kubeAction is deploy, promote, or reject
+  type: number
+  default: 60
+- name: kubeStrategy
+  type: string
+  default: '' # canary or null
+- name: canaryPercentage # Used when kubeStrategy is canary
+  type: number
+  default: 10
+- name: trafficSplitMethod # Used when kubeStrategy is canary
+  type: string
+  default: pod
+  values:
+  - smi
+  - pod
+- name: baselineAndCanaryReplicas # Used when kubeStrategy is canary
+  type: number
+  default: 1
+- name: kubeAction # Default deploy; promote or reject prior canary kube deploy
+  type: string
+  default: deploy
+  values:
+  - deploy
+  - promote
+  - reject
+  - scale
+  - patch
+  - delete
+# Bake Kubernetes Manifests
+- name: kustomizationPath # To render Kustomization templates into Kube Manifests and deploy set this param
+  type: string
+  default: ''
+- name: helmChart # To render helm Charts into Kube Manifests and deploy set this param. Only works with helm charts that contain no CRDs. If the helm chart has CRDs use the helmTemplate steps
+  type: string
+  default: ''
+- name: overrideFiles # Optional overridesFiles when using helmChart
+  type: object
+  default: ''
+- name: overrides # Optional overrides when using helmChart
+  type: object
+  default: ''
+- name: releaseName # Required releaseName when using helmChart
+  type: string
+  default: ''
+- name: dockerComposeFile # To render a docker compose file into a kube manifest and deploy
+  type: string
+  default: ''
+# Scale or Patch Kubernetes Deployments
+- name: kubeKind # Required when kubeAction is scale or patch. The Kubernetes object kind
+  type: string
+  default: ReplicaSet
+- name: kubeName # Required when kubeAction is scale or patch. The name of the Kubernetes object to be scaled or patched
+  type: string
+  default: ''
+- name: kubeReplicas # Required when kubeAction is scale. The number of replicas desired
+  type: number
+  default: 1
+- name: kubeMergeStrategy # Required when kubeAction is patch. The merge strategy to be used
+  type: string
+  default: strategic
+  values:
+  - strategic
+  - merge
+  - json
+- name: kubePatch # Required when kubeAction is patch. The contents of the patch
+  type: object
+  default: ''
+- name: kubeDeleteArgs # Required when kubeAction is delete. Args to be pass to kubectl for deleting the objects. e.g. kubeDeleteArgs: 'deployment myApp'
+  type: string
+  default: ''
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.artifactName }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.kubectlVersion }}:
+  - task: KubectlInstaller@0
+    inputs:
+      kubectlVersion: '${{ parameters.kubectlVersion }}'
+- ${{ if parameters.keyVaultName }}:
+  - task: AzureKeyVault@1
+    displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
+    inputs:
+      azureSubscription: '${{ parameters.keyVaultSubscription }}'
+      KeyVaultName: '${{ parameters.keyVaultName }}'
+      SecretsFilter: '${{ parameters.keyVaultSecretFilter }}'
+      ${{ if gt(length(parameters.secretArgs), 0) }}:
+        runAsPreJob: true
+  - ${{ each item in parameters.secretArgs }}:
+    - task: KubernetesManifest@0
+      displayName: 'Deploy secret ${{ item.key }}'
+      inputs:
+        action: createSecret
+        namespace: '${{ parameters.namespace }}'
+        secretType: generic
+        secretName: ${{ item.key }}
+        secretArguments: ${{ item.value }}
+        ${{ if parameters.kubernetesServiceConnection }}:
+          kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+- ${{ if parameters.kubeManifests }}:
+  - task: replacetokens@3
+    displayName: 'Replace tokens in Kube Manifests'
+    inputs:
+      rootDirectory: $(Build.SourcesDirectory)
+      targetFiles: ${{ parameters.kubeManifests }}
+      encoding: 'auto'
+      writeBOM: true
+      actionOnMissing: 'warn'
+      keepToken: false
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      useLegacyPattern: false
+      enableTelemetry: false
+      verbosity: 'detailed'
+- ${{ if and(parameters.kubernetesServiceConnection, parameters.dockerRegistryEndpoint, parameters.imagePullSecret) }}:
+  - task: KubernetesManifest@0
+    displayName: 'Create imagePullSecret ${{ parameters.imagePullSecret }} in ${{ parameters.namespace }} namespace'
+    inputs:
+      action: createSecret
+      secretType: dockerRegistry
+      secretName: '${{ parameters.imagePullSecret }}'
+      dockerRegistryEndpoint: '${{ parameters.dockerRegistryEndpoint }}'
+      kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+      namespace: '${{ parameters.namespace }}'
+- ${{ if or(parameters.kustomizationPath, parameters.helmChart, parameters.dockerComposeFile) }}:
+  - task: KubernetesManifest@0
+    name: bake
+    displayName: 'Bake Manifests for Deployment'
+    inputs:
+      action: 'bake'
+      ${{ if parameters.kustomizationPath }}:
+        renderType: kustomize
+        kustomizationPath: ${{ parameters.kustomizationPath }}
+      ${{ if parameters.helmChart }}:
+        renderType: helm2
+        helmChart: ${{ parameters.helmChart }}
+        overrideFiles: ${{ parameters.overrideFiles }}
+        overrides: ${{ parameters.overrides }}
+        releaseName: ${{ parameters.releaseName }}
+      ${{ if parameters.dockerComposeFile }}:
+        renderType: kompose
+        dockerComposeFile: ${{ parameters.dockerComposeFile }}
+- ${{ if and(in(parameters.kubeAction, 'deploy', 'promote', 'reject'), or(parameters.kubeManifests, parameters.kustomizationPath, parameters.helmChart, parameters.dockerComposeFile)) }}:
+  - task: KubernetesManifest@0
+    displayName: '${{ parameters.kubeAction }} to ${{ parameters.kubernetesServiceConnection }} ${{ parameters.namespace }} namespace'
+    inputs:
+      action: '${{ parameters.kubeAction }}'
+      ${{ if parameters.kubernetesServiceConnection }}:
+        kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+      namespace: '${{ parameters.namespace }}'
+      ${{ if parameters.imagePullSecret }}:
+        imagePullSecrets: '${{ parameters.imagePullSecret }}'
+      ${{ if parameters.kubeManifests }}:
+        manifests: ${{ parameters.kubeManifests }}
+      ${{ if and(not(parameters.kubeManifests), or(parameters.kustomizationPath, parameters.helmChart, parameters.dockerComposeFile)) }}:
+        manifests: $(bake.manifestsBundle)
+      rolloutStatusTimeout: '${{ parameters.rolloutStatusTimeout }}'
+      ${{ if parameters.containers }}:
+        containers: '${{ parameters.containers }}'
+      ${{ if eq(parameters.kubeStrategy, 'canary') }}:
+        strategy: '${{ parameters.kubeStrategy }}'
+        percentage: '${{ parameters.canaryPercentage }}'
+        trafficSplitMethod: '${{ parameters.trafficSplitMethod }}'
+        ${{ if eq(parameters.trafficSplitMethod, 'smi') }}:
+          baselineAndCanaryReplicas: '${{ parameters.baselineAndCanaryReplicas }}'
+- ${{ if and(eq(parameters.kubeAction, 'scale'), parameters.kubeName) }}:
+  - task: KubernetesManifest@0
+    displayName: '${{ parameters.kubeAction }} ${{ parameters.kubeName }} ${{ parameters.kubeKind }} in ${{ parameters.namespace }} namespace'
+    inputs:
+      ${{ if parameters.kubernetesServiceConnection }}:
+        kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+      action: '${{ parameters.kubeAction }}'
+      namespace: '${{ parameters.namespace }}'
+      kind: '${{ parameters.kubeKind }}'
+      name: '${{ parameters.kubeName }}'
+      replicas: ${{ parameters.kubeReplicas }}
+- ${{ if and(eq(parameters.kubeAction, 'patch'), parameters.kubeName, parameters.kubePatch) }}:
+  - task: KubernetesManifest@0
+    displayName: '${{ parameters.kubeAction }} ${{ parameters.kubeName }} ${{ parameters.kubeKind }} in ${{ parameters.namespace }} namespace'
+    inputs:
+      ${{ if parameters.kubernetesServiceConnection }}:
+        kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+      action: '${{ parameters.kubeAction }}'
+      namespace: '${{ parameters.namespace }}'
+      kind: '${{ parameters.kubeKind }}'
+      name: '${{ parameters.kubeName }}'
+      mergeStrategy: ${{ parameters.kubeMergeStrategy }}
+      patch: ${{ parameters.kubePatch }}
+- ${{ if and(eq(parameters.kubeAction, 'delete'), parameters.kubeDeleteArgs) }}:
+  - task: KubernetesManifest@0
+    displayName: '${{ parameters.kubeAction }} ${{ parameters.kubeDeleteArgs }} in ${{ parameters.namespace }} namespace'
+    inputs:
+      ${{ if parameters.kubernetesServiceConnection }}:
+        kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
+      action: '${{ parameters.kubeAction }}'
+      namespace: '${{ parameters.namespace }}'
+      arguments: '${{ parameters.kubeDeleteArgs }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    clean: ${{ parameters.clean }}

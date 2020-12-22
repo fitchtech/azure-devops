@@ -1,0 +1,35 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: '#{KubeComponentName}#'
+  namespace: '#{namespace}#'
+spec:
+  selector:
+    matchLabels:
+      app: '#{KubeComponentName}#'
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: '#{KubeComponentName}#'
+    spec:
+      containers:
+      - name: '#{KubeComponentName}#'
+        image: '#{ImageRegistry}#/#{ImageRepository}#:#{ImageTag}#'
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "4096Mi"
+            cpu: "1000m"
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: '#{KubeComponentName}#-configmap'

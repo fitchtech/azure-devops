@@ -1,0 +1,152 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+- name: downloadPath
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishEnabled
+  type: boolean
+  default: true
+- name: artifactName
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+# Helm Installer
+- name: helmVersion
+  type: string
+  default: '3.1.3'
+- name: kubectlVersion
+  type: string
+  default: '1.18.6'
+# Helm Deploy add and update repo
+- name: repoName
+  type: string
+  default: ''
+- name: repoURL
+  type: string
+  default: ''
+# Render Helm Chart params
+- name: replaceTokensTargets # Replace tokens in chart and values file
+  type: object
+  default: |
+    **/*.yaml
+- name: namespace
+  type: string
+  default: ''
+- name: helmReleaseName
+  type: string
+  default: '$(Build.DefinitionName)'
+- name: helmChartPath # Root path of helm charts
+  type: string
+  default: '$(Pipeline.Workspace)'
+- name: helmValueFile # File path to values
+  type: string
+  default: '$(Pipeline.Workspace)/values.yaml'
+- name: helmChartVersion
+  type: string
+  default: '$(Build.BuildNumber)'
+- name: helmArguments # Additional args for helm template command
+  type: string
+  default: ''
+- name: outputDir # Output dir for helm template command
+  type: string
+  default: '$(Pipeline.Workspace)/helmTemplate'
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+# Helm Installer
+- ${{ if and(parameters.helmVersion, parameters.kubectlVersion) }}:
+  - task: HelmInstaller@0
+    displayName: 'Install Helm ${{ parameters.helmVersion }} and Kubectl ${{ parameters.kubectlVersion }}'
+    inputs:
+      helmVersion: '${{ parameters.helmVersion }}'
+      checkLatestHelmVersion: false
+      kubectlVersion: '${{ parameters.kubectlVersion }}'
+      checkLatestKubectl: false
+# Helm Deploy add and update repo
+- ${{ if and(parameters.repoName, parameters.repoURL) }}:
+  - task: HelmDeploy@0
+    displayName: 'Add ${{ parameters.repoName }} Helm Repo'
+    inputs:
+      connectionType: None
+      command: repo
+      arguments: 'add ${{ parameters.repoName }} ${{ parameters.repoURL }}'
+  - task: HelmDeploy@0
+    displayName: 'Update Helm Repos'
+    inputs:
+      connectionType: None
+      command: repo
+      arguments: update
+# Replace Tokens in Helm Charts
+- ${{ if and(parameters.helmReleaseName, parameters.helmChartPath, parameters.helmValueFile, parameters.helmChartVersion) }}:
+  - task: replacetokens@3
+    displayName: 'Replace tokens in Helm Charts'
+    inputs:
+      rootDirectory: '${{ parameters.helmChartPath }}'
+      targetFiles: ${{ parameters.replaceTokensTargets }}
+      encoding: 'auto'
+      writeBOM: true
+      actionOnMissing: 'warn'
+      keepToken: false
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      useLegacyPattern: false
+      enableTelemetry: false
+# Render Helm Chart into Kubernetes Manifests
+  - ${{ if parameters.namespace }}:
+    - bash: |
+        kubectl config set-context --current --namespace ${{ parameters.namespace }}
+      displayName: 'Kubernetes namespace: ${{ parameters.namespace }}'
+  - ${{ if parameters.helmArguments }}:
+    - bash: |
+        helm template ${{ parameters.helmReleaseName }} ${{ parameters.helmChartPath }} \
+        --namespace ${{ parameters.namespace }} \
+        --values ${{ parameters.helmValueFile }} \
+        --output-dir ${{ parameters.outputDir }} \
+        --version ${{ parameters.helmChartVersion }} \
+        --include-crds \
+        ${{ parameters.helmArguments }}
+      displayName: 'Render Helm Charts'
+  - ${{ if not(parameters.helmArguments) }}:
+    - bash: |
+        helm template ${{ parameters.helmReleaseName }} ${{ parameters.helmChartPath }} \
+        --namespace ${{ parameters.namespace }} \
+        --values ${{ parameters.helmValueFile }} \
+        --output-dir ${{ parameters.outputDir }} \
+        --version ${{ parameters.helmChartVersion }} \
+        --include-crds
+      displayName: 'Render Helm Charts'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if parameters.publishEnabled }}:
+      publish: '${{ parameters.outputDir }}'
+      artifact: '${{ parameters.artifactName }}'
+    clean: ${{ parameters.clean }}

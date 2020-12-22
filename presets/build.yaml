@@ -1,0 +1,112 @@
+parameters:
+- name: name # name of the job (A-Z, a-z, 0-9, and underscore)
+  type: string
+  default: build
+- name: displayName # friendly name to display in the UI
+  type: string
+  default: Build
+- name: dependsOn # string for dependsOn one job, list for dependsOn multiple jobs
+  type: object
+  default: []
+- name: condition # default job condition
+  type: string
+  default: succeeded()
+- name: strategy # Optional, add strategy object to job for parallel or matrix strategy
+  type: object
+  default: ''
+- name: continueOnError # 'true' if future jobs should run even if this job fails; defaults to 'false'
+  type: boolean
+  default: false
+- name: pool # Optional, set pool object for a job to override pool set in the pipeline
+  type: object
+  default: ''
+- name: container # Optional container to run this job inside of
+  type: object
+  default: ''
+- name: timeoutInMinutes # how long to run the job before automatically cancelling
+  type: number
+  default: 0
+- name: cancelTimeoutInMinutes # how much time to give 'run always even if cancelled tasks' before killing them
+  type: number
+  default: 0
+- name: variables # map or list format of variables added to the job
+  type: object
+  default: ''
+- name: clean # if true, execute git clean for checkout step; clean workspace folders; and post build cleanup task
+  type: boolean
+  default: true
+- name: checkout # [ self | none | repository name ] # self represents the repo where the initial Pipelines YAML file was found
+  type: string
+  default: self
+- name: checkoutSubModules # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules; defaults to not checking out submodules
+  type: boolean
+  default: string
+  values:
+  - true
+  - recursive
+- name: download # [ current | pipeline resource identifier | none ] # disable automatic download if "none"
+  type: string
+  default: current
+- name: artifact # artifact name, optional; for downloads all the available artifacts if not specified. For publish it's the artifact name
+  type: string
+  default: ''
+- name: preSteps # Optional list of tasks [ script | bash | pwsh | powershell | checkout | task | templateReference ]
+  type: stepList
+  default: []
+- name: buildSteps # list of tasks [ script | bash | pwsh | powershell | checkout | task | templateReference ]
+  type: stepList
+  default:
+  - template: buildSteps.yaml
+- name: postSteps # Optional list of tasks [ script | bash | pwsh | powershell | checkout | task | templateReference ]
+  type: stepList
+  default: []
+- name: publish # path to a file or folder. Optional to enable task
+  type: string
+  default: ''
+
+jobs:
+- job: ${{ parameters.name }}
+  displayName: ${{ parameters.displayName }}
+  dependsOn: ${{ parameters.dependsOn }}
+  condition: ${{ parameters.condition }}
+  ${{ if parameters.strategy }}:
+    strategy: ${{ parameters.strategy }}
+  continueOnError: ${{ parameters.continueOnError }}
+  ${{ if parameters.pool }}:
+    pool: ${{ parameters.pool }}
+  ${{ if parameters.clean }}:
+    workspace:
+      clean: all
+  ${{ if parameters.container }}:
+    container: ${{ parameters.container }}
+  ${{ if gt(length(parameters.timeoutInMinutes), 0) }}:
+    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+  ${{ if gt(length(parameters.cancelTimeoutInMinutes), 0) }}:
+    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+  ${{ if parameters.variables }}:
+    variables: ${{ parameters.variables }}
+  steps:
+  - ${{ if or(eq(parameters.checkout, ''), eq(parameters.checkout, 'none')) }}:
+    - checkout: none
+  - ${{ if or(ne(parameters.checkout, ''), ne(parameters.checkout, 'none')) }}:
+    - checkout: ${{ parameters.checkout }}
+      clean: ${{ parameters.clean }}
+      submodules: ${{ parameters.checkoutSubModules }}
+  - ${{ or(ne(parameters.download, 'none'), ne(parameters.download, '')) }}:
+    - download: ${{ parameters.download }}
+      ${{ if parameters.artifact }}:
+        artifact: ${{ parameters.artifact }}
+  - ${{ if gt(length(parameters.preSteps), 0) }}:
+    - ${{ parameters.preSteps }}
+  - ${{ parameters.buildSteps }}
+  - ${{ if gt(length(parameters.postSteps), 0) }}:
+    - ${{ parameters.postSteps }}
+  - ${{ parameters.publish }}:
+    - publish: ${{ parameters.publish }}
+      ${{ if parameters.artifact }}:
+        artifact: ${{ parameters.artifact }}
+  - ${{ if parameters.clean }}:
+    - task: PostBuildCleanup@3
+      displayName: Clean Agent Directories
+      env:
+        Build.Clean: all

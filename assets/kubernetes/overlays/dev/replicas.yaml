@@ -1,0 +1,14 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: '#{KubeComponentName}#'
+spec:
+  selector:
+    matchLabels:
+      app: '#{KubeComponentName}#'
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: '#{KubeComponentName}#'

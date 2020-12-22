@@ -1,0 +1,145 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publish
+  type: string
+  default: ''
+- name: publishArtifact
+  type: string
+  default: ''
+# Use dotNet
+- name: dotNetType
+  type: string
+  default: 'runtime'
+  values:
+  - 'sdk'
+  - 'runtime'
+- name: dotNetVersion
+  type: string
+  default: '3.1.x'
+# dotNet Build and Restore Params
+- name: dotNetProjects # dotNet projects or vs solution for dotNet build and restore
+  type: string
+- name: dotNetFeed # default dotNet artifact feed
+  type: string
+  default: ''
+- name: dotNetBuildArguments # default dotNet build arguments
+  type: string
+  default: ''
+# SonarQube Params
+- name: sonarQube # SonarQube Service Connection Name
+  type: string
+  default: ''
+- name: sonarQubeScannerMode
+  type: string
+  default: 'MSBuild'
+- name: sonarQubeProjectKey
+  type: string
+  default: ''
+- name: sonarQubeProjectName
+  type: string
+  default: ''
+- name: sonarQubeProjectVersion
+  type: string
+  default: '$(Build.BuildId)'
+- name: sonarQubeExtraProperties
+  type: string
+  default: 'sonar.coverage.exclusions=**/**Tests*.cs,**/**Wrapper*.cs,**/**Façade*.cs,**/**Creator*.cs,**/**Program.cs'
+- name: sonarQubePollingTimeoutSec
+  type: number
+  default: 300
+# dotNet Test Tasks for each test in dotNetTests
+- name: dotNetTests # Inserts dotnet test for each item in list, project key required
+  type: object
+  default:
+  - displayName: 'dotNet Unit Tests'
+    projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+    arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  - displayName: 'dotNet CLI Tests'
+    projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+    arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.sonarQube }}:
+  - task: SonarQubePrepare@4
+    displayName: 'Prepare analysis with SonarQube'
+    inputs:
+      SonarQube: '${{ parameters.sonarQube }}'
+      scannerMode: '${{ parameters.sonarQubeScannerMode }}'
+      projectKey: '${{ parameters.sonarQubeProjectKey }}'
+      projectName: '${{ parameters.sonarQubeProjectName }}'
+      projectVersion: '${{ parameters.sonarQubeProjectVersion }}'
+      extraProperties: '${{ parameters.sonarQubeExtraProperties }}'
+- ${{ if parameters.dotNetProjects }}:
+  - template: dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      dotNetCommand: build
+      dotNetType: ${{ parameters.dotNetType }}
+      dotNetVersion: ${{ parameters.dotNetVersion }}
+      dotNetProjects: ${{ parameters.dotNetProjects }}
+      dotNetFeed: ${{ parameters.dotNetFeed }}
+      dotNetArguments: ${{ parameters.dotNetArguments }}
+- ${{ if gt(length(parameters.dotNetTests), 0) }}:
+  - ${{ each test in parameters.dotNetTests }}:
+    - ${{ if test.projects }}:
+      - task: DotNetCoreCLI@2
+        ${{ if test.displayName }}:
+          displayName: ${{ test.displayName }}
+        ${{ if not(test.displayName) }}:
+          displayName: 'dotNet Test ${{ test.projects }}'
+        inputs:
+          command: test
+          projects: '${{ test.projects }}'
+          ${{ if test.arguments }}:
+            arguments: '${{ test.arguments }}'
+          ${{ if not(test.arguments) }}:
+            arguments: '--no-restore --collect "Code Coverage"'
+          ${{ if test.publishTestResults }}:
+            publishTestResults: ${{ test.publishTestResults }}
+          ${{ if not(test.publishTestResults) }}:
+            publishTestResults: true
+- ${{ if parameters.sonarQube }}:
+  - task: SonarQubeAnalyze@4
+    displayName: 'Run SonarQube Analysis'
+  - task: SonarQubePublish@4
+    displayName: 'Publish SonarQube Quality Gate Result'
+    inputs:
+      pollingTimeoutSec: '${{ parameters.sonarQubePollingTimeoutSec }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    publish: ${{ parameters.publish }}
+    artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

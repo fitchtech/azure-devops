@@ -1,0 +1,117 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: artifactName # projectFile or artifactName param required
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishEnabled # Publish artifact of manifests rendered from helm charts
+  type: boolean
+  default: false
+# Helm Installer
+- name: helmVersion
+  type: string
+  default: '3.1.3'
+- name: kubectlVersion
+  type: string
+  default: '1.18.6'
+# Helm Deploy add and update repo
+- name: repoName
+  type: string
+  default: ''
+- name: repoURL
+  type: string
+  default: ''
+# Render Helm Chart params
+- name: replaceTokensTargets # Replace tokens in chart and values file
+  type: object
+  default: |
+    **/*.yaml
+- name: namespace
+  type: string
+- name: helmReleaseName
+  type: string
+  default: '$(Build.DefinitionName)'
+- name: helmChartPath # Root path of helm charts
+  type: string
+  default: '$(Pipeline.Workspace)'
+- name: helmValueFile # File path to values
+  type: string
+  default: '$(Pipeline.Workspace)/values.yaml'
+- name: helmChartVersion
+  type: string
+  default: '$(Build.BuildNumber)'
+- name: helmArguments # Additional args for helm template command
+  type: string
+  default: ''
+- name: outputDir # Output dir for helm template command
+  type: string
+  default: '$(Pipeline.Workspace)/helmTemplate'
+# Deploy manifests from helm template outputs
+- name: kubeDeploy # Enable deployment of manifests
+  type: boolean
+  default: true
+- name: kubernetesServiceConnection # Service connection for kube deploy
+  type: string
+  default: ''
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.artifactName }}
+    preSteps: ${{ parameters.preSteps }}
+- template: ../build/helmTemplate.yaml
+  parameters:
+    clean: false
+    checkout: false
+    download: false
+    publishEnabled: ${{ parameters.publishEnabled }}
+    helmVersion: ${{ parameters.helmVersion }}
+    kubectlVersion: ${{ parameters.kubectlVersion }}
+    repoName: ${{ parameters.repoName }}
+    repoURL: ${{ parameters.repoURL }}
+    replaceTokensTargets: ${{ parameters.replaceTokensTargets }}
+    namespace: ${{ parameters.namespace }}
+    helmReleaseName: ${{ parameters.helmReleaseName }}
+    helmChartPath: ${{ parameters.helmChartPath }}
+    helmValueFile: ${{ parameters.helmValueFile }}
+    helmChartVersion: ${{ parameters.helmChartVersion }}
+    helmArguments: ${{ parameters.helmArguments }}
+    outputDir: ${{ parameters.outputDir }}
+- ${{ if parameters.kubeDeploy }}:
+  - template: kubeManifest.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+      kubeAction: deploy
+      kubeStrategy: ''
+      kubeManifests: '${{ parameters.outputDir }}/*'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    publish: ''
+    artifact: ''
+    clean: ${{ parameters.clean }}

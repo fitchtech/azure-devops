@@ -1,0 +1,212 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: artifactName # artifactName or dotNetProjects required
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publish
+  type: string
+  default: ''
+- name: publishArtifact
+  type: string
+  default: ''
+# Use dotNet Type and Version
+- name: dotNetType
+  type: string
+  default: 'sdk'
+  values:
+  - 'sdk'
+  - 'runtime'
+- name: dotNetVersion
+  type: string
+  default: ''
+# dotNet restore/build 
+- name: dotNetProjects # dotNetProjects required to dotNet build a project
+  type: string
+  default: ''
+- name: dotNetBuildArguments
+  type: string
+  default: ''
+- name: dotNetFeed
+  type: string
+  default: ''
+# Get Azure KeyVault as Variables for Replace Tokens
+- name: keyVaultName
+  type: string
+  default: ''
+- name: keyVaultSubscription
+  type: string
+  default: ''
+- name: keyVaultEnabled
+  type: boolean
+  default: false
+- name: keyVaultSecretFilter
+  type: string
+  default: '*'
+- name: replaceTokensRoot
+  type: string
+  default: '**/appsettings'
+- name: replaceTokensTargets
+  type: object
+  default: |
+    appsettings.*.json
+- name: replaceTokensEnabled
+  type: boolean
+  default: true
+# VSTest Task Params
+- name: testSelector
+  type: string
+  default: testPlan
+  values:
+  - 'testPlan'
+  - 'testAssemblies'
+  - 'testRun'
+- name: testPlan # Required if testSelector is testPlan
+  type: string
+  default: ''
+- name: testSuite # Required if testSelector is testPlan
+  type: string
+  default: ''
+- name: testConfiguration # Required if testSelector is testPlan
+  type: string
+  default: ''
+- name: runInParallel
+  type: boolean
+  default: true
+- name: testRunTitle
+  type: string
+  default: 'Functional Test'
+- name: configuration
+  type: string
+  default: 'Debug'
+- name: testDiagnosticsEnabled
+  type: boolean
+  default: true
+- name: testCollectDumpOn
+  type: string
+  default: always
+  values:
+  - 'always'
+  - 'onAbortOnly'
+  - 'never'
+- name: rerunFailedTests
+  type: boolean
+  default: true
+- name: rerunMaxAttempts
+  type: number
+  default: 2
+- name: testSearchFolder
+  type: string
+  default: $(Pipeline.Workspace)
+- name: testResultsFolder
+  type: string
+  default: $(Agent.TempDirectory)\TestResults
+- name: continueOnError
+  type: boolean
+  default: true
+- name: vsTestVersion
+  type: string
+  default: toolsInstaller
+- name: platform
+  type: string
+  default: 'Any CPU'
+- name: distributionBatchType
+  type: string
+  default: basedOnTestCases
+- name: batchingBasedOnAgentsOption
+  type: string
+  default: autoBatchSize
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    ${{ if and(parameters.artifactName, not(parameters.dotNetProjects)) }}:
+      artifact: ${{ parameters.artifactName }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if or(parameters.dotNetProjects, parameters.artifactName) }}:
+  - template: ../build/dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      dotNetCommand: build
+      dotNetType: ${{ parameters.dotNetType }}
+      dotNetVersion: ${{ parameters.dotNetVersion }}
+      dotNetProjects: ${{ parameters.dotNetProjects }}
+      dotNetFeed: ${{ parameters.dotNetFeed }}
+      dotNetArguments: ${{ parameters.dotNetBuildArguments }}
+- ${{ if parameters.keyVaultName }}:
+  - task: AzureKeyVault@1
+    displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
+    inputs:
+      azureSubscription: '${{ parameters.keyVaultSubscription }}'
+      KeyVaultName: '${{ parameters.keyVaultName }}'
+      SecretsFilter: '${{ parameters.keyVaultSecretFilter }}'
+- task: replacetokens@3
+  displayName: 'Replace tokens in ${{ parameters.replaceTokensRoot }}'
+  enabled: '${{ parameters.replaceTokensEnabled }}'
+  inputs:
+    rootDirectory: '${{ parameters.replaceTokensRoot }}'
+    targetFiles: ${{ parameters.replaceTokensTargets }}
+    encoding: 'auto'
+    writeBOM: true
+    actionOnMissing: 'warn'
+    keepToken: false
+    tokenPrefix: '#{'
+    tokenSuffix: '}#'
+    useLegacyPattern: false
+    enableTelemetry: false
+    verbosity: 'detailed'
+- task: VisualStudioTestPlatformInstaller@1
+  displayName: 'Visual Studio Test Platform Installer'
+- task: VSTest@2
+  displayName: '${{ parameters.displayName }}'
+  inputs:
+    distributionBatchType: '${{ parameters.distributionBatchType }}'
+    batchingBasedOnAgentsOption: '${{ parameters.batchingBasedOnAgentsOption }}'
+    testSelector: '${{ parameters.testSelector }}'
+    ${{ if eq(parameters.testSelector, 'testPlan') }}:
+      testPlan: '${{ parameters.testPlan }}'
+      testSuite: '${{ parameters.testSuite }}'
+      testConfiguration: '${{ parameters.testConfiguration }}'
+    vsTestVersion: '${{ parameters.vsTestVersion }}'
+    runInParallel: '${{ parameters.runInParallel }}'
+    testRunTitle: '${{ parameters.testRunTitle }}'
+    platform: '${{ parameters.platform }}'
+    configuration: '${{ parameters.configuration }}'
+    diagnosticsEnabled: '${{ parameters.testDiagnosticsEnabled }}'
+    collectDumpOn: '${{ parameters.testCollectDumpOn }}'
+    rerunFailedTests: '${{ parameters.rerunFailedTests }}'
+    rerunMaxAttempts: '${{ parameters.rerunMaxAttempts }}'
+    searchFolder: '${{ parameters.testSearchFolder }}'
+    resultsFolder: '${{ parameters.testResultsFolder }}'
+  continueOnError: '${{ parameters.continueOnError }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if parameters.publish }}:
+      publish: ${{ parameters.publish }}
+      artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

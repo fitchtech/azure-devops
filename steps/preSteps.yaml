@@ -1,0 +1,37 @@
+parameters:
+- name: preSteps # Insert stepList after checkout and download
+  type: stepList
+  default: []
+- name: checkout # self | none | repo name | false # self is the repo containing the pipeline yaml. When false step is not inserted, when none it's disabled
+  type: string
+  default: self
+- name: clean # if true, run execute git clean --ffdx && git reset -hard HEAD before fetching
+  type: boolean
+  default: false
+- name: submodules # true for single level of submodules or recursive to get submodules of submodules
+  type: string
+  default: false
+  values:
+  - true
+  - false
+  - recursive
+- name: download # current | pipeline resource identifier | none | false # When false step is not inserted, when none it's disabled
+  type: string
+  default: current
+- name: artifact # Optional param to specify an artifact name to download. Default downloads all artifacts for current pipeline run
+  type: string
+  default: ''
+
+steps:
+- ${{ if ne(parameters.checkout, 'false') }}:
+  - checkout: ${{ parameters.checkout }}
+    clean: ${{ parameters.clean }}
+    ${{ if or(eq(parameters.submodules, 'true'), eq(parameters.submodules, 'recursive')) }}:
+      submodules: ${{ parameters.submodules }}
+- ${{ if ne(parameters.download, 'false') }}:
+  - download: ${{ parameters.download }}
+    displayName: Download Pipeline Artifact ${{ parameters.artifact }}
+    ${{ if parameters.artifact }}:
+      artifact: ${{ parameters.artifact }}
+- ${{ if gt(length(parameters.preSteps), 0) }}:
+  - ${{ parameters.preSteps }}
