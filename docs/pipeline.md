@@ -7,9 +7,7 @@
   - [Design Principals and Patterns](#design-principals-and-patterns)
     - [Build Verification Pipeline](#build-verification-pipeline)
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
-      - [CI Triggered CIP](#ci-triggered-cip)
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
-      - [CI Triggered CDP](#ci-triggered-cdp)
   - [Idempotent and Immutable](#idempotent-and-immutable)
     - [Idempotent Pipelines](#idempotent-pipelines)
     - [Immutable Pipelines](#immutable-pipelines)
@@ -110,17 +108,13 @@ A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This incl
 
 Continuous Integration Pipelines (CIP) can be triggered on BVP completion. The devBuild stage containerImage job downloads artifacts from the BVP. Runs white source scan of dotNet artifact and twistlock scan of image artifact then pushes image to Harbor container registry with the tag using the build number format.
 
-#### CI Triggered CIP
-
-Feature and Release branches trigger devBuild stage to dotNet publish the commit, build and push the container image to the registry. When the pipeline completes the CDP is triggered for the commit.
+Optionally you can add a CI Trigger on Feature and Release branches to run devBuild stage to dotNet publish the commit, build and push the container image to the registry. When the pipeline completes the CDP is triggered for the commit.
 
 ### Continuous Deployment Pipeline
 
 Continuous Deployment Pipeline (CDP) can be triggered on CIP completion. The devDeploy stage deploys Azure Resource Manager (ARM) Templates, Kubernetes Manifests, and/or Helm Charts.
 
-#### CI Triggered CDP
-
-Feature branches only deploy to the dev environment.
+Optionally you can use conditions to deploy stages per environment based on the branch prefex of the triggering repository.
 
 For release branches prefixed with dev, only devDeploy stage is run; when prefixed with dint, devDeploy and dintDeploy runs.
 
