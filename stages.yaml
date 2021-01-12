@@ -1,0 +1,50 @@
+parameters:
+# jobsLists
+- name: code # jobsList inserted into codeAnalysis stage in codeStages
+  type: jobList
+  default: []
+- name: build # jobsList inserted into devBuild stage in devStages
+  type: jobList
+  default: []
+- name: deploy # deploymentList inserted into devDeploy stage in devStages
+  type: deploymentList
+  default: []
+- name: promote # deploymentList inserted into devPromote stage in devStages
+  type: deploymentList
+  default: []
+- name: test # jobList inserted into devTests stage in devStages
+  type: jobList
+  default: []
+#
+# stageList
+- name: stages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: code # code jobList param inserted to this stage
+    dependsOn: []
+    condition: succeeded()
+  - stage: build # build jobList param inserted to this stage
+    dependsOn: code
+    condition: succeeded()
+  - stage: deploy # deploy jobList param inserted to this stage
+    dependsOn: build
+    condition: succeeded()
+  - stage: promote # promote jobList param inserted to this stage
+    dependsOn: deploy
+    condition: succeeded()
+  - stage: test # test jobList param inserted to this stage
+    dependsOn: promote
+    condition: succeeded()
+
+stages:
+# Insert each stage in the stages stageList
+- ${{ each stage in parameters.stages }}:
+  - ${{ each item in stage }}:
+      ${{ if ne(item.key, 'jobs') }}:
+        ${{ item.key }}: ${{ item.value }}
+      jobs:
+        ${{ if and(eq(item.key, 'jobs'), gt(length(item.value), 0)) }}:
+          ${{ item.value }}
+        ${{ each parameter in parameters }}:
+          ${{ if and(eq(stage.key, parameter.key), gt(length(parameter.value), 0)) }}:
+            ${{ parameter.value }}
