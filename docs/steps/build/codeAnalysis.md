@@ -9,7 +9,7 @@
 
 - In the [Pipeline](../../pipeline.md) Template codeAnalysis jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
 - The codeAnalysis steps template provides options for adding SonarQube analysis and multiple dotNet tests
-- The dotNetTests param within the codeAnalysis steps template is a yaml object param that allows you to list projects and arguments
+- The dotNetTests param within the codeAnalysis steps template is a YAML object param that allows you to list projects and arguments
   - A dotNet test task is inserted for each item in the dotNetTests list
 
 ## Adding Steps into Pipeline Template
@@ -92,7 +92,7 @@ extends:
 
 ## Direct Steps Template Usage
 
-The above example is recommended pattern for standarizing stages, jobs, and deployments. However, you can use any steps template directly. The below example shows an alternative pattern.
+The above example is the recommended pattern for standardizing stages, jobs, and deployments. However, you can use any steps template directly. The below example shows an alternative pattern.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)

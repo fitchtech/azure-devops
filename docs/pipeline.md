@@ -15,11 +15,11 @@
 
 ## Introduction
 
-This repository stores templates to be used by azure-pipelines. It is recomended that you extend from the pipeline.yaml template.
+This repository stores templates to be used by azure-pipelines. It is recommended that you extend from the pipeline.yaml template.
 
 ## Repository Resource
 
-To use the pipeline templates in this repository it must be listed as a resource in your pipeline YAML file. This allows you to reference paths in another repositoring by using the resource identifier.
+To use the pipeline templates in this repository it must be listed as a resource in your pipeline YAML file. This allows you to reference paths in another repository by using the resource identifier.
 
 ```yaml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -81,10 +81,10 @@ extends:
 | Documentation                                                                    | Description                                                                    |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [Static Code Analysis](steps/build/codeAnalysis.md)                              | Run SonarQube for dotNet and run dotNet test for unit and cli tests            |
-| [Build Container Image](steps/build/containerImage.md)                           | Build and push a docker image using an optional dotnet solution and dockerfile |
+| [Build Container Image](steps/build/containerImage.md)                           | Build and push a docker image using an optional dotNet solution and dockerfile |
 | [Render Helm Charts and Publish Manifests Artifact](steps/build/helmTemplate.md) | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes   |
-| [Build dotNet Project and Publish Artifact](steps/build/dotNetCore.md)           | Build and publish a dotnet project without any tests                           |
-| Pack and Push Nuget Artifacts                                                    | Build and pack a dotnet project to publish Nuget packages to a artifact feed   |
+| [Build dotNet Project and Publish Artifact](steps/build/dotNetCore.md)           | Build and publish a dotNet project without any tests                           |
+| Pack and Push Nuget Artifacts                                                    | Build and pack a dotNet project to publish Nuget packages to an artifact feed   |
 | [Deploy ARM Templates](steps/deploy/armTemplate.md)                              | Deploy an ARM template(s)                                                      |
 | [Deploy Helm Charts](steps/deploy/helmChart.md)                                  | Use Helm charts to deploy components to Kubernetes                             |
 | [Render Helm Charts and Deploy Manifests](steps/deploy/helmManifest.md)          | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes   |
@@ -106,7 +106,7 @@ A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This incl
 
 ### Continuous Integration Pipeline
 
-Continuous Integration Pipelines (CIP) can be triggered on BVP completion. The devBuild stage containerImage job downloads artifacts from the BVP. Runs white source scan of dotNet artifact and twistlock scan of image artifact then pushes image to Harbor container registry with the tag using the build number format.
+Continuous Integration Pipelines (CIP) can be triggered on BVP completion. The devBuild stage containerImage job downloads artifacts from the BVP. Runs white source scan of dotNet artifact and twistlock scan of image artifact then pushes the image to Harbor container registry with the tag using the build number format.
 
 Optionally you can add a CI Trigger on Feature and Release branches to run devBuild stage to dotNet publish the commit, build and push the container image to the registry. When the pipeline completes the CDP is triggered for the commit.
 
@@ -114,7 +114,7 @@ Optionally you can add a CI Trigger on Feature and Release branches to run devBu
 
 Continuous Deployment Pipeline (CDP) can be triggered on CIP completion. The devDeploy stage deploys Azure Resource Manager (ARM) Templates, Kubernetes Manifests, and/or Helm Charts.
 
-Optionally you can use conditions to deploy stages per environment based on the branch prefex of the triggering repository.
+Optionally you can use conditions to deploy stages per environment based on the branch prefix of the triggering repository.
 
 For release branches prefixed with dev, only devDeploy stage is run; when prefixed with dint, devDeploy and dintDeploy runs.
 
@@ -127,7 +127,7 @@ For release branches prefixed with dev, only devDeploy stage is run; when prefix
 
 ### Idempotent Pipelines
 
-When implementing idempotent pipelines patterns, subsequent runs are not additive if there are not changes to the code. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CI/CD Pipelines.
+When implementing idempotent pipeline patterns, subsequent runs are not additive if there are not changes to the code. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CI/CD Pipelines.
 
 ### Immutable Pipelines
 

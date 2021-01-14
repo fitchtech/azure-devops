@@ -190,7 +190,7 @@ extends:
 
 ## Direct Steps Template Usage
 
-The above example is recommended pattern for standarizing stages, jobs, and deployments. However, you can use any steps template directly. The below example shows an alternative pattern.
+The above example is the recommended pattern for standardizing stages, jobs, and deployments. However, you can use any steps template directly. The below example shows an alternative pattern.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)

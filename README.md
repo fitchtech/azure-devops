@@ -8,7 +8,7 @@
 
 This repository stores templates to be used by azure-pipelines.
 
-- It is recomended that you extend from the [pipeline](docs/pipeline.md) template
+- It is recommended that you extend from the [pipeline](docs/pipeline.md) template
 - [Build Steps Templates](docs/steps/build.md)
 - [Deploy Steps Templates](docs/steps/deploy.md)
 

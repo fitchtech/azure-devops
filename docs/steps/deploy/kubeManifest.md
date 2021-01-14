@@ -2,7 +2,7 @@
 
 - Deploy Kubernetes Manifests to the Kubernetes Service Connection or ADO Environment Resource
 - Deploy standard or canary pods for deployment manifests
-- Create/update image pull secret using docker and kubernetes service connection
+- Create/update image pull secret using docker and Kubernetes service connection
 - Bake Kustomize, Docker Compose, or Helm2 charts that are then deployed
 - Scale an existing replica set
 - Delete a Kubernetes object
