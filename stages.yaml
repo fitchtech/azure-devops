@@ -35,16 +35,56 @@ parameters:
   - stage: test # test jobList param inserted to this stage
     dependsOn: promote
     condition: succeeded()
+- name: stageSuffix
+  type: string
+  default: '' # stage name suffix. e.g. Dev
 
 stages:
 # Insert each stage in the stages stageList
 - ${{ each stage in parameters.stages }}:
-  - ${{ each item in stage }}:
-      ${{ if ne(item.key, 'jobs') }}:
-        ${{ item.key }}: ${{ item.value }}
-      jobs:
-        ${{ if and(eq(item.key, 'jobs'), gt(length(item.value), 0)) }}:
-          ${{ item.value }}
-        ${{ each parameter in parameters }}:
-          ${{ if and(eq(stage.key, parameter.key), gt(length(parameter.value), 0)) }}:
-            ${{ parameter.value }}
+  # If parameter name equals stage name
+  - ${{ each parameter in parameters }}:
+    # If parameter name equals stage name and has at least 1 job
+    - ${{ if and(eq(parameter.name, stage.stage), or(gt(length(parameter.value), 0), gt(length(stage.jobs), 0))) }}:
+      - stage: '${{ stage.key }}${{ parameters.stageSuffix }}'
+        ${{ if stage.condition }}:
+          condition: ${{ stage.condition }}
+        ${{ if stage.dependsOn }}:
+          dependsOn: ${{ stage.dependsOn }}
+
+
+
+              
+
+# Insert each stage in the stages stageList
+#- ${{ each stage in parameters.stages }}:
+#  # if the stage has nested jobs insert stage 
+#  - ${{ if gt(length(stage.jobs), 0) }}:
+#    - ${{ each item in stage }}:
+#        # Insert key value pairs except jobs
+#        ${{ if ne(item.key, 'jobs') }}:
+#          ${{ item.key }}: ${{ item.value }}
+#
+#        ${{ if eq(item.key, 'dependsOn') }}:
+#          ${{ each dependsOn in item.value }}:
+#            ${{ dependsOn }}
+#        jobs:
+#          ${{ if eq(item.key, 'jobs') }}:
+#            ${{ item.value }}
+#          # If parameter name equals stage name insert the jobList or deploymentList
+#          ${{ each parameter in parameters }}:
+#            ${{ if and(eq(stage.key, parameter.key), gt(length(parameter.value), 0)) }}:
+#              ${{ parameter.value }}
+#  # if the stage has no jobs insert stage only if jobList or deploymentList has jobs 
+#  - ${{ if or(eq(length(stage.jobs), 0), not(stage.jobs)) }}:
+#    - ${{ each parameter in parameters }}:
+#      # if stage name equals parameter name and there is at least one job
+#      - ${{ if and(eq(stage.key, parameter.key), gt(length(parameter.value), 0)) }}:
+#        - ${{ each item in stage }}:
+#            # Insert key value pairs except jobs
+#            ${{ if ne(item.key, 'jobs') }}:
+#              ${{ item.key }}: ${{ item.value }}
+#            jobs:
+#              # If parameter name equals stage name insert the jobList or deploymentList
+#              ${{ parameter.value }}
+#
