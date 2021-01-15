@@ -1,132 +1,88 @@
 parameters:
 # jobsLists
-- name: code # jobsList inserted into codeAnalysis stage in codeStages
+- name: code # jobsList inserted into code stage in stages
   type: jobList
   default: []
-- name: build # jobsList inserted into devBuild stage in devStages
+- name: build # jobsList inserted into build stage in stages
   type: jobList
   default: []
-- name: deploy # deploymentList inserted into devDeploy stage in devStages
+- name: deploy # deploymentList inserted into deploy stage in stages
   type: deploymentList
   default: []
-- name: promote # deploymentList inserted into devPromote stage in devStages
-  type: deploymentList
-  default: []
-- name: test # jobList inserted into devTests stage in devStages
+- name: test # jobList inserted into test stage in stages
   type: jobList
+  default: []
+- name: promote # deploymentList inserted into promote stage in stages
+  type: deploymentList
   default: []
 
+# stageList
 - name: stages # Inserts each stage into stages
   type: stageList
   default:
   - stage: code # code jobList param inserted to this stage
     dependsOn: []
-    condition: succeeded()
+    condition: and(succeeded(), eq(variables['build.reason'], 'PullRequest'))
   - stage: build # build jobList param inserted to this stage
     dependsOn: code
-    condition: succeeded()
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger'))
   - stage: deploy # deploy jobList param inserted to this stage
     dependsOn: build
-    condition: succeeded()
-  - stage: promote # promote jobList param inserted to this stage
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
+  - stage: test # test jobList param inserted to this stage
     dependsOn: deploy
     condition: succeeded()
-  - stage: test # test jobList param inserted to this stage
-    dependsOn: promote
-    condition: succeeded()
+  - stage: promote # promote jobList param inserted to this stage
+    dependsOn: test
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
+
+- name: stageSuffix # Optional stage name suffix. e.g. Dev
+  type: string
+  default: ''
+- name: stagePrefix # Optional stage name prefix. e.g. Dev
+  type: string
+  default: ''
 
 stages:
-- template: ../stages.yaml
-  parameters:
-    code: ${{ parameters.code }}
-    build: ${{ parameters.build }}
-    deploy: ${{ parameters.deploy }}
-    promote: ${{ parameters.promote }}
-    test: ${{ parameters.test }}
-    stages:
-    ${{ each stage in parameters.stages }}:
-      # If code stage in stages param and jobs in code param 
-      ${{ if and(eq(stage.stage, 'code'), gt(length(parameters.code), 0)) }}:
-        stage: ${{ stage.stage }}
-        ${{ if stage.dependsOn }}:
-          dependsOn: ${{ stage.dependsOn }}
-        ${{ if stage.condition }}:
-          condition: ${{ stage.condition }}
-      # If build stage in stages param and jobs in build param 
-      ${{ if and(eq(stage.stage, 'build'), gt(length(parameters.build), 0)) }}:
-        stage: ${{ stage.stage }}
-        ${{ if stage.dependsOn }}:
-          dependsOn:
-            - ${{ each depends in stage.dependsOn }}:
-              # If build stage depends on code stage and jobs in code param
-              - ${{ if and(eq(depends, 'code'), gt(length(parameters.code), 0)) }}:
-                - ${{ depends }}
-              - ${{ if ne(depends, 'code') }}:
-                - ${{ depends }}
-        ${{ if stage.condition }}:
-          condition: ${{ stage.condition }}
-      # If deploy stage in stages param and jobs in deploy param 
-      ${{ if and(eq(stage.stage, 'deploy'), gt(length(parameters.deploy), 0)) }}:
-        stage: ${{ stage.stage }}
-        ${{ if stage.dependsOn }}:
-          dependsOn:
-            - ${{ each depends in stage.dependsOn }}:
-              # If deploy stage depends on code stage and jobs in code param
-              - ${{ if and(eq(depends, 'code'), gt(length(parameters.code), 0)) }}:
-                - ${{ depends }}
-              # If deploy stage depends on build stage and jobs in build param
-              - ${{ if and(eq(depends, 'build'), gt(length(parameters.build), 0)) }}:
-                - ${{ depends }}
-              - ${{ if not(in(depends, 'code', 'build')) }}:
-                - ${{ depends }}
-        ${{ if stage.condition }}:
-          condition: ${{ stage.condition }} 
-        jobs:
-          ${{ parameters.deploy }}
-      # If promote stage in stages param and jobs in promote param 
-      ${{ if and(eq(stage.stage, 'promote'), gt(length(parameters.promote), 0)) }}:
-        stage: ${{ stage.stage }}
-        ${{ if stage.dependsOn }}:
-          dependsOn:
-            - ${{ each depends in stage.dependsOn }}:
-              # If promote stage depends on code stage and jobs in code param
-              - ${{ if and(eq(depends, 'code'), gt(length(parameters.code), 0)) }}:
-                - ${{ depends }}
-              # If promote stage depends on build stage and jobs in build param
-              - ${{ if and(eq(depends, 'build'), gt(length(parameters.build), 0)) }}:
-                - ${{ depends }}
-              # If promote stage depends on deploy stage and jobs in deploy param
-              - ${{ if and(eq(depends, 'deploy'), gt(length(parameters.deploy), 0)) }}:
-                - ${{ depends }}
-              - ${{ if not(in(depends, 'code', 'build', 'deploy')) }}:
-                - ${{ depends }}
-        ${{ if stage.condition }}:
-          condition: ${{ stage.condition }} 
-        jobs:
-          ${{ parameters.promote }}
-      ${{ if and(eq(stage.stage, 'test'), gt(length(parameters.tests), 0)) }}:
-        stage: ${{ stage.stage }}
-        ${{ if stage.dependsOn }}:
-          dependsOn:
-            - ${{ each depends in stage.dependsOn }}:
-              # If test stage depends on code stage and jobs in code param
-              - ${{ if and(eq(depends, 'code'), gt(length(parameters.code), 0)) }}:
-                - ${{ depends }}
-              # If test stage depends on build stage and jobs in build param
-              - ${{ if and(eq(depends, 'build'), gt(length(parameters.build), 0)) }}:
-                - ${{ depends }}
-              # If test stage depends on deploy stage and jobs in deploy param
-              - ${{ if and(eq(depends, 'deploy'), gt(length(parameters.deploy), 0)) }}:
-                - ${{ depends }}
-              # If test stage depends on promote stage and jobs in promote param
-              - ${{ if and(eq(depends, 'promote'), gt(length(parameters.promote), 0)) }}:
-                - ${{ depends }}
-              - ${{ if not(in(depends, 'code', 'build', 'deploy', 'promote')) }}:
-                - ${{ depends }}
-        ${{ if stage.condition }}:
-          condition: ${{ stage.condition }} 
-        jobs:
-          ${{ parameters.test }}
-    ## Insert any additions stages from stageList
-    ${{ if not(in(stage.stage, 'code', 'build', 'deploy', 'promote', 'test')) }}:
-      ${{ stage }}
+# For each stage in stages
+- ${{ each stage in parameters.stages }}:
+  # If stage name is code, build, deploy, test, or promote, then use jobList or deploymentList with matching name
+  - ${{ if in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote') }}:
+    - ${{ each parameter in parameters }}:
+      # If parameter name matches stage name insert parameter for job list in stage
+      - ${{ if and(eq(parameter.name, stage.stage), gt(length(parameter.value), 0)) }}:
+        - stage: '${{ parameters.stagePrefix }}${{ stage.stage }}${{ parameters.stageSuffix }}'
+          ${{ if stage.dependsOn }}:
+            dependsOn:
+              # For each dependency in stage
+              - ${{ each dependency in stage.dependsOn }}:
+                # If stage depends on code stage and jobs in code param
+                - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+                  - ${{ dependency }}
+                # If stage depends on build stage and jobs in build param
+                - ${{ if and(eq(depends, 'build'), gt(length(parameters.build), 0)) }}:
+                  - ${{ dependency }}
+                # If stage depends on deploy stage and jobs in deploy param
+                - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+                  - ${{ dependency }}
+                # If stage depends on test stage and jobs in test param
+                - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+                  - ${{ dependency }}
+                # If stage depends on promote stage and jobs in promote param
+                - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+                  - ${{ dependency }}
+                - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
+                  - ${{ dependency }}
+          ${{ if stage.condition }}:
+            condition: ${{ stage.condition }} 
+          jobs:
+            # Insert each job in jobList or deploymentList parameter
+            - ${{ each job in parameter }}:
+              - ${{ job }}
+            - ${{ if gt(length(stage.jobs), 0) }}:
+              # If jobs are nested in stages param insert them
+              - ${{ each job in stage.jobs }}:
+                - ${{ job }}
+  ## Insert any additions stages from stageList
+  - ${{ if not(in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote')) }}:
+    - ${{ stage }}
