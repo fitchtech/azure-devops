@@ -58,21 +58,21 @@ stages:
               - ${{ each dependency in stage.dependsOn }}:
                 # If stage depends on code stage and jobs in code param
                 - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
                 # If stage depends on build stage and jobs in build param
                 - ${{ if and(eq(depends, 'build'), gt(length(parameters.build), 0)) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
                 # If stage depends on deploy stage and jobs in deploy param
                 - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
                 # If stage depends on test stage and jobs in test param
                 - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
                 # If stage depends on promote stage and jobs in promote param
                 - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
                 - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
-                  - ${{ dependency }}
+                  - '${{ parameters.stagePrefix }}${{ dependency }}${{ parameters.stageSuffix }}'
           ${{ if stage.condition }}:
             condition: ${{ stage.condition }} 
           jobs:
