@@ -127,6 +127,9 @@ parameters:
 - name: kubeDeleteArgs # Required when kubeAction is delete. Args to be pass to kubectl for deleting the objects. e.g. kubeDeleteArgs: 'deployment myApp'
   type: string
   default: ''
+- name: replaceTokens # Enable replace tokens task for kube manifests
+  type: boolean
+  default: false
 
 steps:
 - template: ../preSteps.yaml
@@ -161,7 +164,7 @@ steps:
         secretArguments: ${{ item.value }}
         ${{ if parameters.kubernetesServiceConnection }}:
           kubernetesServiceConnection: '${{ parameters.kubernetesServiceConnection }}'
-- ${{ if parameters.kubeManifests }}:
+- ${{ if and(parameters.kubeManifests, parameters.replaceTokens) }}:
   - task: replacetokens@3
     displayName: 'Replace tokens in Kube Manifests'
     inputs:

@@ -46,6 +46,9 @@ parameters:
   type: string
   default: ''
 # Render Helm Chart params
+- name: replaceTokens # Enable replace tokens task for targets
+  type: boolean
+  default: false
 - name: replaceTokensTargets # Replace tokens in chart and values file
   type: object
   default: |
@@ -106,19 +109,20 @@ steps:
       arguments: update
 # Replace Tokens in Helm Charts
 - ${{ if and(parameters.helmReleaseName, parameters.helmChartPath, parameters.helmValueFile, parameters.helmChartVersion) }}:
-  - task: replacetokens@3
-    displayName: 'Replace tokens in Helm Charts'
-    inputs:
-      rootDirectory: '${{ parameters.helmChartPath }}'
-      targetFiles: ${{ parameters.replaceTokensTargets }}
-      encoding: 'auto'
-      writeBOM: true
-      actionOnMissing: 'warn'
-      keepToken: false
-      tokenPrefix: '#{'
-      tokenSuffix: '}#'
-      useLegacyPattern: false
-      enableTelemetry: false
+  - ${{ if parameters.replaceTokens }}:
+    - task: replacetokens@3
+      displayName: 'Replace tokens in Helm Charts'
+      inputs:
+        rootDirectory: '${{ parameters.helmChartPath }}'
+        targetFiles: ${{ parameters.replaceTokensTargets }}
+        encoding: 'auto'
+        writeBOM: true
+        actionOnMissing: 'warn'
+        keepToken: false
+        tokenPrefix: '#{'
+        tokenSuffix: '}#'
+        useLegacyPattern: false
+        enableTelemetry: false
 # Render Helm Chart into Kubernetes Manifests
   - ${{ if parameters.namespace }}:
     - bash: |
