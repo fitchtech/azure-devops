@@ -88,6 +88,9 @@ stages:
                 # If stage depends on promote stage and jobs in promote param
                 - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
                   - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+                # If stage depends on reject stage and jobs in reject param
+                - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+                  - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
                 # If stage depends on stages other than code, build, deploy, test, and promote, insert the dependency
                 - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
                   - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
@@ -111,7 +114,7 @@ stages:
               - ${{ each job in stage.jobs }}:
                 - ${{ job }}
   ## Insert any additions stages from stageList
-  - ${{ if not(in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote')) }}:
+  - ${{ if not(in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject')) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in stages param has dependencies insert them
       ${{ if stage.dependsOn }}:
@@ -132,6 +135,9 @@ stages:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
             # If stage depends on promote stage and jobs in promote param
             - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject param
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
             # If stage depends on stages other than code, build, deploy, test, and promote, insert the dependency
             - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
