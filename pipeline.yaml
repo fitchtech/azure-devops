@@ -15,6 +15,9 @@ parameters:
 - name: promote # deploymentList inserted into promote stage in stages
   type: deploymentList
   default: []
+- name: reject # deploymentList inserted into reject stage in stages
+  type: deploymentList
+  default: []
 
 # stageList
 - name: stages # Inserts each stage into stages
@@ -30,11 +33,21 @@ parameters:
     dependsOn: build
     condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
   - stage: test # test jobList param inserted to this stage
-    dependsOn: deploy
+    dependsOn:
+      - build
+      - deploy
     condition: succeeded()
   - stage: promote # promote jobList param inserted to this stage
-    dependsOn: test
+    dependsOn:
+      - deploy
+      - test
     condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
+  - stage: reject
+    dependsOn:
+      - deploy
+      - test
+      - promote
+    condition: failed()
 
 - name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
   type: string
@@ -50,7 +63,7 @@ stages:
 # For each stage in stages
 - ${{ each stage in parameters.stages }}:
   # If stage name is code, build, deploy, test, or promote, then use jobList or deploymentList with matching name
-  - ${{ if in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote') }}:
+  - ${{ if in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
     - ${{ each parameter in parameters }}:
       # If parameter name matches stage name insert parameter for job list in stage
       - ${{ if and(eq(parameter.name, stage.stage), gt(length(parameter.value), 0)) }}:
