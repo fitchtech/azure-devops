@@ -51,10 +51,10 @@ parameters:
   default: '$(Build.DefinitionName)'
 - name: helmChartPath # Root path of helm charts
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: helmValueFile # File path to values
   type: string
-  default: '$(Pipeline.Workspace)/values.yaml'
+  default: '$(Build.Repository.LocalPath)/values.yaml'
 - name: helmChartVersion
   type: string
   default: '$(Build.BuildNumber)'

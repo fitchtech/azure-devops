@@ -67,7 +67,7 @@ parameters:
   default: 'upgrade'
 - name: helmChartPath # Root path of helm charts
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: helmReleaseName
   type: string
   default: '$(Build.DefinitionName)'
@@ -76,7 +76,7 @@ parameters:
   default: ''
 - name: helmValueFile # File path to values
   type: string
-  default: '$(Pipeline.Workspace)/values.yaml'
+  default: '$(Build.Repository.LocalPath)/values.yaml'
 - name: helmInstall # When command is upgrade install if not already done
   type: boolean
   default: true
