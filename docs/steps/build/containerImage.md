@@ -69,7 +69,7 @@ extends:
   # code: jobList inserted into code stage in stages param
   # build: jobList inserted into build stage in stages param
     build:
-    # - if dockerfile param is not null insert containerImage job into devBuild stage
+    # - if dockerfile param is not null insert containerImage job into build stage
       - ${{ if parameters.dockerFile }}:
         - job: containerImage # job name must be unique within stage
           displayName: 'Build Container Image' # job display name
@@ -87,12 +87,12 @@ extends:
                 containerRegistry: '${{ parameters.containerRegistry }}'
                 containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
                 twistlockEnabled: true # enable twistlock scan task
-                twistlockContinue: true # twistlock vulnerabilities register as warning instead of error in dev stage
+                twistlockContinue: true # twistlock vulnerabilities register as warning instead of error in build stage
                 dockerFile: '${{ parameters.dockerFile }}'
                 dockerArgs: '${{ parameters.dockerArgs }}'
                 dockerTags: ${{ parameters.dockerTags }}
           # - task: add postSteps to containerImage job
-      # - job: insert additional jobs into the devBuild stage
+      # - job: insert additional jobs into the build stage
   # deploy: deploymentList inserted into deploy stage in stages param
   # promote: deploymentList inserted into promote stage in stages param
   # test: jobList inserted into test stage in stages param

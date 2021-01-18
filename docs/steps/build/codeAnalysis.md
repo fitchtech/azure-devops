@@ -62,7 +62,7 @@ extends:
 # parameters: within pipeline.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
-    codeAnalysis:
+    code:
     # - job: insert static code analysis jobs into stage
       - job: codeAnalysis # job name must be unique within stage
         displayName: 'Static Code Analysis' # job display name
@@ -80,7 +80,7 @@ extends:
               dotNetTests: ${{ parameters.dotNetTests }}
             # - displayName: add more dotNet test tasks by adding items to this list
         # - task: add postSteps to codeAnalysis job
-    # - job: insert additional jobs into the codeAnalysis stage
+    # - job: insert additional jobs into the code stage
 ```
 
 ## Direct Steps Template Usage
