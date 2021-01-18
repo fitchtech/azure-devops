@@ -76,9 +76,9 @@ extends:
       # variables:
         # key: 'value' # pairs of variables scoped to this job
         steps:
-        # - template: for codeAnalysis steps
-          - template: steps/build/codeAnalysis.yaml
-          # parameters within codeAnalysis.yaml template
+        # - template: for code analysis steps
+          - template: steps/code/analysis.yaml
+          # parameters within analysis.yaml template
             parameters:
             # preSteps: 
               # - task: add preSteps into job
@@ -91,6 +91,7 @@ extends:
 
     # - job: insert additional jobs into the code stage
 
+  # build: jobList inserted into build stage in stages param
   # deploy: deploymentList inserted into deploy stage in stages param
   # promote: deploymentList inserted into promote stage in stages param
   # test: jobList inserted into test stage in stages param
@@ -145,7 +146,7 @@ stages:
     pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
     dependsOn: [] # job does not depend on other jobs
     steps:
-      - template: steps/build/codeAnalysis.yaml@template # resource identifier required as this is not extending from pipeline.yaml
+      - template: steps/code/analysis.yaml@template # resource identifier required as this is not extending from pipeline.yaml
         parameters:
         # preSteps: 
           # - task: add preSteps into job
@@ -159,4 +160,5 @@ stages:
         # postSteps:
           # - task: add postSteps into job
 # You can customize a list using this pattern
+
 ```
