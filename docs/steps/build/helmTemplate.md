@@ -25,9 +25,9 @@ parameters:
 - name: namespace
   type: string
   default: default
-- name: helmChartPath
+- name: helmChartPath # Optional path within Pipeline.Workspace
   type: string
-  default: 'helm'
+  default: ''
 - name: helmValueFile
   type: string
   default: 'values.yaml'
@@ -55,19 +55,8 @@ extends:
   template: pipeline.yaml@templates
 # parameters: within pipeline.yaml@templates
   parameters:
-  # codeStages: stageList param to overrides default stages
-    # - stage: codeAnalysis
-  # codeAnalysis: jobList inserted into codeAnalysis stage in codeStages
-  # devStages: stageList param to overrides default stages
-    devStages:
-    # - stage: devBuild | devDeploy | devPromote | devTests
-      - stage: devBuild
-        dependsOn: []
-      # variables:
-        # key: 'value' # pairs of variables scoped to the jobs within stage
-
-  # devBuild: jobList inserted into devBuild stage in devStages
-    devBuild:
+  # build: jobList inserted into build stage in stages
+    build:
       - job: helmTemplate # job name unique to stage
         displayName: 'Render Helm Charts'
         pool: ${{ parameters.buildPool }} # param passed to pool of deployment jobs
@@ -78,11 +67,25 @@ extends:
         steps:
           - template: steps/build/helmTemplate.yaml
             parameters:
+            # preSteps: 
+              # - task: add preSteps into job
               namespace: ${{ parameters.namespace }} # pass in namespace param
-              helmChartPath: '$(Pipeline.Workspace)/${{ parameters.helmChartPath }}' # helmChartPath within Pipeline.Workspace where charts are located
-              helmValueFile: '$(Pipeline.Workspace)/${{ parameters.helmChartPath }}/${{ parameters.helmValueFile }}' # values file within helmChartPath
+              ${{ if parameters.helmChartPath }}:
+                helmChartPath: '$(Build.Repository.LocalPath)/${{ parameters.helmChartPath }}' # helmChartPath within source checkout root path where charts are located
+                helmValueFile: '$(Build.Repository.LocalPath)/${{ parameters.helmChartPath }}/${{ parameters.helmValueFile }}' # values file within helmChartPath
+              ${{ if not(parameters.helmChartPath) }}:
+                helmChartPath: '$(Build.Repository.LocalPath)' # default source checkout root path
+                helmValueFile: '$(Build.Repository.LocalPath)/${{ parameters.helmValueFile }}' # values file within helmChartPath
             # outputDir: '$(Pipeline.Workspace)/helmTemplate' # This is the default outputDir
-            # publishEnabled: true # publish artifact of rendered manifests
-        # - task: add postSteps to deployment job
-    # - job: insert additional jobs into the devBuild stage
+            # publishEnabled: true # default publish artifact of rendered manifests
+            # postSteps:
+              # - task: add postSteps into job
+
+    # - job: insert additional jobs into the build stage
+
+  # deploy: deploymentList inserted into deploy stage in stages param
+  # promote: deploymentList inserted into promote stage in stages param
+  # test: jobList inserted into test stage in stages param
+  # reject: deploymentList inserted into reject stage in stages param
+
 ```

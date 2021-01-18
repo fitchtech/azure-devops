@@ -25,9 +25,6 @@ parameters:
   type: object
   default:
     vmImage: 'windows-latest' # Nested into pool param of codeAnalysis job
-- name: dotNetProjects # Nested into solutionName param of codeAnalysis job
-  type: string
-  default: '*.sln' # VS solution or dotNet projects to build for SonarQube analysis. Set to null to skip codeAnalysis job
 - name: dotNetTests
   type: object
   default:
@@ -37,6 +34,14 @@ parameters:
   - displayName: 'dotNet CLI Tests'
     projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
     arguments: '--no-restore --collect "Code Coverage"'
+
+# SonarQube Analysis extension for Azure Pipelines
+- name: sonarQube # Required sonarQube Service Connection name to insert steps
+  type: string
+  default: ''
+- name: dotNetProjects # Nested into dotNetProjects param of codeAnalysis steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to build for SonarQube analysis
+  type: string
+  default: '*.sln'
 
 # parameter defaults in the above section can be set on manual run of a pipeline to override
 
@@ -71,16 +76,26 @@ extends:
       # variables:
         # key: 'value' # pairs of variables scoped to this job
         steps:
-        # - task: add preSteps to codeAnalysis job
         # - template: for codeAnalysis steps
           - template: steps/build/codeAnalysis.yaml
           # parameters within codeAnalysis.yaml template
             parameters:
-              dotNetProjects: ${{ parameters.dotNetProjects }}
+            # preSteps: 
+              # - task: add preSteps into job
               dotNetTests: ${{ parameters.dotNetTests }}
-            # - displayName: add more dotNet test tasks by adding items to this list
-        # - task: add postSteps to codeAnalysis job
+              ${{ if parameters.sonarQube }}:
+                sonarQube: ${{ parameters.sonarQube }}
+                dotNetProjects: ${{ parameters.dotNetProjects }}
+            # postSteps:
+              # - task: add postSteps into job
+
     # - job: insert additional jobs into the code stage
+
+  # deploy: deploymentList inserted into deploy stage in stages param
+  # promote: deploymentList inserted into promote stage in stages param
+  # test: jobList inserted into test stage in stages param
+  # reject: deploymentList inserted into reject stage in stages param
+
 ```
 
 ## Direct Steps Template Usage
@@ -92,9 +107,6 @@ name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) 
 
 parameters:
 # params to pass into pipeline.yaml template:
-- name: dotNetProjects # Nested into solutionName param of codeAnalysis job
-  type: string
-  default: '*.sln' # VS solution or dotNet projects to build for SonarQube analysis. Set to null to skip codeAnalysis job
 - name: unitTests # param nested
   type: string
   default: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj'
@@ -135,7 +147,8 @@ stages:
     steps:
       - template: steps/build/codeAnalysis.yaml@template # resource identifier required as this is not extending from pipeline.yaml
         parameters:
-          dotNetProjects: ${{ parameters.dotNetProjects }} # param passed to solutionName
+        # preSteps: 
+          # - task: add preSteps into job
           dotNetTests:
           - displayName: 'dotNet Unit Tests'
             projects: '${{ parametes.unitTests }}' # Pattern search for unit test projects
@@ -143,5 +156,7 @@ stages:
           - displayName: 'dotNet CLI Tests'
             projects: '${{ parametes.cliTests }}' # Pattern search for cli test projects
             arguments: '--no-restore --collect "Code Coverage"'
+        # postSteps:
+          # - task: add postSteps into job
 # You can customize a list using this pattern
 ```

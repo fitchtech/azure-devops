@@ -78,11 +78,12 @@ extends:
         # variables:
           # key: 'value' # pairs of variables scoped to this job
           steps:
-          # - task: add preSteps to containerImage job
           # - template: for containerImage steps
             - template: steps/build/containerImage.yaml
             # parameters within containerImage.yaml template
               parameters:
+              # preSteps: 
+                # - task: add preSteps into job
                 dotNetProject: '${{ parameters.dotNetProject }}'
                 containerRegistry: '${{ parameters.containerRegistry }}'
                 containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
@@ -91,11 +92,15 @@ extends:
                 dockerFile: '${{ parameters.dockerFile }}'
                 dockerArgs: '${{ parameters.dockerArgs }}'
                 dockerTags: ${{ parameters.dockerTags }}
-          # - task: add postSteps to containerImage job
+              # postSteps:
+                # - task: add postSteps into job
+
       # - job: insert additional jobs into the build stage
+
   # deploy: deploymentList inserted into deploy stage in stages param
   # promote: deploymentList inserted into promote stage in stages param
   # test: jobList inserted into test stage in stages param
+  # reject: deploymentList inserted into reject stage in stages param
 
 ```
 
@@ -111,9 +116,6 @@ parameters:
   type: object
   default:
     vmImage: 'Ubuntu-16.04'
-- name: containerRegistry # Nested into containerRegistry params in build job
-  type: string
-  default: 'ACR' # ADO Service Connection name
 - name: dotNetProject # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
@@ -123,6 +125,9 @@ parameters:
 - name: dockerArgs # Nested into dockerArgs of build jobs
   type: string
   default: '' # optional to add --build-arg in docker build task
+- name: containerRegistry # Nested into containerRegistry params in build job
+  type: string
+  default: 'ACR' # ADO Service Connection name
 - name: containerRepository # repo path in registry
   type: string
   default: ''
