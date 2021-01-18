@@ -18,16 +18,16 @@ parameters:
 - name: artifactName # artifactName or dotNetProjects required
   type: string
   default: ''
-# postSteps
-- name: postSteps
-  type: stepList
-  default: []
-- name: publish
+- name: replaceTokens # Enable replace tokens task for kube manifests
+  type: boolean
+  default: false
+- name: replaceTokensRoot
   type: string
-  default: ''
-- name: publishArtifact
-  type: string
-  default: ''
+  default: '**/appsettings'
+- name: replaceTokensTargets
+  type: object
+  default: |
+    appsettings.*.json
 # Use dotNet Type and Version
 - name: dotNetType
   type: string
@@ -61,24 +61,31 @@ parameters:
 - name: keyVaultSecretFilter
   type: string
   default: '*'
-- name: replaceTokensRoot
+# VSTest Platform Installer
+- name: packageFeedSelector
   type: string
-  default: '**/appsettings'
-- name: replaceTokensTargets
-  type: object
-  default: |
-    appsettings.*.json
-- name: replaceTokensEnabled
-  type: boolean
-  default: true
+  default: nugetOrg
+  values:
+  - nugetOrg
+  - customFeed
+- name: versionSelector
+  type: string
+  default: latestStable
+  values:
+  - latestStable
+  - latestPreRelease
+  - specificVersion
+- name: testPlatformVersion # Required when versionSelector is specificVersion
+  type: string
+  default: '16.8.3'
 # VSTest Task Params
 - name: testSelector
   type: string
   default: testPlan
   values:
-  - 'testPlan'
-  - 'testAssemblies'
-  - 'testRun'
+  - testPlan
+  - testAssemblies
+  - testRun
 - name: testPlan # Required if testSelector is testPlan
   type: string
   default: ''
@@ -134,6 +141,16 @@ parameters:
 - name: batchingBasedOnAgentsOption
   type: string
   default: autoBatchSize
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publish
+  type: string
+  default: ''
+- name: publishArtifact
+  type: string
+  default: ''
 
 steps:
 - template: ../preSteps.yaml
@@ -164,23 +181,29 @@ steps:
       azureSubscription: '${{ parameters.keyVaultSubscription }}'
       KeyVaultName: '${{ parameters.keyVaultName }}'
       SecretsFilter: '${{ parameters.keyVaultSecretFilter }}'
-- task: replacetokens@3
-  displayName: 'Replace tokens in ${{ parameters.replaceTokensRoot }}'
-  enabled: '${{ parameters.replaceTokensEnabled }}'
-  inputs:
-    rootDirectory: '${{ parameters.replaceTokensRoot }}'
-    targetFiles: ${{ parameters.replaceTokensTargets }}
-    encoding: 'auto'
-    writeBOM: true
-    actionOnMissing: 'warn'
-    keepToken: false
-    tokenPrefix: '#{'
-    tokenSuffix: '}#'
-    useLegacyPattern: false
-    enableTelemetry: false
-    verbosity: 'detailed'
-- task: VisualStudioTestPlatformInstaller@1
-  displayName: 'Visual Studio Test Platform Installer'
+- ${{ if parameters.replaceTokens }}:
+  - task: replacetokens@3
+    displayName: 'Replace tokens in ${{ parameters.replaceTokensRoot }}'
+    inputs:
+      rootDirectory: '${{ parameters.replaceTokensRoot }}'
+      targetFiles: ${{ parameters.replaceTokensTargets }}
+      encoding: 'auto'
+      writeBOM: true
+      actionOnMissing: 'warn'
+      keepToken: false
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      useLegacyPattern: false
+      enableTelemetry: false
+      verbosity: 'detailed'
+- ${{ if eq(parameters.vsTestVersion, 'toolsInstaller') }}:
+  - task: VisualStudioTestPlatformInstaller@1
+    displayName: 'Visual Studio Test Platform Installer'
+    inputs:
+      packageFeedSelector: '${{ parameters.packageFeedSelector }}'
+      versionSelector: '${{ parameters.versionSelector }}'
+      ${{ if eq(parameters.versionSelector, 'specificVersion') }}:
+        testPlatformVersion: '${{ parameters.testPlatformVersion }}'
 - task: VSTest@2
   displayName: '${{ parameters.displayName }}'
   inputs:
