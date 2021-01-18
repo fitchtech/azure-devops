@@ -61,14 +61,7 @@ extends:
   template: pipeline.yaml@templates
 # parameters: within pipeline.yaml@templates
   parameters:
-  # codeStages stageList param to overrides default stages
-    codeStages:
-      - stage: codeAnalysis
-        dependsOn: []
-      # variables:
-        # key: 'value' # pairs of variables scoped to the jobs within stage
-
-  # codeAnalysis: jobList inserted into codeAnalysis stage in codeStages
+  # code: jobList inserted into code stage in stages
     codeAnalysis:
     # - job: insert static code analysis jobs into stage
       - job: codeAnalysis # job name must be unique within stage
@@ -132,7 +125,7 @@ trigger:
     - v*.*.*-* # CI Trigger when tag matches format
 
 stages:
-- stage: codeAnalysis
+- stage: code
   dependsOn: []
   jobs:
   - job: codeAnalysis # job name must be unique within stage
