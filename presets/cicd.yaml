@@ -1,6 +1,129 @@
 parameters:
 # params to pass into pipeline.yaml template
 
+# Code: dotNet Tests Params
+- name: dotNetTests
+  type: object
+  default: ''
+# dotNetTests:
+  # - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+  #   arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  #   displayName: 'dotNet Unit Tests'
+  # - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+  #   arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  #   displayName: 'dotNet CLI Tests'
+
+# Code: sonarQube analysis of dotNet projects or solutions
+- name: sonarQube # The sonarQube Service Connection name required to insert steps for using Azure Pipelines SonarQube Analysis extension
+  type: string
+  default: ''
+- name: sonarQubeProjects # Nested into dotNetProjects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
+  type: string
+  default: '*.csproj'
+
+# Code: Stage Params
+- name: codePool # Pool for jobs in code stage jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
+
+# Build: dotNet Projects
+- name: dotNetProjects # Required param to restore and publish a dotNet project
+  type: string
+  default: '' # path or pattern match of projects to dotNet publish
+# dotNetProject: '**.csproj'
+
+# Build: Container Images
+- name: dockerfiles # list of container image build jobs
+  type: object
+  default: ''
+# dockerfiles:
+  # - job: containerImage1
+  #   dockerfile: Dockerfile
+  #   args: '--build-arg repository=baseimages/dotnet/core/aspnet'
+  #   registry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
+  #   repository: 'services' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
+  #   image: 'api' # Optional image name. Default is $(Build.DefinitionName)
+  #   tags: '$(Build.BuildNumber)' # Optional list of image tags. Default is $(Build.BuildNumber)
+
+- name: dockerfile # Single container image build job
+  type: string
+  default: ''
+- name: dockerTags # Default tags to set in addition to pipeline metadata tags
+  type: object
+  default: $(Build.BuildNumber)
+- name: dockerArgs # Optional param to pass build arguments to Docker
+  type: string
+  default: ''
+- name: containerRegistry # Required ADO Service Connection name for container image build jobs
+  type: string
+  default: '' 
+- name: containerRepository # repo path in registry
+  type: string
+  default: ''
+- name: containerImage # containerRepository/containerImage of docker build jobs
+  type: string
+  default: '$(Build.DefinitionName)'
+
+# Build: Stage Params
+- name: buildPool # Pool param of build stage jobs
+  type: object
+  default: 
+    vmImage: 'Ubuntu-16.04'
+
+
+# Deploy: ARM Template Params
+- name: armSubscription # Azure subscription service connection name for ARM template deployments
+  type: string
+  default: ''
+- name: armResourceGroup # Azure Resource Group within the subscription for ARM template deployments
+  type: string
+  default: ''
+# Deploy: ARM Template Optional Params
+- name: armTemplatesDir # Root path of ARM templates
+  type: string
+  default: '$(Build.Repository.LocalPath)'
+- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
+  type: boolean
+  default: false
+# Deploy: Multiple ARM Templates
+- name: armTemplates # List of ARM Template deployment jobs
+  type: object
+  default: ''
+# armTemplates:
+  # - deployment: 'armTemplate1' # deployment name must be unique
+  #   template: 'deployment1.json'
+  #   parameters: 'parameters1.json'
+  # - deployment: 'armTemplate2' # deployment name must be unique
+  #   template: 'deployment2.json'
+  #   parameters: 'parameters2.json'
+  # - deployment: 'armTemplate3' # deployment name must be unique
+  #   template: 'deployment3.json'
+  #   parameters: 'parameters3.json'
+  #   # Example when armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
+  #   dependsOn:
+  #     - armTemplate1
+  #     - armTemplate2
+# Deploy: Single ARM Template
+- name: armTemplate
+  type: string
+  default: ''
+- name: armParameters
+  type: string
+  default: ''
+- name: armOverrides
+  type: string
+  default: ''
+
+# Deploy: Stage Params
+- name: deployPool # Nested into pool param of deploy jobs
+  type: object
+  default:
+    vmImage: 'ubuntu-18.04'
+- name: deployCheckout
+  type: string
+  default: self
+
 # Globals: Optional Params
 - name: stages # Optional to override default value of stages stageList in the pipeline.yaml template
   type: stageList
@@ -15,103 +138,12 @@ parameters:
   type: string
   default: ''
 
-# Code: dotNet Tests Params
-- name: dotNetTests
-  type: object
-  default:
-  - displayName: 'dotNet Unit Tests'
-    projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
-    arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
-  - displayName: 'dotNet CLI Tests'
-    projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
-    arguments: '--no-restore --collect "Code Coverage"'
-# Code: sonarQube analysis of dotNet projects or solutions
-- name: sonarQube # The sonarQube Service Connection name required to insert steps for using Azure Pipelines SonarQube Analysis extension
-  type: string
-  default: ''
-- name: sonarQubeProjects # Nested into dotNetProjects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
-  type: string
-  default: '*.sln'
-# Code: Stage Params
-- name: codePool # Pool for jobs in code stage
-  type: object
-  default:
-    vmImage: 'windows-latest'
-
-# Build: Container Image
-- name: dotNetProject # Required param to restore and publish a dotNet project
-  type: string
-  default: '' # path or pattern match of projects to dotNet publish
-# dotNetProject: '**.csproj'
-- name: dockerFile # Nested into dockerFile of build jobs
-  type: string
-  default: '**.dockerfile' # path to dockerfile for docker build task
-- name: dockerArgs # Nested into dockerArgs of build jobs
-  type: string
-  default: '' # optional to add --build-arg in docker build task
-- name: containerRegistry # Nested into containerRegistry param in containerImage job
-  type: string
-  default: '' # ADO Service Connection name
-- name: containerRepository # repo path in registry
-  type: string
-  default: ''
-- name: imageName # containerRepository/imageName nested into containerRepository of containerImage jobs
-  type: string
-  default: '$(Build.DefinitionName)'
-# Build: Stage Params
-- name: buildPool # Nested into pool param of build jobs
-  type: object
-  default: 
-    vmImage: 'Ubuntu-16.04'
-
-
-# Deploy: ARM Template Params
-- name: armSubscription # Azure subscription service connection name for ARM template deployments
-  type: string
-  default: ''
-- name: armResourceGroup # Azure Resource Group within the subscription for ARM template deployments
-  type: string
-  default: ''
-- name: armDeployments # List of ARM Template jobs
-  type: object
-  default: ''
-# armDeployments:
-  # - deployment: 'armTemplate1' # deployment name must be unique
-  #   template: 'deployment1.json'
-  #   parameters: 'parameters1.json'
-  # - deployment: 'armTemplate2' # deployment name must be unique
-  #   template: 'deployment2.json'
-  #   parameters: 'parameters2.json'
-  # - deployment: 'armTemplate3' # deployment name must be unique
-  #   template: 'deployment3.json'
-  #   parameters: 'parameters3.json'
-  #   # Example when armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
-  #   dependsOn:
-  #     - armTemplate1
-  #     - armTemplate2
-
-# Deploy: ARM Template Optional Params
-- name: armDeploymentsDir # Root path of ARM templates
-  type: string
-  default: '$(Build.Repository.LocalPath)'
-- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
-  type: boolean
-  default: false
-# Deploy: Stage Params
-- name: deployPool # Nested into pool param of deploy jobs
-  type: object
-  default:
-    vmImage: 'ubuntu-18.04'
-- name: deployCheckout
-  type: string
-  default: self
-
 stages:
   - template: ../pipeline.yaml
   # parameters: within pipeline.yaml
     parameters:
-      stagesSuffix: ${{ parameters.stagesSuffix }}
       stagesPrefix: ${{ parameters.stagesPrefix }}
+      stagesSuffix: ${{ parameters.stagesSuffix }}
       stagesCondition: ${{ parameters.stagesCondition }}
       ${{ if parameters.stages }}:
       # If stages stageList param has value then override default stages value in pipeline.yaml template
@@ -119,107 +151,178 @@ stages:
     # code: jobList inserted into code stage in stages
       code:
       # - job: insert static code analysis jobs into stage
-        - job: codeAnalysis # job name must be unique within stage
-          displayName: 'Static Code Analysis' # job display name
-          pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
-          dependsOn: [] # job does not depend on other jobs
-        # variables:
-          # key: 'value' # pairs of variables scoped to this job
-          steps:
-          # - template: for code analysis steps
-            - template: steps/code/analysis.yaml
-            # parameters within analysis.yaml template
-              parameters:
-              # preSteps: 
-                # - task: add preSteps into job
-                dotNetTests: ${{ parameters.dotNetTests }}
-                ${{ if parameters.sonarQube }}:
+        - ${{ if parameters.dotNetTests }}:
+          - job: dotNetTests # job name must be unique within stage
+            displayName: 'dotNet Tests' # job display name
+            pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+            dependsOn: [] # job does not depend on other jobs
+            steps:
+              - template: steps/code/analysis.yaml
+              # parameters within analysis.yaml template
+                parameters:
+                  dotNetTests: ${{ parameters.dotNetTests }}
+        - ${{ if parameters.sonarQube }}:
+          - job: sonarQube # job name must be unique within stage
+            displayName: 'sonarQube Analysis' # job display name
+            pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+            dependsOn: [] # job does not depend on other jobs
+            steps:
+              - template: steps/code/analysis.yaml
+              # parameters within analysis.yaml template
+                parameters:
                   sonarQube: ${{ parameters.sonarQube }}
                   dotNetProjects: ${{ parameters.sonarQubeProjects }}
-              # postSteps:
-                # - task: add postSteps into job
     # build: jobList inserted into build stage in stages
       build:
-      # - if dockerfile param is not null insert containerImage job into build stage
-        - ${{ if and(parameters.dockerFile, parameters.containerRegistry) }}:
+        # If dockerfile and containerRegistry param has value, insert container image build job into build stage
+        - ${{ if and(parameters.dockerfile, parameters.containerRegistry) }}:
           - job: containerImage # job name must be unique within stage
             displayName: 'Build Container Image' # job display name
             pool: ${{ parameters.buildPool }} # param passed to pool of codAnalysis jobs
             dependsOn: [] # job does not depend on other jobs
-          # variables:
-            # key: 'value' # pairs of variables scoped to this job
             steps:
-            # - template: for containerImage steps
               - template: steps/build/containerImage.yaml
               # parameters within containerImage.yaml template
                 parameters:
-                # preSteps: 
-                  # - task: add preSteps into job
-                  dotNetProject: '${{ parameters.dotNetProject }}'
+                  ${{ if parameters.dotNetProjects }}:
+                    dotNetProjects: '${{ parameters.dotNetProjects }}'
                   containerRegistry: '${{ parameters.containerRegistry }}'
                   ${{ if parameters.containerRepository }}:
-                    containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
+                    containerRepository: '${{ parameters.containerRepository }}/${{ parameters.containerImage }}'
                   ${{ if not(parameters.containerRepository) }}:
-                    containerRepository: '${{ parameters.imageName }}'
-                  twistlockEnabled: true # enable twistlock scan task
-                  twistlockContinue: true # twistlock vulnerabilities register as warning instead of error in build stage
-                  dockerFile: '${{ parameters.dockerFile }}'
+                    containerRepository: '${{ parameters.containerImage }}'
+                  dockerFile: '${{ parameters.dockerfile }}'
                   dockerArgs: '${{ parameters.dockerArgs }}'
                   dockerTags: ${{ parameters.dockerTags }}
-                # postSteps:
-                  # - task: add postSteps into job
+        # For each dockerfile in dockerfiles param, insert container image build job into build stage
+        - ${{ each build in parameters.dockerfiles }}:
+          - ${{ if and(build.job, build.dockerfile, or(parameters.containerRegistry, build.registry)) }}:
+            - job: ${{ build.job }} # job name must be unique within stage
+              displayName: 'Build Container Image ${{ dockerfile.dockerfile }}' # job display name
+              ${{ if build.pool }}:
+                pool: ${{ build.pool }} # override default pool for build jobs
+              ${{ if not(build.pool) }}:
+                pool: ${{ parameters.buildPool }} # default param passed to pool of build jobs
+              # If docker build job depends on other jobs in build stage insert dependencies
+              ${{ if build.dependsOn }}:
+                dependsOn:
+                - ${{ each dependency in dockerfile.dependsOn }}:
+                  - ${{ dependency }}
+              ${{ if not(build.dependsOn) }}:
+                dependsOn: [] # job does not depend on other jobs
+              ${{ if build.variables }}:
+                variables:
+                ${{ each variable in build.variables }}:
+                  ${{ variable.key }}: ${{ variable.value }}
+              steps:
+                - template: steps/build/containerImage.yaml
+                # parameters within containerImage.yaml template
+                  parameters:
+                    ${{ if build.preSteps }}:
+                      preSteps: ${{ build.preSteps }}
+                    ${{ if build.dotNetProjects }}:
+                      dotNetProjects: '${{ build.dotNetProjects }}'
+                    ${{ if build.registry }}:
+                      containerRegistry: '${{ build.registry }}'
+                    ${{ if not(build.registry) }}:
+                      containerRegistry: '${{ parameters.containerRegistry }}'
+                    ${{ if parameters.containerRepository }}:
+                      containerRepository: '${{ parameters.containerRepository }}/${{ parameters.containerImage }}'
+                    ${{ if not(parameters.containerRepository) }}:
+                      containerRepository: '${{ parameters.containerImage }}'
+                    dockerFile: '${{ build.dockerfile }}'
+                    dockerArgs: '${{ build.args }}'
+                    dockerTags: ${{ build.tags }}
+                    ${{ if build.twistlockEnabled }}:
+                      twistlockEnabled: true # enable twistlock scan task
+                      ${{ if build.twistlockContinue }}:
+                        twistlockContinue: true # twistlock vulnerabilities register as warning instead of error in build stage
+                    ${{ if build.postSteps }}:
+                      postSteps: ${{ build.postSteps }}
     # deploy: deploymentList inserted into deploy stage in stages param
       deploy:
-      # If armSubscription, armResourceGroup, and armDeployments have values; insert ARM template deployment jobs
-        - ${{ if and(parameters.armSubscription, parameters.armResourceGroup, parameters.armDeployments) }}:
-        # - for each armDeployment item in armDeployments parameter insert arm deployment jobs
-          - ${{ each armDeployment in parameters.armDeployments }}:
-            - ${{ if and(armDeployment.template, armDeployment.deployment) }}:
-              - deployment: ${{ armDeployment.deployment }} # deployment name unique to stage
-                displayName: 'Deploy ARM Template ${{ armDeployment.template }}'
+        # If armTemplate, armSubscription, and armResourceGroup has value insert ARM template deployment job
+        - ${{ if and(parameters.armTemplate, parameters.armSubscription, parameters.armResourceGroup) }}:
+          - deployment: armTemplate
+            displayName: 'Deploy ARM Template'
+            pool: ${{ parameters.deployPool }}
+            condition: succeeded()
+            dependsOn: []
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - template: steps/deploy/armTemplate.yaml
+                      parameters:
+                        replaceTokens: ${{ parameters.armReplaceTokens }}
+                        checkout: ${{ parameters.deployCheckout }}
+                        deploymentTemplate: ${{ parameters.armTemplate }} # ARM template within deploymentDir
+                        deploymentDir: '${{ parameters.armTemplatesDir }}'
+                        azureSubscription: ${{ parameters.armSubscription }}
+                        resourceGroupName: ${{ parameters.armResourceGroup }}
+                        ${{ if parameters.armParameters }}:
+                          deploymentParameters: ${{ parameters.armParameters }} # Parameters file within deploymentDir 
+                        ${{ if parameters.armOverrides }}:
+                          deploymentOverride: '${{ deployment.armOverrides }}' # Optionally add args to override values in parameters file
+        # For each deployment item in armTemplates parameter insert arm deployment jobs
+        - ${{ each deployment in parameters.armTemplates }}:
+          # If deployment key, template, subscription, and resource group have values; insert ARM template deployment job
+          - ${{ if and(deployment.deployment, deployment.template, or(parameters.armSubscription, deployment.subscription), or(parameters.armResourceGroup, deployment.resourceGroup)) }}:
+            - deployment: ${{ deployment.deployment }} # deployment name unique to stage
+              displayName: 'Deploy ARM Template ${{ deployment.template }}'
+              ${{ if deployment.pool }}:
+                pool: ${{ deployment.pool }} # param passed to pool of deployment jobs
+              ${{ if not(deployment.pool) }}:
                 pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-                ${{ if armDeployment.condition }}:
-                  condition: ${{ armDeployment.condition }}
-                ${{ if not(armDeployment.condition) }}:
-                  condition: succeeded()
-                ${{ if armDeployment.variables }}:
-                  variables:
-                  ${{ each variable in armDeployment.variables }}:
-                    ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
-                ${{ if armDeployment.dependsOn }}:
-                  dependsOn:
-                  - ${{ each dependency in armDeployment.dependsOn }}:
-                    - ${{ dependency }}
-                ${{ if not(armDeployment.dependsOn) }}:
-                  dependsOn: []
-                strategy:
-                  runOnce:
-                    deploy:
-                      steps:
-                        - template: steps/deploy/armTemplate.yaml
-                          parameters:
-                            ${{ if armDeployment.preSteps }}:
-                              preSteps: ${{ armDeployment.preSteps }}
-                            ${{ if parameters.armReplaceTokens }}:
-                              replaceTokens: true
-                            ${{ if armDeployment.checkout }}:
-                              checkout: ${{ armDeployment.checkout }}
-                            ${{ if not(armDeployment.checkout) }}:
-                              checkout: ${{ parameters.deployCheckout }}
-                            # Override parameters.azureSubscription with armDeployment.azureSubscription
-                            ${{ if armDeployment.azureSubscription }}:
-                              azureSubscription: ${{ armDeployment.azureSubscription }} # Service connection to subscription for the resource group
-                            ${{ if not(armDeployment.azureSubscription) }}:
-                              azureSubscription: ${{ parameters.armSubscription }} # Service connection to subscription for the resource group
-                            ${{ if armDeployment.resourceGroup }}:
-                              resourceGroupName: ${{ armDeployment.resourceGroup }} # Service connection to subscription for the resource group
-                            ${{ if not(armDeployment.resourceGroup) }}:
-                              resourceGroupName: ${{ parameters.armResourceGroup }} # RM Group name within subscription
-                            deploymentDir: '${{ parameters.armDeploymentsDir }}' # root path where ARM templates are located
-                            deploymentTemplate: ${{ armDeployment.template }} # ARM template within deploymentDir
-                            ${{ if armDeployment.parameters }}:
-                              deploymentParameters: ${{ armDeployment.parameters }} # Parameters file within deploymentDir 
-                            ${{ if armDeployment.override }}:
-                              deploymentOverride: '${{ armDeployment.override }}' # Optionally add args to override values in parameters file
-                            ${{ if armDeployment.postSteps }}:
-                              postSteps: ${{ armDeployment.postSteps }}
+              ${{ if deployment.condition }}:
+                condition: ${{ deployment.condition }}
+              ${{ if not(deployment.condition) }}:
+                condition: succeeded()
+              ${{ if deployment.variables }}:
+                variables:
+                ${{ each variable in deployment.variables }}:
+                  ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
+              ${{ if deployment.dependsOn }}:
+                dependsOn:
+                - ${{ each dependency in deployment.dependsOn }}:
+                  - ${{ dependency }}
+              ${{ if not(deployment.dependsOn) }}:
+                dependsOn: []
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      - template: steps/deploy/armTemplate.yaml
+                        parameters:
+                          ${{ if deployment.preSteps }}:
+                            preSteps: ${{ deployment.preSteps }}
+                          # Optionally enables replace tokens tasks. Requires replace tokens extension installed in Azure DevOps
+                          ${{ if parameters.armReplaceTokens }}:
+                            replaceTokens: true
+                          # Override parameters.deployCheckout with deployment.checkout item in armTemplates param
+                          ${{ if deployment.checkout }}:
+                            checkout: ${{ deployment.checkout }}
+                          ${{ if not(deployment.checkout) }}:
+                            checkout: ${{ parameters.deployCheckout }}
+                          deploymentTemplate: ${{ deployment.template }} # ARM template within deploymentDir
+                          # Ovverride parameters.armTemplatesDir with deployment.templateDir item in armTemplates param
+                          ${{ if deployment.templateDir }}:
+                            deploymentDir: '${{ deployment.templateDir }}' # root path where ARM templates are located
+                          ${{ if not(deployment.templateDir) }}:
+                            deploymentDir: '${{ parameters.armTemplatesDir }}'
+                          # Override parameters.armSubscription with deployment.subscription item in armTemplates param
+                          ${{ if deployment.subscription }}:
+                            azureSubscription: ${{ deployment.subscription }} # Service connection to subscription for the resource group
+                          ${{ if not(deployment.subscription) }}:
+                            azureSubscription: ${{ parameters.armSubscription }}
+                          # Override parameters.armResourceGroup with deployment.resourceGroup item in armTemplates param
+                          ${{ if deployment.resourceGroup }}:
+                            resourceGroupName: ${{ deployment.resourceGroup }} # RM Group name within subscription
+                          ${{ if not(deployment.resourceGroup) }}:
+                            resourceGroupName: ${{ parameters.armResourceGroup }}
+                          ${{ if deployment.parameters }}:
+                            deploymentParameters: ${{ deployment.parameters }} # Parameters file within deploymentDir 
+                          ${{ if deployment.override }}:
+                            deploymentOverride: '${{ deployment.override }}' # Optionally add args to override values in parameters file
+                          ${{ if deployment.postSteps }}:
+                            postSteps: ${{ deployment.postSteps }}
