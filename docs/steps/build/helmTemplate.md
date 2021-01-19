@@ -55,6 +55,7 @@ extends:
   template: pipeline.yaml@templates
 # parameters: within pipeline.yaml@templates
   parameters:
+  # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages
     build:
       - job: helmTemplate # job name unique to stage
