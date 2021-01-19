@@ -1,5 +1,71 @@
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into pipeline.yaml template
+
+# Globals: Optional Params
+- name: stages # Optional to override default value of stages stageList in the pipeline.yaml template
+  type: stageList
+  default: ''
+- name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
+  type: string
+  default: ''
+- name: stagesPrefix # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
+  type: string
+  default: ''
+- name: stagesCondition # Optional param to override the condition of all stages
+  type: string
+  default: ''
+
+# Code: dotNet Tests Params
+- name: dotNetTests
+  type: object
+  default:
+  - displayName: 'dotNet Unit Tests'
+    projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+    arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  - displayName: 'dotNet CLI Tests'
+    projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+    arguments: '--no-restore --collect "Code Coverage"'
+# Code: sonarQube analysis of dotNet projects or solutions
+- name: sonarQube # The sonarQube Service Connection name required to insert steps for using Azure Pipelines SonarQube Analysis extension
+  type: string
+  default: ''
+- name: sonarQubeProjects # Nested into dotNetProjects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
+  type: string
+  default: '*.sln'
+# Code: Stage Params
+- name: codePool # Pool for jobs in code stage
+  type: object
+  default:
+    vmImage: 'windows-latest'
+
+# Build: Container Image
+- name: dotNetProject # Required param to restore and publish a dotNet project
+  type: string
+  default: '' # path or pattern match of projects to dotNet publish
+# dotNetProject: '**.csproj'
+- name: dockerFile # Nested into dockerFile of build jobs
+  type: string
+  default: '**.dockerfile' # path to dockerfile for docker build task
+- name: dockerArgs # Nested into dockerArgs of build jobs
+  type: string
+  default: '' # optional to add --build-arg in docker build task
+- name: containerRegistry # Nested into containerRegistry param in containerImage job
+  type: string
+  default: '' # ADO Service Connection name
+- name: containerRepository # repo path in registry
+  type: string
+  default: ''
+- name: imageName # containerRepository/imageName nested into containerRepository of containerImage jobs
+  type: string
+  default: '$(Build.DefinitionName)'
+# Build: Stage Params
+- name: buildPool # Nested into pool param of build jobs
+  type: object
+  default: 
+    vmImage: 'Ubuntu-16.04'
+
+
+# Deploy: ARM Template Params
 - name: armSubscription # Azure subscription service connection name for ARM template deployments
   type: string
   default: ''
@@ -24,26 +90,84 @@ parameters:
   #     - armTemplate1
   #     - armTemplate2
 
-# Optional Params
+# Deploy: ARM Template Optional Params
 - name: armDeploymentsDir # Root path of ARM templates
   type: string
   default: '$(Build.Repository.LocalPath)'
+- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
+  type: boolean
+  default: false
+# Deploy: Stage Params
 - name: deployPool # Nested into pool param of deploy jobs
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: checkout
+- name: deployCheckout
   type: string
   default: self
-- name: replaceTokens # Enable replace tokens task
-  type: boolean
-  default: false
 
 stages:
   - template: ../pipeline.yaml
   # parameters: within pipeline.yaml
     parameters:
+      stagesSuffix: ${{ parameters.stagesSuffix }}
+      stagesPrefix: ${{ parameters.stagesPrefix }}
+      stagesCondition: ${{ parameters.stagesCondition }}
+      ${{ if parameters.stages }}:
+      # If stages stageList param has value then override default stages value in pipeline.yaml template
+        stages: ${{ parameters.stages }}
+    # code: jobList inserted into code stage in stages
+      code:
+      # - job: insert static code analysis jobs into stage
+        - job: codeAnalysis # job name must be unique within stage
+          displayName: 'Static Code Analysis' # job display name
+          pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+          dependsOn: [] # job does not depend on other jobs
+        # variables:
+          # key: 'value' # pairs of variables scoped to this job
+          steps:
+          # - template: for code analysis steps
+            - template: steps/code/analysis.yaml
+            # parameters within analysis.yaml template
+              parameters:
+              # preSteps: 
+                # - task: add preSteps into job
+                dotNetTests: ${{ parameters.dotNetTests }}
+                ${{ if parameters.sonarQube }}:
+                  sonarQube: ${{ parameters.sonarQube }}
+                  dotNetProjects: ${{ parameters.sonarQubeProjects }}
+              # postSteps:
+                # - task: add postSteps into job
     # build: jobList inserted into build stage in stages
+      build:
+      # - if dockerfile param is not null insert containerImage job into build stage
+        - ${{ if and(parameters.dockerFile, parameters.containerRegistry) }}:
+          - job: containerImage # job name must be unique within stage
+            displayName: 'Build Container Image' # job display name
+            pool: ${{ parameters.buildPool }} # param passed to pool of codAnalysis jobs
+            dependsOn: [] # job does not depend on other jobs
+          # variables:
+            # key: 'value' # pairs of variables scoped to this job
+            steps:
+            # - template: for containerImage steps
+              - template: steps/build/containerImage.yaml
+              # parameters within containerImage.yaml template
+                parameters:
+                # preSteps: 
+                  # - task: add preSteps into job
+                  dotNetProject: '${{ parameters.dotNetProject }}'
+                  containerRegistry: '${{ parameters.containerRegistry }}'
+                  ${{ if parameters.containerRepository }}:
+                    containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
+                  ${{ if not(parameters.containerRepository) }}:
+                    containerRepository: '${{ parameters.imageName }}'
+                  twistlockEnabled: true # enable twistlock scan task
+                  twistlockContinue: true # twistlock vulnerabilities register as warning instead of error in build stage
+                  dockerFile: '${{ parameters.dockerFile }}'
+                  dockerArgs: '${{ parameters.dockerArgs }}'
+                  dockerTags: ${{ parameters.dockerTags }}
+                # postSteps:
+                  # - task: add postSteps into job
     # deploy: deploymentList inserted into deploy stage in stages param
       deploy:
       # If armSubscription, armResourceGroup, and armDeployments have values; insert ARM template deployment jobs
@@ -76,12 +200,12 @@ stages:
                           parameters:
                             ${{ if armDeployment.preSteps }}:
                               preSteps: ${{ armDeployment.preSteps }}
-                            ${{ if parameters.replaceTokens }}:
+                            ${{ if parameters.armReplaceTokens }}:
                               replaceTokens: true
                             ${{ if armDeployment.checkout }}:
                               checkout: ${{ armDeployment.checkout }}
                             ${{ if not(armDeployment.checkout) }}:
-                              checkout: ${{ parameters.checkout }}
+                              checkout: ${{ parameters.deployCheckout }}
                             # Override parameters.azureSubscription with armDeployment.azureSubscription
                             ${{ if armDeployment.azureSubscription }}:
                               azureSubscription: ${{ armDeployment.azureSubscription }} # Service connection to subscription for the resource group
