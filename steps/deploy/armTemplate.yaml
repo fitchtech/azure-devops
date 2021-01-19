@@ -41,16 +41,16 @@ parameters:
 - name: resourceGroupName
   type: string
   default: ''
-- name: deploymentTemplate # File name of template
+- name: templateFile # File name of template
   type: string
   default: ''
-- name: deploymentDir # Root path to template
+- name: templatePath # Root path to template
   type: string
   default: '$(Build.Repository.LocalPath)'
-- name: deploymentParameters # Parameters File
+- name: parametersFile # Parameters File
   type: string
   default: ''
-- name: deploymentOverride # Parameters Overrides
+- name: overrideParameters # Parameters Overrides
   type: string
   default: ''
 - name: deploymentCleanup # Enable cleanup previous ARM deployments script
@@ -79,28 +79,28 @@ steps:
         pwsh: true
         Inline: Get-AzResourceGroupDeployment -ResourceGroupName ${{ parameters.resourceGroupName }} | Select-Object -Skip ${{ parameters.deploymentCleanupSkip }} | foreach-object { Start-Job -InputObject $_ -ScriptBlock { $input | Remove-AzResourceGroupDeployment } }
         azurePowerShellVersion: latestVersion
-  - ${{ if parameters.deploymentTemplate }}:
+  - ${{ if parameters.templateFile }}:
     - ${{ if parameters.replaceTokens }}:
       - task: replacetokens@3
-        displayName: 'Replace Tokens in ${{ parameters.deploymentDir }}'
+        displayName: 'Replace Tokens in ${{ parameters.templatePath }}'
         inputs:
-          rootDirectory: '${{ parameters.deploymentDir }}'
+          rootDirectory: '${{ parameters.templatePath }}'
           targetFiles: '*.json'
     - task: AzureResourceGroupDeployment@2
-      displayName: 'Deploy AzureRM Template ${{ parameters.deploymentTemplate }}'
+      displayName: 'Deploy AzureRM Template ${{ parameters.templateFile }}'
       inputs:
         azureSubscription: '${{ parameters.azureSubscription }}'
         resourceGroupName: '${{ parameters.resourceGroupName }}'
         location: '${{ parameters.azureLocation }}'
-        csmFile: '${{ parameters.deploymentDir }}/${{ parameters.deploymentTemplate }}'
-        ${{ if parameters.deploymentParameters }}:
-          csmParametersFile: '${{ parameters.deploymentDir }}/${{ parameters.deploymentParameters }}'
-        ${{ if parameters.deploymentOverride }}:
-          overrideParameters: '${{ parameters.deploymentOverride }}'
+        csmFile: '${{ parameters.templatePath }}/${{ parameters.templateFile }}'
+        ${{ if parameters.parametersFile }}:
+          csmParametersFile: '${{ parameters.templatePath }}/${{ parameters.parametersFile }}'
+        ${{ if parameters.overrideParameters }}:
+          overrideParameters: '${{ parameters.overrideParameters }}'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
     ${{ if parameters.publishEnabled }}:
-      publish: '${{ parameters.deploymentDir }}'
+      publish: '${{ parameters.templatePath }}'
       artifact: '${{ parameters.publishArtifact }}'
     clean: ${{ parameters.clean }}

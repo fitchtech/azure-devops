@@ -35,7 +35,7 @@ parameters:
     parameters: 'parameters1.json'
   - template: 'deployment2.json'
     parameters: 'parameters2.json'
-- name: deploymentDir # Root path of ARM templates
+- name: templatePath # Root path of ARM templates
   type: string
   default: '$(Build.Repository.LocalPath)'
 
@@ -90,12 +90,12 @@ extends:
                       download: false # Disable download in preSteps
                       azureSubscription: ${{ parameters.azureSubscription }} # Service connection to subscription for the resource group
                       resourceGroupName: ${{ parameters.resourceGroupName }} # RM Group name within subscription
-                      deploymentDir: '${{ parameters.deploymentDir }}' # root path where ARM templates are located
-                      deploymentTemplate: ${{ arm.template }} # ARM template within deploymentDir
+                      templatePath: '${{ parameters.templatePath }}' # root path where ARM templates are located
+                      templateFile: ${{ arm.template }} # ARM template within deploymentDir
                       ${{ if arm.parameters }}:
-                        deploymentParameters: ${{ arm.parameters }} # Parameters file within deploymentDir 
+                        parametersFile: ${{ arm.parameters }} # Parameters file within deploymentDir 
                       ${{ if arm.override }}:
-                        deploymentOverride: '${{ arm.override }}' # Optionally add args to override values in parameters file
+                        overrideParameters: '${{ arm.override }}' # Optionally add args to override values in parameters file
                     # postSteps:
                       # - task: add postSteps into job
 
@@ -146,7 +146,7 @@ parameters:
     dependsOn:
       - armTemplate1
       - armTemplate2
-- name: deploymentDir # Root path of ARM templates
+- name: templatePath # Root path of ARM templates
   type: string
   default: '$(Build.Repository.LocalPath)'
 
@@ -177,23 +177,23 @@ extends:
   # build: jobList inserted into build stage in stages
   # deploy: deploymentList inserted into deploy stage in stages param
     deploy:
-    # - for each arm item in armTemplates parameter insert arm deployment job
-      - ${{ each arm in parameters.armTemplates }}:
-        - ${{ if and(arm.template, arm.job) }}:
-          - deployment: ${{ arm.deployment }} # deployment name unique to stage
+    # - for each deployment item in armTemplates parameter insert arm deployment job
+      - ${{ each deployment in parameters.armTemplates }}:
+        - ${{ if and(deployment.deployment, deployment.template, parameters.azureSubscription, parameters.resourceGroupName) }}:
+          - deployment: ${{ deployment.deployment }} # deployment name unique to stage
             displayName: 'Deploy ARM Template ${{ arm.template }}'
             pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-            ${{ if arm.condition }}:
-              condition: ${{ arm.condition }}
-            ${{ if not(arm.condition) }}:
+            ${{ if deployment.condition }}:
+              condition: ${{ deployment.condition }}
+            ${{ if not(deployment.condition) }}:
               condition: succeeded()
           # variables:
             # key: 'value' # pairs of variables scoped to this job
-            ${{ if arm.dependsOn }}:
+            ${{ if deployment.dependsOn }}:
               dependsOn:
-              - ${{ each dependency in arm.dependsOn }}:
+              - ${{ each dependency in deployment.dependsOn }}:
                 - ${{ dependency }}
-            ${{ if not(arm.dependsOn) }}:
+            ${{ if not(deployment.dependsOn) }}:
               dependsOn: []
             strategy:
               runOnce:
@@ -205,12 +205,12 @@ extends:
                         # - task: add preSteps into job
                         azureSubscription: ${{ parameters.azureSubscription }} # Service connection to subscription for the resource group
                         resourceGroupName: ${{ parameters.resourceGroupName }} # RM Group name within subscription
-                        deploymentDir: '${{ parameters.deploymentDir }}' # root path where ARM templates are located
-                        deploymentTemplate: ${{ arm.template }} # ARM template within deploymentDir
-                        ${{ if arm.parameters }}:
-                          deploymentParameters: ${{ arm.parameters }} # Parameters file within deploymentDir 
-                        ${{ if arm.override }}:
-                          deploymentOverride: '${{ arm.override }}' # Optionally add args to override values in parameters file
+                        templatePath: '${{ parameters.templatePath }}' # root path where ARM templates are located
+                        templateFile: ${{ deployment.template }} # ARM template within deploymentDir
+                        ${{ if deployment.parameters }}:
+                          parametersFile: ${{ deployment.parameters }} # Parameters file within deploymentDir 
+                        ${{ if deployment.override }}:
+                          overrideParameters: '${{ deployment.override }}' # Optionally add args to override values in parameters file
                       # postSteps:
                         # - task: add postSteps into job
 
