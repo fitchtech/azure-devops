@@ -73,12 +73,12 @@ parameters:
 - name: dotNetTests # Inserts dotnet test for each item in list, project key required
   type: object
   default:
-  - displayName: 'dotNet Unit Tests'
-    projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+  - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
     arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
-  - displayName: 'dotNet CLI Tests'
-    projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+    displayName: 'dotNet Unit Tests'
+  - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
     arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    displayName: 'dotNet CLI Tests'
 
 steps:
 - template: ../preSteps.yaml

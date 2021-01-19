@@ -38,10 +38,10 @@ parameters:
 - name: dotNetVersion # Optional param to enable use dotNet task 
   type: string
   default: '3.1.x'
-- name: dotNetProject # Required param to restore and publish a dotNet project
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: ''
-- name: dotNetProjectArguments
+- name: dotNetArguments
   type: string
   default: ''
 - name: dotNetFeed
@@ -62,7 +62,7 @@ parameters:
   default: '**.dockerfile'
 - name: dockerContext
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: dockerArgs # Optional param to pass build arguments to Docker
   type: string
   default: ''
@@ -139,7 +139,7 @@ steps:
     inputs:
       artifact: ${{ parameters.downloadArtifact }}
       path: ${{ parameters.downloadPath }}
-- ${{ if parameters.dotNetProject }}:
+- ${{ if parameters.dotNetProjects }}:
   - template: dotNetCore.yaml
     parameters:
       clean: false
@@ -148,9 +148,9 @@ steps:
       dotNetCommand: publish
       dotNetType: ${{ parameters.dotNetType }}
       dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.dotNetProject }}
+      dotNetProjects: ${{ parameters.dotNetProjects }}
       dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetProjectArguments}}
+      dotNetArguments: ${{ parameters.dotNetArguments}}
       dotNetPublishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
 - ${{ if and(parameters.dockerInstall, parameters.dockerVersion) }}:
   - task: DockerInstaller@0
