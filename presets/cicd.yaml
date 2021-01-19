@@ -1,0 +1,101 @@
+parameters:
+# params to pass into pipeline.yaml template:
+- name: armSubscription # Azure subscription service connection name for ARM template deployments
+  type: string
+  default: ''
+- name: armResourceGroup # Azure Resource Group within the subscription for ARM template deployments
+  type: string
+  default: ''
+- name: armDeployments # List of ARM Template jobs
+  type: object
+  default: ''
+# armDeployments:
+  # - deployment: 'armTemplate1' # deployment name must be unique
+  #   template: 'deployment1.json'
+  #   parameters: 'parameters1.json'
+  # - deployment: 'armTemplate2' # deployment name must be unique
+  #   template: 'deployment2.json'
+  #   parameters: 'parameters2.json'
+  # - deployment: 'armTemplate3' # deployment name must be unique
+  #   template: 'deployment3.json'
+  #   parameters: 'parameters3.json'
+  #   # Example when armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
+  #   dependsOn:
+  #     - armTemplate1
+  #     - armTemplate2
+
+# Optional Params
+- name: armDeploymentsDir # Root path of ARM templates
+  type: string
+  default: '$(Build.Repository.LocalPath)'
+- name: deployPool # Nested into pool param of deploy jobs
+  type: object
+  default:
+    vmImage: 'ubuntu-18.04'
+- name: checkout
+  type: string
+  default: self
+- name: replaceTokens # Enable replace tokens task
+  type: boolean
+  default: false
+
+stages:
+  - template: ../pipeline.yaml
+  # parameters: within pipeline.yaml
+    parameters:
+    # build: jobList inserted into build stage in stages
+    # deploy: deploymentList inserted into deploy stage in stages param
+      deploy:
+      # If armSubscription, armResourceGroup, and armDeployments have values; insert ARM template deployment jobs
+        - ${{ if and(parameters.armSubscription, parameters.armResourceGroup, parameters.armDeployments) }}:
+        # - for each armDeployment item in armDeployments parameter insert arm deployment jobs
+          - ${{ each armDeployment in parameters.armDeployments }}:
+            - ${{ if and(armDeployment.template, armDeployment.deployment) }}:
+              - deployment: ${{ armDeployment.deployment }} # deployment name unique to stage
+                displayName: 'Deploy ARM Template ${{ armDeployment.template }}'
+                pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+                ${{ if armDeployment.condition }}:
+                  condition: ${{ armDeployment.condition }}
+                ${{ if not(armDeployment.condition) }}:
+                  condition: succeeded()
+                ${{ if armDeployment.variables }}:
+                  variables:
+                  ${{ each variable in armDeployment.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
+                ${{ if armDeployment.dependsOn }}:
+                  dependsOn:
+                  - ${{ each dependency in armDeployment.dependsOn }}:
+                    - ${{ dependency }}
+                ${{ if not(armDeployment.dependsOn) }}:
+                  dependsOn: []
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - template: steps/deploy/armTemplate.yaml
+                          parameters:
+                            ${{ if armDeployment.preSteps }}:
+                              preSteps: ${{ armDeployment.preSteps }}
+                            ${{ if parameters.replaceTokens }}:
+                              replaceTokens: true
+                            ${{ if armDeployment.checkout }}:
+                              checkout: ${{ armDeployment.checkout }}
+                            ${{ if not(armDeployment.checkout) }}:
+                              checkout: ${{ parameters.checkout }}
+                            # Override parameters.azureSubscription with armDeployment.azureSubscription
+                            ${{ if armDeployment.azureSubscription }}:
+                              azureSubscription: ${{ armDeployment.azureSubscription }} # Service connection to subscription for the resource group
+                            ${{ if not(armDeployment.azureSubscription) }}:
+                              azureSubscription: ${{ parameters.armSubscription }} # Service connection to subscription for the resource group
+                            ${{ if armDeployment.resourceGroup }}:
+                              resourceGroupName: ${{ armDeployment.resourceGroup }} # Service connection to subscription for the resource group
+                            ${{ if not(armDeployment.resourceGroup) }}:
+                              resourceGroupName: ${{ parameters.armResourceGroup }} # RM Group name within subscription
+                            deploymentDir: '${{ parameters.armDeploymentsDir }}' # root path where ARM templates are located
+                            deploymentTemplate: ${{ armDeployment.template }} # ARM template within deploymentDir
+                            ${{ if armDeployment.parameters }}:
+                              deploymentParameters: ${{ armDeployment.parameters }} # Parameters file within deploymentDir 
+                            ${{ if armDeployment.override }}:
+                              deploymentOverride: '${{ armDeployment.override }}' # Optionally add args to override values in parameters file
+                            ${{ if armDeployment.postSteps }}:
+                              postSteps: ${{ armDeployment.postSteps }}
