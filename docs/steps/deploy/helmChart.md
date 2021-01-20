@@ -17,10 +17,10 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: devKubernetes # Kubernetes Service Connection Name
+- name: kubeServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
-- name: namespace # Kubernetes Namespace for Helm Charts
+- name: kubeNamespace # Kubernetes Namespace for Helm Charts
   type: string
   default: default
 - name: helmChartPath # helmChartPath within Pipeline.Workspace where charts are located
@@ -53,20 +53,10 @@ extends:
   template: pipeline.yaml@templates
 # parameters: within pipeline.yaml@templates
   parameters:
-  # codeStages: stageList param to overrides default stages
-    # - stage: codeAnalysis
-  # codeAnalysis: jobList inserted into codeAnalysis stage in codeStages
-  # devStages: stageList param to overrides default stages
-    devStages:
-    # - stage: devBuild | devDeploy | devPromote | devTests
-      - stage: devDeploy
-        dependsOn: []
-      # variables:
-        # key: 'value' # pairs of variables scoped to the jobs within stage
-
-  # devBuild: jobList inserted into devBuild stage in devStages
-  # devDeploy: deploymentList inserted into devDeploy stage in devStages
-    devDeploy:
+  # code: jobList inserted into code stage in stages
+  # build: jobList inserted into build stage in stages
+  # deploy: deploymentList inserted into deploy stage in stages param
+    deploy:
       - deployment: helmDeploy # job name unique to stage
         displayName: 'Deploy Helm Charts'
         pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -80,11 +70,19 @@ extends:
               steps:
               - template: steps/deploy/helmChart.yaml
                 parameters:
-                  namespace: ${{ parameters.namespace }} # pass in namespace param
+                # preSteps: 
+                  # - task: add preSteps into job
+                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
+                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
                   helmChartPath: '$(Pipeline.Workspace)/${{ parameters.helmChartPath }}' # helmChartPath within Pipeline.Workspace where charts are located
                   helmValueFile: '$(Pipeline.Workspace)/${{ parameters.helmChartPath }}/${{ parameters.helmValueFile }}' # values file within helmChartPath
-                  kubernetesServiceConnection: ${{ parameters.devKubernetes }} # pass param for kube manifest deployment service connection
+                # postSteps:
+                  # - task: add postSteps into job
 
-            # - task: add postSteps to deployment job
-    # - deployment: insert additional deployment jobs into the devDeploy stage
+    # - deployment: insert additional deployment jobs into the deploy stage
+
+  # promote: deploymentList inserted into promote stage in stages param
+  # test: jobList inserted into test stage in stages param
+  # reject: deploymentList inserted into reject stage in stages param
+
 ```
