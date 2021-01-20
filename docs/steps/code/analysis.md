@@ -71,7 +71,7 @@ extends:
     # - job: insert static code analysis jobs into stage
       - job: codeAnalysis # job name must be unique within stage
         displayName: 'Static Code Analysis' # job display name
-        pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+        pool: ${{ parameters.codePool }} # param passed to pool of code jobs
         dependsOn: [] # job does not depend on other jobs
       # variables:
         # key: 'value' # pairs of variables scoped to this job
@@ -143,7 +143,7 @@ stages:
   jobs:
   - job: codeAnalysis # job name must be unique within stage
     displayName: 'Static Code Analysis' # job display name
-    pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+    pool: ${{ parameters.codePool }} # param passed to pool of code jobs
     dependsOn: [] # job does not depend on other jobs
     steps:
       - template: steps/code/analysis.yaml@template # resource identifier required as this is not extending from pipeline.yaml

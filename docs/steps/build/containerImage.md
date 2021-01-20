@@ -73,7 +73,7 @@ extends:
       - ${{ if parameters.dockerFile }}:
         - job: containerImage # job name must be unique within stage
           displayName: 'Build Container Image' # job display name
-          pool: ${{ parameters.buildPool }} # param passed to pool of codAnalysis jobs
+          pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
           dependsOn: [] # job does not depend on other jobs
         # variables:
           # key: 'value' # pairs of variables scoped to this job
@@ -157,7 +157,7 @@ stages:
   jobs:
   - job: containerImage # job name must be unique within stage
     displayName: 'Build Container Image' # job display name
-    pool: ${{ parameters.buildPool }} # param passed to pool of codAnalysis jobs
+    pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
     dependsOn: [] # job does not depend on other jobs
     steps:
       - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from pipeline.yaml

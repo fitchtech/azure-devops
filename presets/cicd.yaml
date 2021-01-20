@@ -163,7 +163,7 @@ stages:
         - ${{ if parameters.dotNetTests }}:
           - job: dotNetTests # job name must be unique within stage
             displayName: 'dotNet Tests' # job display name
-            pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+            pool: ${{ parameters.codePool }} # param passed to pool of code jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
               - template: steps/code/analysis.yaml
@@ -173,7 +173,7 @@ stages:
         - ${{ if parameters.sonarQube }}:
           - job: sonarQube # job name must be unique within stage
             displayName: 'sonarQube Analysis' # job display name
-            pool: ${{ parameters.codePool }} # param passed to pool of codAnalysis jobs
+            pool: ${{ parameters.codePool }} # param passed to pool of code jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
               - template: steps/code/analysis.yaml
@@ -187,7 +187,7 @@ stages:
         - ${{ if and(parameters.dockerfile, parameters.containerRegistry) }}:
           - job: containerImage # job name must be unique within stage
             displayName: 'Build Container Image' # job display name
-            pool: ${{ parameters.buildPool }} # param passed to pool of codAnalysis jobs
+            pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
               - template: steps/build/containerImage.yaml
