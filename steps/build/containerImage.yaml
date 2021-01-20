@@ -28,6 +28,7 @@ parameters:
 - name: publishArtifact
   type: string
   default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+
 # dotNet Publish project to copy output to Docker image
 - name: dotNetType
   type: string
@@ -50,6 +51,7 @@ parameters:
 - name: dotNetPublishWebProjects
   type: boolean
   default: false
+
 # Docker Tasks
 - name: dockerInstall # Optional task to install Docker on agent
   type: boolean
@@ -84,9 +86,13 @@ parameters:
 - name: containerRepository # Container repo path in registry for Docker push
   type: string
   default: ''
-- name: loginRegistry # Service connection name. Login to a private registry that the Docker image is built FROM
-  type: string
+- name: containerRegistries # List of container registries to login to. Useful when building images FROM multiple private registries.
+  type: object
   default: ''
+# containerRegistries:
+  # - registry1
+  # - registry2
+
 # Twistlock Scan of Docker Image on ADO agent
 - name: twistlockService # Azure Service Connection name for Twistlock
   type: string
@@ -100,6 +106,7 @@ parameters:
 - name: twistlockEnabled # true inserts twistlock task
   type: boolean
   default: false
+
 # Task to Archive and Pipeline Publish Artifact of dotNet project
 - name: deleteRoot
   type: string
@@ -159,13 +166,14 @@ steps:
     inputs:
       dockerVersion: '${{ parameters.dockerVersion }}'
       releaseType: stable
-- ${{ if and(parameters.containerRegistry, parameters.containerRepository) }}:
-  - ${{ if parameters.loginRegistry }}:
+- ${{ if parameters.containerRegistries }}:
+  - ${{ each registry in parameters.containerRegistries }}:
     - task: Docker@2
-      displayName: 'Login to ${{ parameters.loginRegistry }}'
+      displayName: 'Login to ${{ registry }}'
       inputs:
         command: login
-        containerRegistry: '${{ parameters.loginRegistry }}'
+        containerRegistry: '${{ registry }}'
+- ${{ if and(parameters.containerRegistry, parameters.containerRepository) }}:
   - task: Docker@2
     displayName: 'Login to ${{ parameters.containerRegistry }}'
     inputs:
