@@ -22,13 +22,13 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: devRegistry # Nested into containerRegistry params in devBuild and dintBuild jobs
+- name: containerRegistry # Container registry and kubernetes service connection params used to create image pull secret in Kubernetes for the registry
   type: string
   default: '' # ADO Service Connection name
-- name: devKubernetes # Kubernetes Service Connection Name
+- name: kubeServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
-- name: namespace
+- name: kubeNamespace
   type: string
   default: default
 - name: kubeManifests # Deployment manifest for canary deploy, promote, and reject jobs
@@ -58,20 +58,10 @@ extends:
   template: pipeline.yaml@templates
 # parameters: within pipeline.yaml@templates
   parameters:
-  # codeStages: stageList param to overrides default stages
-    # - stage: codeAnalysis
-  # codeAnalysis: jobList inserted into codeAnalysis stage in codeStages
-  # devStages: stageList param to overrides default stages
-    devStages:
-    # - stage: devBuild | devDeploy | devPromote | devTests
-      - stage: devDeploy
-        dependsOn: []
-      # variables:
-        # key: 'value' # pairs of variables scoped to the jobs within stage
-
-  # devBuild: jobList inserted into devBuild stage in devStages
-  # devDeploy: deploymentList inserted into devDeploy stage in devStages
-    devDeploy:
+  # code: jobList inserted into code stage in stages
+  # build: jobList inserted into build stage in stages
+  # deploy: deploymentList inserted into deploy stage in stages param
+    deploy:
       - deployment: kubeDeploy # job name unique to stage
         displayName: 'Canary Deployment'
         pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -85,15 +75,20 @@ extends:
               steps:
               - template: steps/deploy/kubeManifest.yaml
                 parameters:
-                  namespace: ${{ parameters.namespace }} # pass in namespace param
-                  imagePullSecret: 'harbor-cred'
-                  dockerRegistryEndpoint: ${{ parameters.devRegistry }}
-                  kubernetesServiceConnection: ${{ parameters.devKubernetes }} # pass param for kube manifest deployment service connection
+                # preSteps: 
+                  # - task: add preSteps into job
+                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
+                  imagePullSecret: 'registry-cred'
+                  dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
+                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
                   kubeAction: deploy
                   kubeStrategy: canary
                   kubeManifests: ${{ parameters.kubeManifests }}
+                # postSteps:
+                  # - task: add postSteps into job
 
-    devPromote:
+  # promote: deploymentList inserted into promote stage in stages param
+    promote:
       - deployment: kubePromote # job name unique to stage
         displayName: 'Promote Canary Deployment'
         pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -107,11 +102,18 @@ extends:
               steps:
               - template: steps/deploy/kubeManifest.yaml
                 parameters:
-                  namespace: ${{ parameters.namespace }} # pass in namespace param
-                  kubernetesServiceConnection: ${{ parameters.devKubernetes }} # pass param for kube manifest deployment service connection
+                # preSteps: 
+                  # - task: add preSteps into job
+                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
+                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
                   kubeAction: promote
                   kubeStrategy: canary
                   kubeManifests: ${{ parameters.kubeManifests }}
+                # postSteps:
+                  # - task: add postSteps into job
+
+  # reject: deploymentList inserted into reject stage in stages param
+    reject:
       - deployment: kubeReject # job name unique to stage
         displayName: 'Reject Canary Deployment'
         pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -125,12 +127,18 @@ extends:
               steps:
               - template: steps/deploy/kubeManifest.yaml
                 parameters:
-                  namespace: ${{ parameters.namespace }} # pass in namespace param
-                  kubernetesServiceConnection: ${{ parameters.devKubernetes }} # pass param for kube manifest deployment service connection
+                # preSteps: 
+                  # - task: add preSteps into job
+                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
+                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
                   kubeAction: reject
                   kubeStrategy: canary
                   kubeManifests: ${{ parameters.kubeManifests }}
+                # postSteps:
+                  # - task: add postSteps into job
 
-            # - task: add postSteps to deployment job
     # - deployment: insert additional deployment jobs into the devDeploy stage
+
+  # test: jobList inserted into test stage in stages param
+
 ```

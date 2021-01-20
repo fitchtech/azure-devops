@@ -36,7 +36,7 @@ parameters:
   default: '' # optional to add --build-arg in docker build task
 - name: containerRegistry # Nested into containerRegistry param in containerImage job
   type: string
-  default: 'ACR' # ADO Service Connection name
+  default: '' # ADO Service Connection name
 - name: containerRepository # repo path in registry
   type: string
   default: ''
