@@ -30,10 +30,10 @@ parameters:
   default:
   - displayName: 'dotNet Unit Tests'
     projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
-    arguments: '--collect "Code coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
   - displayName: 'dotNet CLI Tests'
     projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
-    arguments: '--no-restore --collect "Code Coverage"'
+    arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
 
 # SonarQube Analysis extension for Azure Pipelines
 - name: sonarQube # Required sonarQube Service Connection name to insert steps
@@ -114,6 +114,9 @@ parameters:
 - name: cliTests # param nested
   type: string
   default: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj'
+- name: testArgs
+  type: string
+  default: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
 - name: codePool
   type: object
   default:
@@ -153,10 +156,10 @@ stages:
           dotNetTests:
           - displayName: 'dotNet Unit Tests'
             projects: '${{ parametes.unitTests }}' # Pattern search for unit test projects
-            arguments: '--no-restore --collect "Code Coverage"'
+            arguments: '${{ parametes.testArgs }}'
           - displayName: 'dotNet CLI Tests'
             projects: '${{ parametes.cliTests }}' # Pattern search for cli test projects
-            arguments: '--no-restore --collect "Code Coverage"'
+            arguments: '${{ parametes.testArgs }}'
         # postSteps:
           # - task: add postSteps into job
 # You can customize a list using this pattern

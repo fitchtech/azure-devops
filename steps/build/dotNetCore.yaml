@@ -49,6 +49,7 @@ parameters:
   - build
   - publish
   - pack
+  - restore
 - name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: ''
