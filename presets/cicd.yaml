@@ -33,28 +33,16 @@ parameters:
   default: '' # path or pattern match of projects to dotNet publish
 # dotNetProject: '**.csproj'
 
-# Build: Container Images
-- name: dockerfiles # list of container image build jobs
-  type: object
-  default: ''
-# dockerfiles:
-  # - job: containerImage1
-  #   dockerfile: Dockerfile
-  #   args: '--build-arg repository=baseimages/dotnet/core/aspnet'
-  #   registry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
-  #   repository: 'services' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
-  #   image: 'api' # Optional image name. Default is $(Build.DefinitionName)
-  #   tags: '$(Build.BuildNumber)' # Optional list of image tags. Default is $(Build.BuildNumber)
-
-- name: dockerfile # Single container image build job
-  type: string
-  default: ''
+# Build: Container Image Jobs
 - name: dockerTags # Default tags to set in addition to pipeline metadata tags
   type: object
   default: $(Build.BuildNumber)
 - name: dockerArgs # Optional param to pass build arguments to Docker
   type: string
   default: ''
+- name: dockerContext
+  type: string
+  default: '$(Build.Repository.LocalPath)'
 - name: containerRegistry # Required ADO Service Connection name for container image build jobs
   type: string
   default: '' 
@@ -64,6 +52,25 @@ parameters:
 - name: containerImage # containerRepository/containerImage of docker build jobs
   type: string
   default: '$(Build.DefinitionName)'
+# Build: Multiple Container Images
+- name: dockerfiles # list of container image build jobs
+  type: object
+  default: ''
+# dockerfiles:
+  # - job: containerImage1
+  #   dockerfile: App1.Dockerfile
+  #   args: '--build-arg repository=baseimages/dotnet/core/aspnet'
+  #   registry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
+  #   repository: 'services' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
+  #   image: 'api' # Optional image name. Default is $(Build.DefinitionName)
+  #   tags: '$(Build.BuildNumber)' # Optional list of image tags. Default is $(Build.BuildNumber)
+  # - job: containerImage2
+  #   dockerfile: App2.Dockerfile
+  #   dependsOn: containerImage1
+# Build: Single Container Image
+- name: dockerfile # Single dockerfile within dockerContext
+  type: string
+  default: ''
 
 # Build: Stage Params
 - name: buildPool # Pool param of build stage jobs
@@ -79,13 +86,6 @@ parameters:
 - name: armResourceGroup # Azure Resource Group within the subscription for ARM template deployments
   type: string
   default: ''
-# Deploy: ARM Template Optional Params
-- name: armTemplatesDir # Root path of ARM templates
-  type: string
-  default: '$(Build.Repository.LocalPath)'
-- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
-  type: boolean
-  default: false
 # Deploy: Multiple ARM Templates
 - name: armTemplates # List of ARM Template deployment jobs
   type: object
@@ -100,6 +100,8 @@ parameters:
   # - deployment: 'armTemplate3' # deployment name must be unique
   #   template: 'deployment3.json'
   #   parameters: 'parameters3.json'
+  #   subscription: 'subscriptionServiceConnectionName'
+  #   resourceGroup: 'resourceGroupName'
   #   # Example when armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
   #   dependsOn:
   #     - armTemplate1
@@ -114,6 +116,13 @@ parameters:
 - name: armOverrides
   type: string
   default: ''
+# Deploy: ARM Template Optional Params
+- name: armTemplatePath # Root path of ARM templates
+  type: string
+  default: '$(Build.Repository.LocalPath)'
+- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
+  type: boolean
+  default: false
 
 # Deploy: Stage Params
 - name: deployPool # Nested into pool param of deploy jobs
@@ -192,13 +201,14 @@ stages:
                   ${{ if not(parameters.containerRepository) }}:
                     containerRepository: '${{ parameters.containerImage }}'
                   dockerFile: '${{ parameters.dockerfile }}'
+                  dockerContext: '${{ parameters.dockerContext }}'
                   dockerArgs: '${{ parameters.dockerArgs }}'
                   dockerTags: ${{ parameters.dockerTags }}
         # For each dockerfile in dockerfiles param, insert container image build job into build stage
         - ${{ each build in parameters.dockerfiles }}:
           - ${{ if and(build.job, build.dockerfile, or(parameters.containerRegistry, build.registry)) }}:
             - job: ${{ build.job }} # job name must be unique within stage
-              displayName: 'Build Container Image ${{ dockerfile.dockerfile }}' # job display name
+              displayName: 'Build Container Image ${{ build.dockerfile }}' # job display name
               ${{ if build.pool }}:
                 pool: ${{ build.pool }} # override default pool for build jobs
               ${{ if not(build.pool) }}:
@@ -206,7 +216,7 @@ stages:
               # If docker build job depends on other jobs in build stage insert dependencies
               ${{ if build.dependsOn }}:
                 dependsOn:
-                - ${{ each dependency in dockerfile.dependsOn }}:
+                - ${{ each dependency in build.dependsOn }}:
                   - ${{ dependency }}
               ${{ if not(build.dependsOn) }}:
                 dependsOn: [] # job does not depend on other jobs
@@ -231,6 +241,7 @@ stages:
                     ${{ if not(parameters.containerRepository) }}:
                       containerRepository: '${{ parameters.containerImage }}'
                     dockerFile: '${{ build.dockerfile }}'
+                    dockerContext: '${{ parameters.dockerContext }}'
                     dockerArgs: '${{ build.args }}'
                     dockerTags: ${{ build.tags }}
                     ${{ if build.twistlockEnabled }}:
@@ -254,16 +265,16 @@ stages:
                   steps:
                     - template: steps/deploy/armTemplate.yaml
                       parameters:
-                        replaceTokens: ${{ parameters.armReplaceTokens }}
                         checkout: ${{ parameters.deployCheckout }}
-                        deploymentTemplate: ${{ parameters.armTemplate }} # ARM template within deploymentDir
-                        deploymentDir: '${{ parameters.armTemplatesDir }}'
+                        replaceTokens: ${{ parameters.armReplaceTokens }}
                         azureSubscription: ${{ parameters.armSubscription }}
                         resourceGroupName: ${{ parameters.armResourceGroup }}
+                        templateFile: ${{ parameters.armTemplate }} # ARM template within templatePath
+                        templatePath: '${{ parameters.armTemplatePath }}'
                         ${{ if parameters.armParameters }}:
-                          deploymentParameters: ${{ parameters.armParameters }} # Parameters file within deploymentDir 
+                          parametersFile: ${{ parameters.armParameters }} # Parameters file within templatePath 
                         ${{ if parameters.armOverrides }}:
-                          deploymentOverride: '${{ deployment.armOverrides }}' # Optionally add args to override values in parameters file
+                          overrideParameters: '${{ parameters.armOverrides }}' # Optionally add args to override values in parameters file
         # For each deployment item in armTemplates parameter insert arm deployment jobs
         - ${{ each deployment in parameters.armTemplates }}:
           # If deployment key, template, subscription, and resource group have values; insert ARM template deployment job
@@ -304,12 +315,12 @@ stages:
                             checkout: ${{ deployment.checkout }}
                           ${{ if not(deployment.checkout) }}:
                             checkout: ${{ parameters.deployCheckout }}
-                          deploymentTemplate: ${{ deployment.template }} # ARM template within deploymentDir
-                          # Ovverride parameters.armTemplatesDir with deployment.templateDir item in armTemplates param
-                          ${{ if deployment.templateDir }}:
-                            deploymentDir: '${{ deployment.templateDir }}' # root path where ARM templates are located
-                          ${{ if not(deployment.templateDir) }}:
-                            deploymentDir: '${{ parameters.armTemplatesDir }}'
+                          templateFile: ${{ deployment.template }} # ARM template within templatePath
+                          # Ovverride parameters.armTemplatesDir with deployment.templatePath item in armTemplates param
+                          ${{ if deployment.templatePath }}:
+                            templatePath: '${{ deployment.templatePath }}' # root path where ARM templates are located
+                          ${{ if not(deployment.templatePath) }}:
+                            templatePath: '${{ parameters.templatePath }}'
                           # Override parameters.armSubscription with deployment.subscription item in armTemplates param
                           ${{ if deployment.subscription }}:
                             azureSubscription: ${{ deployment.subscription }} # Service connection to subscription for the resource group
@@ -321,8 +332,8 @@ stages:
                           ${{ if not(deployment.resourceGroup) }}:
                             resourceGroupName: ${{ parameters.armResourceGroup }}
                           ${{ if deployment.parameters }}:
-                            deploymentParameters: ${{ deployment.parameters }} # Parameters file within deploymentDir 
+                            parametersFile: ${{ deployment.parameters }} # Parameters file within templatePath 
                           ${{ if deployment.override }}:
-                            deploymentOverride: '${{ deployment.override }}' # Optionally add args to override values in parameters file
+                            overrideParameters: '${{ deployment.override }}' # Optionally add args to override values in parameters file
                           ${{ if deployment.postSteps }}:
                             postSteps: ${{ deployment.postSteps }}
