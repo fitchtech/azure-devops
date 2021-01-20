@@ -7,13 +7,13 @@
 
 ## Steps Template Usage
 
-- The dotNetTests param within the dotNetTest steps template is a YAML object param that allows you to list multiple dotNet tests projects and arguments
+- The dotNetTests param within the dotNetTests steps template is a YAML object param that allows you to list multiple dotNet tests projects and arguments
   - A dotNet test task is inserted for each item in the dotNetTests list
 - In the [Pipeline](../../pipeline.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
 
 ## Adding Steps into Pipeline Template
 
-The following example shows how to insert the codeAnalysis steps template into the pipeline.yaml template with the minimum required params.
+The following example shows how to insert the dotNetTests steps template into the pipeline.yaml template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -33,7 +33,7 @@ parameters:
   - displayName: 'dotNet CLI Tests'
     projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
     arguments: '--no-restore --collect "Code Coverage"'
-- name: dotNetProjects # Optional param, nested into dotNetProjects param of dotNetTest steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
+- name: dotNetProjects # Optional param, nested into dotNetProjects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
   type: string
   default: ''
 
@@ -63,7 +63,7 @@ extends:
   # code: jobList inserted into code stage in stages
     code:
     # - job: insert static code analysis jobs into stage
-      - job: dotNetTest # job name must be unique within stage
+      - job: dotNetTests # job name must be unique within stage
         displayName: 'dotNet Test Static Code Analysis' # job display name
         pool: ${{ parameters.codePool }} # param passed to pool of code jobs
         dependsOn: [] # job does not depend on other jobs
@@ -136,8 +136,8 @@ stages:
 - stage: code
   dependsOn: []
   jobs:
-  - job: codeAnalysis # job name must be unique within stage
-    displayName: 'Static Code Analysis' # job display name
+  - job: dotNetTests # job name must be unique within stage
+    displayName: 'dotNet Test Static Code Analysis' # job display name
     pool: ${{ parameters.codePool }} # param passed to pool of code jobs
     dependsOn: [] # job does not depend on other jobs
     steps:

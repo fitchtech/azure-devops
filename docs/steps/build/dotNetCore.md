@@ -9,9 +9,10 @@
 
 Like all steps templates, the dotNetCore steps template can be nested in the [pipeline](../../pipeline.md) template or directly in steps lists. However, the intent of this template is that it's nested into other steps templates. To provide dotNetCore tasks in other steps templates this template is nested within them. This is so that the common list of steps is not copied from one template to another.
 
-- The [codeAnalysis](codeAnalysis.md) steps template nests the dotNetCore template for dotNet build and test tasks
+- The [dotNetTests](./../code/dotNetTests.md) steps template nests the dotNetCore template for dotNet restore tasks
+- The [sonarQube](./../code/sonarQube.md) steps template nests the dotNetCore template for dotNet restore and build tasks
 - The [containerImage](containerImage.md) steps template nests the dotNetCore template for dotNet publish tasks before the docker build tasks
-- The [visualStudio](visualStudio.md) steps template nests the dotNetCore template for dotNet build tasks before the Visual Studio Test tasks
+- The [visualStudioTest](./../test/visualStudioTest.md) steps template nests the dotNetCore template for dotNet build tasks before the Visual Studio Test tasks
 
 ## Steps Template Usage
 
@@ -67,7 +68,7 @@ steps:
 
 The following example shows how to insert the dotNetCore steps template into the [pipeline](../../pipeline.md) template with the minimum required params. Build a dotNet project and publish a pipeline artifact. This is useful if you want to download the build artifact into other jobs in all stages.
 
-Note: when using the [codeAnalysis](codeAnalysis.md), [containerImage](containerImage.md), or [visualStudioTest](visualStudioTest.md) templates, using the dotNetCore template directly as shown below would not be needed as it's nested into these templates.
+Note: when using the [dotNetTests](./../code/dotNetTests.md), [sonarQube](../code/sonarQube.md), [containerImage](containerImage.md), or [visualStudioTest](./../test/visualStudioTest.md) templates, using the dotNetCore template directly as shown below would not be needed as it's nested into these templates.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
