@@ -66,7 +66,7 @@ stages:
   - ${{ if in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
     - ${{ each parameter in parameters }}:
       # If parameter name matches stage name insert parameter for job list in stage
-      - ${{ if and(eq(parameter.key, stage.stage), or(eq(parameter.value.key, 'job'), eq(parameter.value.key, 'deployment'))) }}:
+      - ${{ if and(eq(parameter.key, stage.stage), or(contains(parameter.value, 'job'), contains(parameter.value, 'deployment'))) }}:
         - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
           # If stage in stages param has dependencies insert them
           ${{ if stage.dependsOn }}:
