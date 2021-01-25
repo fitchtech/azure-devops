@@ -63,11 +63,11 @@ stages:
 # For each stage in stages
 - ${{ each stage in parameters.stages }}:
   # If stage name is code, build, deploy, test, or promote, then use jobList or deploymentList with matching name
-  - ${{ if in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+  - ${{ if in(stage.key, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
     - ${{ each parameter in parameters }}:
       # If parameter name matches stage name insert parameter for job list in stage
-      - ${{ if and(eq(parameter.name, stage.stage), gt(length(parameter.value), 0)) }}:
-        - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      - ${{ if and(eq(parameter.key, stage.key), gt(length(parameter.value), 0)) }}:
+        - stage: '${{ parameters.stagesPrefix }}${{ stage.key }}${{ parameters.stagesSuffix }}'
           # If stage in stages param has dependencies insert them
           ${{ if stage.dependsOn }}:
             dependsOn:
@@ -114,8 +114,8 @@ stages:
               - ${{ each job in stage.jobs }}:
                 - ${{ job }}
   ## Insert any additions stages from stageList
-  - ${{ if notIn(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
-    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+  - ${{ if notIn(stage.key, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.key }}${{ parameters.stagesSuffix }}'
       # If stage in stages param has dependencies insert them
       ${{ if stage.dependsOn }}:
         dependsOn:
