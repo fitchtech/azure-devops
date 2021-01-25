@@ -1,0 +1,375 @@
+parameters:
+# jobsLists
+- name: code # jobsList inserted into code stage in stages
+  type: jobList
+  default: []
+- name: build # jobsList inserted into build stage in stages
+  type: jobList
+  default: []
+- name: deploy # deploymentList inserted into deploy stage in stages
+  type: deploymentList
+  default: []
+- name: test # jobList inserted into test stage in stages
+  type: jobList
+  default: []
+- name: promote # deploymentList inserted into promote stage in stages
+  type: deploymentList
+  default: []
+- name: reject # deploymentList inserted into reject stage in stages
+  type: deploymentList
+  default: []
+
+# stageList
+- name: stages # Inserts each stage into stages
+  type: stageList
+  default:
+  - stage: code # code jobList param inserted to this stage
+    dependsOn: []
+    condition: and(succeeded(), eq(variables['build.reason'], 'PullRequest'))
+  - stage: build # build jobList param inserted to this stage
+    dependsOn: code
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger'))
+  - stage: deploy # deploy jobList param inserted to this stage
+    dependsOn: build
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
+  - stage: test # test jobList param inserted to this stage
+    dependsOn:
+      - build
+      - deploy
+    condition: succeeded()
+  - stage: promote # promote jobList param inserted to this stage
+    dependsOn:
+      - deploy
+      - test
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
+  - stage: reject
+    dependsOn:
+      - deploy
+      - test
+      - promote
+    condition: failed()
+
+- name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
+  type: string
+  default: ''
+- name: stagesPrefix # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
+  type: string
+  default: ''
+- name: stagesCondition # Optional param to override the condition of all stages
+  type: string
+  default: ''
+
+stages:
+# For each stage in stages stageList
+- ${{ each stage in parameters.stages }}:
+# code:
+  # If stage name in parameters.stages stageList is code and parameters.code jobList has jobs, insert code stage
+  - ${{ if and(eq(stage.stage, 'code'), gt(length(parameters.code), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on build stage and jobs in build param
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy param
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test param
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote param
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject param
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.code jobList
+        - ${{ parameters.code }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# build:
+  # If stage name in parameters.stages stageList is build and parameters.build jobList has jobs, insert build stage
+  - ${{ if and(eq(stage.stage, 'build'), gt(length(parameters.build), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code jobList
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy deploymentList
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test jobList
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote deploymentList
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject deploymentList
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.build jobList
+        - ${{ parameters.build }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# deploy:
+  # If stage name in parameters.stages stageList is deploy and parameters.deploy deploymentList has jobs, insert deploy stage
+  - ${{ if and(eq(stage.stage, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code jobList
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on build stage and jobs in build deploymentList
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test jobList
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote deploymentList
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject deploymentList
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.deploy deploymentList
+        - ${{ parameters.deploy }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# test:
+  # If stage name in parameters.stages stageList is test and parameters.test jobList has jobs, insert test stage
+  - ${{ if and(eq(stage.stage, 'test'), gt(length(parameters.test), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code jobList
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on build stage and jobs in build deploymentList
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy jobList
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote deploymentList
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject deploymentList
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.test jobList
+        - ${{ parameters.test }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# promote:
+  # If stage name in parameters.stages stageList is promote and parameters.promote deploymentList has jobs, insert promote stage
+  - ${{ if and(eq(stage.stage, 'promote'), gt(length(parameters.promote), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code jobList
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on build stage and jobs in build deploymentList
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy jobList
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test deploymentList
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject deploymentList
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.promote deploymentList
+        - ${{ parameters.promote }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# reject:
+  # If stage name in parameters.stages stageList is reject and parameters.reject deploymentList has jobs, insert reject stage
+  - ${{ if and(eq(stage.stage, 'reject'), gt(length(parameters.reject), 0)) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in parameters.stages has dependencies, insert them if dependency has jobs
+      ${{ if gt(length(parameters.dependsOn), 0) }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on the stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code jobList
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on build stage and jobs in build deploymentList
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy jobList
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test deploymentList
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote deploymentList
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if eq(length(parameters.dependsOn), 0) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        # Insert parameters.reject deploymentList
+        - ${{ parameters.reject }}
+        # If jobs are nested in stage of parameters.stages insert them
+        - ${{ if stage.jobs }}:
+          - ${{ stage.jobs }}
+# stages:
+  # If additional stage in parameters.stages stageList and stage has jobs, insert stage. The stage name is not code, build, deploy, test, promote, or reject
+  - ${{ if and(notIn(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject'), stage.jobs) }}:
+    - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
+      # If stage in stages param has dependencies insert them
+      ${{ if stage.dependsOn }}:
+        dependsOn:
+          # For each dependency in this stage, only depend on that stage if it has jobs
+          - ${{ each dependency in stage.dependsOn }}:
+            # If stage depends on code stage and jobs in code param
+            - ${{ if and(eq(dependency, 'code'), gt(length(parameters.code), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on build stage and jobs in build param
+            - ${{ if and(eq(dependency, 'build'), gt(length(parameters.build), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on deploy stage and jobs in deploy param
+            - ${{ if and(eq(dependency, 'deploy'), gt(length(parameters.deploy), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on test stage and jobs in test param
+            - ${{ if and(eq(dependency, 'test'), gt(length(parameters.test), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on promote stage and jobs in promote param
+            - ${{ if and(eq(dependency, 'promote'), gt(length(parameters.promote), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on reject stage and jobs in reject param
+            - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
+              - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+              # For each stage in parameters.stages, if dependency has jobs
+              - ${{ each stageDependency in parameters.stages }}:
+                # If the stage name in parameters.stages matches the dependency of this stage and the dependent stage has jobs, insert the dependency
+                - ${{ if and(eq(stageDependency.stage, dependency), gt(length(stageDependency.jobs), 0)) }}:
+                  - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
+      ${{ if not(stage.dependsOn) }}:
+        dependsOn: []
+      # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
+      ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
+        condition: ${{ stage.condition }} 
+      # If stagesCondition param has value use it for condition
+      ${{ if parameters.stagesCondition }}:
+        condition: ${{ parameters.stagesCondition }} 
+      # If stage in stages has no condition and stagesCondition param has no value, stage condition defaults to true
+      ${{ if and(not(stage.condition), not(parameters.stagesCondition)) }}:
+        condition: true
+      jobs:
+        - ${{ stage.jobs }}
