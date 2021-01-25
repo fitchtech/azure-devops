@@ -92,7 +92,7 @@ stages:
                 - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
                   - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
                 # If stage depends on stages other than code, build, deploy, test, and promote, insert the dependency
-                - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
+                - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
                   - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
           ${{ if not(stage.dependsOn) }}:
             dependsOn: []
@@ -114,7 +114,7 @@ stages:
               - ${{ each job in stage.jobs }}:
                 - ${{ job }}
   ## Insert any additions stages from stageList
-  - ${{ if not(in(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject')) }}:
+  - ${{ if notIn(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in stages param has dependencies insert them
       ${{ if stage.dependsOn }}:
@@ -139,8 +139,8 @@ stages:
             # If stage depends on reject stage and jobs in reject param
             - ${{ if and(eq(dependency, 'reject'), gt(length(parameters.reject), 0)) }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-            # If stage depends on stages other than code, build, deploy, test, and promote, insert the dependency
-            - ${{ if not(in(dependency, 'code', 'build', 'deploy', 'test', 'promote')) }}:
+            # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
+            - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
       ${{ if not(stage.dependsOn) }}:
         dependsOn: []
