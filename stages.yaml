@@ -111,7 +111,7 @@ stages:
   - ${{ if and(eq(stage.stage, 'build'), gt(length(parameters.build), 0)) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in parameters.stages has dependencies, insert them if dependency has jobs
-      ${{ if gt(length(parameters.dependsOn), 0) }}:
+      ${{ if parameters.dependsOn }}:
         dependsOn:
           # For each dependency in this stage, only depend on the stage if it has jobs
           - ${{ each dependency in stage.dependsOn }}:
@@ -133,7 +133,7 @@ stages:
             # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
             - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-      ${{ if eq(length(parameters.dependsOn), 0) }}:
+      ${{ if not(parameters.dependsOn) }}:
         dependsOn: []
       # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
       ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
@@ -155,7 +155,7 @@ stages:
   - ${{ if and(eq(stage.stage, 'deploy'), gt(length(parameters.deploy), 0)) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in parameters.stages has dependencies, insert them if dependency has jobs
-      ${{ if gt(length(parameters.dependsOn), 0) }}:
+      ${{ if parameters.dependsOn }}:
         dependsOn:
           # For each dependency in this stage, only depend on the stage if it has jobs
           - ${{ each dependency in stage.dependsOn }}:
@@ -177,7 +177,7 @@ stages:
             # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
             - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-      ${{ if eq(length(parameters.dependsOn), 0) }}:
+      ${{ if not(stage.dependsOn) }}:
         dependsOn: []
       # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
       ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
@@ -199,7 +199,7 @@ stages:
   - ${{ if and(eq(stage.stage, 'test'), gt(length(parameters.test), 0)) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in parameters.stages has dependencies, insert them if dependency has jobs
-      ${{ if gt(length(parameters.dependsOn), 0) }}:
+      ${{ if parameters.dependsOn }}:
         dependsOn:
           # For each dependency in this stage, only depend on the stage if it has jobs
           - ${{ each dependency in stage.dependsOn }}:
@@ -221,7 +221,7 @@ stages:
             # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
             - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-      ${{ if eq(length(parameters.dependsOn), 0) }}:
+      ${{ if not(stage.dependsOn) }}:
         dependsOn: []
       # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
       ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
@@ -243,7 +243,7 @@ stages:
   - ${{ if and(eq(stage.stage, 'promote'), gt(length(parameters.promote), 0)) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in parameters.stages has dependencies, insert them if dependency has jobs
-      ${{ if gt(length(parameters.dependsOn), 0) }}:
+      ${{ if parameters.dependsOn }}:
         dependsOn:
           # For each dependency in this stage, only depend on the stage if it has jobs
           - ${{ each dependency in stage.dependsOn }}:
@@ -265,7 +265,7 @@ stages:
             # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
             - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-      ${{ if eq(length(parameters.dependsOn), 0) }}:
+      ${{ if not(stage.dependsOn) }}:
         dependsOn: []
       # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
       ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
@@ -287,7 +287,7 @@ stages:
   - ${{ if and(eq(stage.stage, 'reject'), gt(length(parameters.reject), 0)) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in parameters.stages has dependencies, insert them if dependency has jobs
-      ${{ if gt(length(parameters.dependsOn), 0) }}:
+      ${{ if parameters.dependsOn }}:
         dependsOn:
           # For each dependency in this stage, only depend on the stage if it has jobs
           - ${{ each dependency in stage.dependsOn }}:
@@ -309,7 +309,7 @@ stages:
             # If stage depends on stages other than code, build, deploy, test, promote, and reject, insert the dependency
             - ${{ if notIn(dependency, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
               - '${{ parameters.stagesPrefix }}${{ dependency }}${{ parameters.stagesSuffix }}'
-      ${{ if eq(length(parameters.dependsOn), 0) }}:
+      ${{ if not(stage.dependsOn) }}:
         dependsOn: []
       # If stage in stages param has condition and stagesCondition param has no value set to override, insert the condition
       ${{ if and(stage.condition, not(parameters.stagesCondition)) }}:
