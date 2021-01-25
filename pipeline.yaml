@@ -108,12 +108,12 @@ stages:
           jobs:
             # Insert each job in jobList or deploymentList parameter
             - ${{ parameter.value }}
-            - ${{ if gt(length(stage.jobs), 0) }}:
+            - ${{ if stage.jobs }}:
               # If jobs are nested in stage of stages param insert them
               - ${{ each job in stage.jobs }}:
                 - ${{ job }}
   ## Insert any additions stages from stageList
-  - ${{ if notIn(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject') }}:
+  - ${{ if and(notIn(stage.stage, 'code', 'build', 'deploy', 'test', 'promote', 'reject'), stage.jobs) }}:
     - stage: '${{ parameters.stagesPrefix }}${{ stage.stage }}${{ parameters.stagesSuffix }}'
       # If stage in stages param has dependencies insert them
       ${{ if stage.dependsOn }}:
