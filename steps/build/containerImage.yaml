@@ -212,7 +212,7 @@ steps:
   - script: |
       docker save ${{ parameters.containerRegistryUrl }}/${{ parameters.containerRepository }}:latest -o ${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}
     displayName: 'Docker Save ${{ parameters.containerRepository }}'
-- ${{ if and(parameters.dotNetProject, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
+- ${{ if and(parameters.dotNetProjects, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
   - ${{ if parameters.deleteContents }}:
     - task: DeleteFiles@1
       displayName: 'Delete Unwanted Files'
