@@ -1,0 +1,148 @@
+parameters:
+- name: deployment # name of the job (A-Z, a-z, 0-9, and underscore)
+  type: string
+  default: build
+- name: displayName # friendly name to display in the UI
+  type: string
+  default: Build
+- name: dependsOn # string for dependsOn one job, list for dependsOn multiple jobs
+  type: object
+  default: []
+- name: condition # default job condition
+  type: string
+  default: succeeded()
+- name: continueOnError # 'true' if future jobs should run even if this job fails; defaults to 'false'
+  type: boolean
+  default: false
+- name: pool # Optional, set pool object for a job to override pool set in the pipeline
+  type: object
+  default: ''
+- name: container # Optional container to run this job inside of
+  type: object
+  default: ''
+- name: timeoutInMinutes # how long to run the job before automatically cancelling
+  type: number
+  default: 0
+- name: cancelTimeoutInMinutes # how much time to give 'run always even if cancelled tasks' before killing them
+  type: number
+  default: 0
+- name: variables # map or list format of variables added to the job
+  type: object
+  default: ''
+- name: clean # if true, execute git clean for checkout step; clean workspace folders; and post build cleanup task
+  type: boolean
+  default: true
+- name: checkout # [ self | none | repository name ] # self represents the repo where the initial Pipelines YAML file was found
+  type: string
+  default: self
+- name: checkoutSubModules # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules; defaults to not checking out submodules
+  type: boolean
+  default: string
+  values:
+  - true
+  - recursive
+- name: download # [ current | pipeline resource identifier | none ] # disable automatic download if "none"
+  type: string
+  default: current
+- name: artifact # artifact name, optional; for downloads all the available artifacts if not specified. For publish it's the artifact name
+  type: string
+  default: ''
+- name: preSteps # Optional list of tasks [ script | bash | pwsh | powershell | checkout | task | templateReference ]
+  type: stepList
+  default: []
+- name: postSteps # Optional list of tasks [ script | bash | pwsh | powershell | checkout | task | templateReference ]
+  type: stepList
+  default: []
+- name: publish # path to a file or folder. Optional to enable task
+  type: string
+  default: ''
+
+# Deploy: lifecycle hooks
+- name: strategy # Optional, add strategy object to job for parallel or matrix strategy
+  type: string
+  default: runOnce
+  values:
+  - runOnce
+  - canary
+  - rolling
+- name: preDeploy # Deployment job preDeploy lifecycle hook
+  type: stepList
+  default: []
+- name: routeTraffic # Deployment job routeTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: postRouteTraffic # Deployment job postRouteTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: onFailure # Deployment job on: failure: lifecycle hook
+  type: stepList
+  default: []
+- name: onSuccess # Deployment job on: success: lifecycle hook
+  type: stepList
+  default: []
+
+
+jobs:
+- deployment: ${{ parameters.deployment }} # job name unique to stage
+  displayName: ${{ parameters.displayName }}
+  ${{ if parameters.pool }}:
+    pool: ${{ parameters.pool }} # Override parameters.deployPool with parameters.pool
+  ${{ if parameters.condition }}:
+    condition: ${{ parameters.condition }}
+  ${{ if parameters.variables }}:
+    variables:
+    ${{ each variable in parameters.variables }}:
+      ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
+  ${{ if parameters.dependsOn }}:
+    dependsOn:
+    - ${{ each dependency in parameters.dependsOn }}:
+      - ${{ dependency }}
+  ${{ if not(parameters.dependsOn) }}:
+    dependsOn: []
+  ${{ if parameters.environment }}:
+    environment: ${{ parameters.environment }}
+  strategy:
+    ${{ parameters.strategy }}:
+      ${{ if and(eq(parameters.strategy, 'canary'), parameters.increments) }}:
+        increments: ${{ parameters.increments }}
+      # Insert preDeploy lifecycle hook stepList
+      ${{ if gt(length(parameters.preDeploy), 0) }}:
+        preDeploy:
+          ${{ if parameters.pool }}:
+            pool: ${{ parameters.pool }}
+          steps:
+            - ${{ parameters.preDeploy }}
+      deploy:
+        steps:
+          - template: ${{ parameters.stepsTemplate }}
+            parameters:
+              ${{ parameters.stepsParameters }}
+      # Insert routeTraffic lifecycle hook stepList
+      ${{ if gt(length(parameters.routeTraffic), 0) }}:
+        routeTraffic:
+          ${{ if parameters.pool }}:
+            pool: ${{ parameters.pool }}
+          steps:
+            - ${{ parameters.routeTraffic }}
+      # Insert postRouteTraffic lifecycle hook stepList
+      ${{ if gt(length(parameters.postRouteTraffic), 0) }}:
+        postRouteTraffic:
+          ${{ if parameters.pool }}:
+            pool: ${{ parameters.pool }}
+          steps:
+            - ${{ parameters.postRouteTraffic }}
+      # Insert onFailure and onSuccess stepList
+      ${{ if or(gt(length(parameters.onFailure), 0), gt(length(parameters.onSuccess), 0)) }}:
+        on:
+          ${{ if gt(length(parameters.onFailure), 0) }}:
+            failure:
+              ${{ if parameters.pool }}:
+                pool: ${{ parameters.pool }}
+              steps:
+                - ${{ parameters.onFailure }}
+          ${{ if gt(length(parameters.onSuccess), 0) }}:
+            success:
+              ${{ if parameters.pool }}:
+                pool: ${{ parameters.pool }}
+              steps:
+                - ${{ parameters.onSuccess }}
