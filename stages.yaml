@@ -25,10 +25,10 @@ parameters:
   default:
   - stage: code # code jobList param inserted to this stage
     dependsOn: []
-    condition: and(succeeded(), eq(variables['build.reason'], 'PullRequest'))
+    condition: and(succeeded(), eq(variables['build.reason'], 'PullRequest', 'Manual'))
   - stage: build # build jobList param inserted to this stage
     dependsOn: code
-    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger'))
+    condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
   - stage: deploy # deploy jobList param inserted to this stage
     dependsOn: build
     condition: and(succeeded(), in(variables['build.reason'], 'IndividualCI', 'BatchedCI', 'ResourceTrigger', 'Manual'))
