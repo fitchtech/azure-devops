@@ -2,22 +2,22 @@ parameters:
 # jobsLists
 - name: code # jobsList inserted into code stage in stages
   type: jobList
-  default: ''
+  default: []
 - name: build # jobsList inserted into build stage in stages
   type: jobList
-  default: ''
+  default: []
 - name: deploy # deploymentList inserted into deploy stage in stages
   type: deploymentList
-  default: ''
+  default: []
 - name: test # jobList inserted into test stage in stages
   type: jobList
-  default: ''
+  default: []
 - name: promote # deploymentList inserted into promote stage in stages
   type: deploymentList
-  default: ''
+  default: []
 - name: reject # deploymentList inserted into reject stage in stages
   type: deploymentList
-  default: ''
+  default: []
 
 # stageList
 - name: stages # Inserts each stage into stages
