@@ -1,13 +1,14 @@
 # doNetCore Steps Template
 
 - [doNetCore Steps Template](#donetcore-steps-template)
-  - [Steps Template Nesting](#steps-template-nesting)
+  - [dotNetCore Template Nested](#dotnetcore-template-nested)
   - [Steps Template Usage](#steps-template-usage)
-  - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
+  - [Direct Steps Template Usage](#direct-steps-template-usage)
 
-## Steps Template Nesting
+## dotNetCore Template Nested
 
-Like all steps templates, the dotNetCore steps template can be nested in the [pipeline](../../pipeline.md) template or directly in steps lists. However, the intent of this template is that it's nested into other steps templates. To provide dotNetCore tasks in other steps templates this template is nested within them. This is so that the common list of steps is not copied from one template to another.
+Like all steps templates, the dotNetCore steps template can be nested in the [stages](../../stages.md) template or directly in steps lists. However, the intent of this template is that it's nested into other steps templates. To provide dotNetCore tasks in other steps templates this template is nested within them. This is so that the common list of steps is not copied from one template to another.
 
 - The [dotNetTests](./../code/dotNetTests.md) steps template nests the dotNetCore template for dotNet restore tasks
 - The [sonarQube](./../code/sonarQube.md) steps template nests the dotNetCore template for dotNet restore and build tasks
@@ -22,7 +23,82 @@ dotNetCommand options are build, publish, and pack:
 - Publish a project for container image build. Optional publish pipeline artifact
 - Pack a project for Nuget pack and push of Nuget artifact and symbols to feed
 
-The following example shows inserting a steps template into the steps section. This is to show parameter usage in the template. See the [Nest dotNetCore Steps into Pipeline Template](#nest-dotnetcore-steps-into-pipeline-template) section shows how this could be used in the [pipeline](../../pipeline.md) template
+## Insert Steps Template into Stages Template
+
+The following example shows how to insert the dotNetCore steps template into the [stages](../../stages.md) template with the minimum required params. Build a dotNet project and publish a pipeline artifact. This is useful if you want to download the build artifact into other jobs in all stages.
+
+Note: when using the [dotNetTests](./../code/dotNetTests.md), [sonarQube](../code/sonarQube.md), [containerImage](containerImage.md), or [visualStudioTest](./../test/visualStudioTest.md) templates, using the dotNetCore template directly as shown below would not be needed as it's nested into these templates.
+
+```yml
+name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
+
+parameters:
+# params to pass into stages.yaml template:
+- name: buildPool # Nested into pool param of build jobs
+  type: object
+  default:
+    vmImage: 'ubuntu-18.04'
+- name: dotNetProjects # pattern to match of projects to build 
+  type: string
+  default: '**.csproj'
+
+# parameter defaults in the above section can be set on manual run of a pipeline to override
+
+resources:
+  repositories:
+    - repository: templates # Resource identitifier for template usage
+      type: github
+      name: fitchtech/AzurePipelines # This repository
+      ref: refs/tags/v1 # The tagged release of the repository
+      endpoint: GitHub # Azure Service Connection Name
+
+trigger:
+  branches:
+    include:
+    - master # CI Trigger on commit to master
+  tags:
+    include:
+    - v*.*.*-* # CI Trigger when tag matches format
+
+extends:
+# template: file path at repo resource id to extend from
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
+  parameters:
+  # code: jobList inserted into code stage in stages
+  # build: jobList inserted into build stage in stages
+    build:
+      - job: dotNetBuild # job name must be unique within stage
+        displayName: 'dotNet Build Projects' # job display name
+        pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
+        dependsOn: [] # job does not depend on other jobs
+      # variables:
+        # key: 'value' # pairs of variables scoped to this job
+        steps:
+        # - template: for dotNetCore steps
+          - template: steps/build/dotNetCore.yaml
+          # parameters within dotNetCore.yaml template
+            parameters:
+            # preSteps: 
+              # - task: add preSteps into job
+            # dotNetCommand: build # default in template is build
+              dotNetProjects: ${{ parameters.dotNetProjects }} # pattern to match of projects to build 
+              publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
+            # postSteps:
+              # - task: add postSteps into job
+
+    # - job: insert additional jobs into the build stage
+
+  # deploy: deploymentList inserted into deploy stage in stages param
+  # promote: deploymentList inserted into promote stage in stages param
+  # test: jobList inserted into test stage in stages param
+  # reject: deploymentList inserted into reject stage in stages param
+
+```
+
+## Direct Steps Template Usage
+
+The following example shows inserting a steps template into the steps section. This is to show parameter usage in the template. See the [Insert Steps Templates into Stages Template](#insert-steps-templates-into-stages-template) section above for usinge this template in the [stages](../../stages.md) template
 
 ```yml
 steps:
@@ -61,78 +137,5 @@ steps:
     dotNetPackConfig: 'Debug' # dotNet configuration
     postSteps:
      - script: echo 'add postSteps stepsList to job' # list of tasks that run after the main steps of the template. Inserted into steps before publish/clean
-
-```
-
-## Adding Steps into Pipeline Template
-
-The following example shows how to insert the dotNetCore steps template into the [pipeline](../../pipeline.md) template with the minimum required params. Build a dotNet project and publish a pipeline artifact. This is useful if you want to download the build artifact into other jobs in all stages.
-
-Note: when using the [dotNetTests](./../code/dotNetTests.md), [sonarQube](../code/sonarQube.md), [containerImage](containerImage.md), or [visualStudioTest](./../test/visualStudioTest.md) templates, using the dotNetCore template directly as shown below would not be needed as it's nested into these templates.
-
-```yml
-name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
-
-parameters:
-# params to pass into pipeline.yaml template:
-- name: buildPool # Nested into pool param of build jobs
-  type: object
-  default:
-    vmImage: 'ubuntu-18.04'
-- name: dotNetProjects # pattern to match of projects to build 
-  type: string
-  default: '**.csproj'
-
-# parameter defaults in the above section can be set on manual run of a pipeline to override
-
-resources:
-  repositories:
-    - repository: templates # Resource identitifier for template usage
-      type: github
-      name: fitchtech/AzurePipelines # This repository
-      ref: refs/tags/v1 # The tagged release of the repository
-      endpoint: GitHub # Azure Service Connection Name
-
-trigger:
-  branches:
-    include:
-    - master # CI Trigger on commit to master
-  tags:
-    include:
-    - v*.*.*-* # CI Trigger when tag matches format
-
-extends:
-# template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
-  parameters:
-  # code: jobList inserted into code stage in stages
-  # build: jobList inserted into build stage in stages
-    build:
-      - job: dotNetBuild # job name must be unique within stage
-        displayName: 'dotNet Build Projects' # job display name
-        pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
-        dependsOn: [] # job does not depend on other jobs
-      # variables:
-        # key: 'value' # pairs of variables scoped to this job
-        steps:
-        # - template: for dotNetCore steps
-          - template: steps/build/dotNetCore.yaml
-          # parameters within dotNetCore.yaml template
-            parameters:
-            # preSteps: 
-              # - task: add preSteps into job
-            # dotNetCommand: build # default in template is build
-              dotNetProjects: ${{ parameters.dotNetProjects }} # pattern to match of projects to build 
-              publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
-            # postSteps:
-              # - task: add postSteps into job
-
-    # - job: insert additional jobs into the build stage
-
-  # deploy: deploymentList inserted into deploy stage in stages param
-  # promote: deploymentList inserted into promote stage in stages param
-  # test: jobList inserted into test stage in stages param
-  # reject: deploymentList inserted into reject stage in stages param
 
 ```

@@ -2,7 +2,7 @@
 
 - [Build Container Image Steps Template](#build-container-image-steps-template)
   - [Steps Template Usage](#steps-template-usage)
-  - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
   - [Direct Steps Template Usage](#direct-steps-template-usage)
 
 ## Steps Template Usage
@@ -10,9 +10,9 @@
 - You can add multiple Container Image build jobs into a jobLists so long as the job name is unique within the stage
 - This template nests the [dotNetCore](dotNetCore.md) steps template to dotNet publish a project before docker build so that the publish output can be copied from the build agent into the container image.
 
-## Adding Steps into Pipeline Template
+## Insert Steps Template into Stages Template
 
-The following example shows how to insert the containerImage steps template into the [pipeline](../../pipeline.md) template with the minimum required params. This shows one containerImage job added to the build stage jobLists. Additional, you can add as many build jobs as needed. This example has no deployments. However, it is recommended that you could create a single multistage pipeline that includes code, build, deploy, test, and promote stages in a single pipeline.
+The following example shows how to insert the containerImage steps template into the [stages](../../stages.md) template with the minimum required params. This shows one containerImage job added to the build stage jobLists. Additional, you can add as many build jobs as needed. This example has no deployments. However, it is recommended that you could create a single multistage pipeline that includes code, build, deploy, test, and promote stages in a single pipeline.
 
 Alternatively you could create a separate deployment pipeline that triggers from the completion of a build pipeline. This pattern could be used to create a build pipeline decoupled from deployments. To do this would require a pipeline resource trigger be added to the resources in your deployment pipeline. The resource in your deployment pipeline would be the build pipeline as a source. When the build pipeline completes if the source pipeline triggers match then the deployment pipeline would run.
 
@@ -20,7 +20,7 @@ Alternatively you could create a separate deployment pipeline that triggers from
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 - name: buildPool # Nested into pool param of build jobs
   type: object
   default: 
@@ -66,8 +66,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages param
   # build: jobList inserted into build stage in stages param
@@ -163,7 +163,7 @@ stages:
     pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
     dependsOn: [] # job does not depend on other jobs
     steps:
-      - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from pipeline.yaml
+      - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
         parameters:
           dotNetProjects: '${{ parameters.dotNetProjects }}'
           containerRegistry: '${{ parameters.containerRegistry }}'
@@ -191,7 +191,7 @@ resources:
       endpoint: GitHub # Azure Service Connection Name
 
 steps:
-- template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from pipeline.yaml
+- template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
   parameters:
     dotNetProjects: '**.csproj'
     containerRegistry: 'ACR'

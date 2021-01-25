@@ -2,22 +2,22 @@
 
 - [Helm Template Steps Template](#helm-template-steps-template)
   - [Steps Template Usage](#steps-template-usage)
-  - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
 
 ## Steps Template Usage
 
 - The 'helm template' command is used to render Helm charts into Kubernetes Manifests which are published as an artifact
 - When using helmTemplate steps in a build job you can publish an artifact of the rendered manifests to later download by a deployment job
 
-## Adding Steps into Pipeline Template
+## Insert Steps Template into Stages Template
 
-The following example shows how to insert the helmTemplate) steps template into the [pipeline](../../pipeline.md) template with the minimum required params.
+The following example shows how to insert the helmTemplate) steps template into the [stages](../../stages.md) template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 - name: buildPool # Nested into pool param of build jobs
   type: object
   default:
@@ -52,8 +52,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages

@@ -3,7 +3,7 @@
 - [Azure Pipeline Templates](#azure-pipeline-templates)
   - [Introduction](#introduction)
   - [Repository Resource](#repository-resource)
-  - [Read The Docs](#read-the-docs)
+  - [Template Documentation](#template-documentation)
   - [Design Principals and Patterns](#design-principals-and-patterns)
     - [Build Verification Pipeline](#build-verification-pipeline)
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
@@ -43,35 +43,37 @@ trigger:
 
 extends:
   # file path to template at repo resource id to extend from
-  template: pipeline.yaml@templates
+  template: stages.yaml@templates
   parameters:
-  # code: jobList inserted into code stage in stages param
-  # build: jobList inserted into build stage in stages param
-  # deploy: deploymentList inserted into deploy stage in stages param
-  # promote: deploymentList inserted into promote stage in stages param
-  # test: jobList inserted into test stage in stages param
-  # reject: deploymentList inserted into reject stage in stages param
-  # stages: stageList of stages. jobList or deploymentList inserted into stage with matching name
-  # stagesPrefix # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
-  # stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
-  # stagesCondition # Optional param to override the condition of all stages
+    code: [] # jobList inserted into code stage in stages param
+    build: [] # jobList inserted into build stage in stages param
+    deploy: [] # deploymentList inserted into deploy stage in stages param
+    promote: [] # deploymentList inserted into promote stage in stages param
+    test: [] # jobList inserted into test stage in stages param
+    reject: [] # deploymentList inserted into reject stage in stages param
+    # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name
+    # stages: [] # Optional to override default of stages stageList.
+    stagesPrefix: "" # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
+    stagesSuffix: "" # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
+    stagesCondition: "" # Optional param to override the condition of all stages
 ```
 
-## Read The Docs
+## Template Documentation
 
-| Documentation                                                                    | Description                                                                    |
-| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [dotNet Test Static Code Analysis](./code/dotNetTests.md)                        | Run SonarQube for dotNet and run dotNet test for unit and cli tests            |
-| [SonarQube Static Code Analysis](./code/sonarQube.md)                            | Run SonarQube for dotNet projects or solutions                                 |
-| [Build Container Image](steps/build/containerImage.md)                           | Build and push a docker image using an optional dotNet solution and dockerfile |
-| [Render Helm Charts and Publish Manifests Artifact](steps/build/helmTemplate.md) | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes   |
-| [Build dotNet Project and Publish Artifact](steps/build/dotNetCore.md)           | Build and publish a dotNet project without any tests                           |
-| Pack and Push Nuget Artifacts                                                    | Build and pack a dotNet project to publish Nuget packages to an artifact feed  |
-| [Deploy ARM Templates](steps/deploy/armTemplate.md)                              | Deploy an ARM template(s)                                                      |
-| [Deploy Helm Charts](steps/deploy/helmChart.md)                                  | Use Helm charts to deploy components to Kubernetes                             |
-| [Render Helm Charts and Deploy Manifests](steps/deploy/helmManifest.md)          | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes   |
-| [Deploy Kubernetes Manifests](steps/deploy/kubeManifest.md)                      | Deploy Kubernetes manifests and secrets                                        |
-| Visual Studio Tests                                                              | Run VS Test suites in a dotNet project                                         |
+| Documentation                                                                           | Type            | Description                                                                                  |
+| --------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------- |
+| [stages](./docs/stages.md)                                                              | stageList and jobList | Multistage pipeline template. Expression driven stage creation for inserting steps templates |
+| [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md)                    | stepList           | Run SonarQube for dotNet and run dotNet test for unit and cli tests                          |
+| [SonarQube Static Code Analysis](./docs/steps/code/sonarQube.md)                        | stepList           | Run SonarQube for dotNet projects or solutions                                               |
+| [Build Container Image](./docs/steps/build/containerImage.md)                           | stepList           | Build and push a docker image using an optional dotNet solution and dockerfile               |
+| [Render Helm Charts and Publish Manifests Artifact](./docs/steps/build/helmTemplate.md) | stepList           | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes                 |
+| [Build dotNet Project and Publish Artifact](./docs/steps/build/dotNetCore.md)           | stepList           | Build and publish a dotNet project without any tests                                         |
+| Pack and Push Nuget Artifacts                                                           | stepList           | Build and pack a dotNet project to publish Nuget packages to an artifact feed                |
+| [Deploy ARM Templates](./docs/steps/deploy/armTemplate.md)                              | stepList           | Deploy an ARM template(s)                                                                    |
+| [Deploy Helm Charts](./docs/steps/deploy/helmChart.md)                                  | stepList           | Use Helm charts to deploy components to Kubernetes                                           |
+| [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md)          | stepList           | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes                 |
+| [Deploy Kubernetes Manifests](./docs/steps/deploy/kubeManifest.md)                      | stepList           | Deploy Kubernetes manifests and secrets                                                      |
+| Visual Studio Tests                                                                     | stepList           | Run VS Test suites in a dotNet project                                                       |
 
 ## Design Principals and Patterns
 

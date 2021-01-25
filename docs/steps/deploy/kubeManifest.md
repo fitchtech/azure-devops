@@ -1,5 +1,10 @@
 # Kubernetes Manifest Steps Template
 
+- [Kubernetes Manifest Steps Template](#kubernetes-manifest-steps-template)
+  - [Steps Template Usage](#steps-template-usage)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
+## Steps Template Usage
+
 - Deploy Kubernetes Manifests to the Kubernetes Service Connection or ADO Environment Resource
 - Deploy standard or canary pods for deployment manifests
 - Create/update image pull secret using docker and Kubernetes service connection
@@ -8,7 +13,7 @@
 - Delete a Kubernetes object
 - Create Kubernetes secrets from Azure KeyVault Secrets
 
-## Kubernetes Manifest Steps in Pipeline Template
+## Insert Steps Template into Stages Template
 
 The following example shows how to insert the kubeManifest steps template into the [pipeline](../../pipeline.md) template with the minimum required params.
 

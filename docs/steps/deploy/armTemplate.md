@@ -1,11 +1,18 @@
 # ARM Template Steps Template
 
+- [ARM Template Steps Template](#arm-template-steps-template)
+  - [Steps Template Usage](#steps-template-usage)
+  - [Serial Deployment of ARM Templates](#serial-deployment-of-arm-templates)
+  - [Parallel Deployment of ARM Templates](#parallel-deployment-of-arm-templates)
+
+## Steps Template Usage
+
 - Azure Resource Manager templates (ARM templates) provides Infrastructure as Code (IaC) for Azure. The armTemplate steps template deploys the provided ARM template
 - Azure limits ARM deployments to 800 per resource group. This steps template includes an optional cleanup script to remove the oldest deployment so that the limit is not reach which would prevent deployments
 
 ## Serial Deployment of ARM Templates
 
-The following example shows how to insert the armTemplate steps template into the [pipeline](../../pipeline.md) template with the minimum required params.
+The following example shows how to insert the armTemplate steps template into the [stages](../../stages.md) template with the minimum required params.
 
 This pattern would deploy each of the templates in the armTemplates list serially within a single job.
 
@@ -13,7 +20,7 @@ This pattern would deploy each of the templates in the armTemplates list seriall
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 
 - name: deployPool # Nested into pool param of deploy jobs
   type: object
@@ -59,8 +66,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages
@@ -115,7 +122,7 @@ This pattern would deploy each of the templates in the armTemplates list paralle
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 
 - name: deployPool # Nested into pool param of deploy jobs
   type: object
@@ -170,8 +177,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages

@@ -2,22 +2,22 @@
 
 - [SonarQube Steps Template](#sonarqube-steps-template)
   - [Steps Template Usage](#steps-template-usage)
-  - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
 
 ## Steps Template Usage
 
-- In the [Pipeline](../../pipeline.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
+- In the [stages](../../stages.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
 - The sonarQube steps template provides options for adding SonarQube analysis task in the right order before and after dotNet build of dotNetProjects
 
-## Adding Steps into Pipeline Template
+## Insert Steps Template into Stages Template
 
-The following example shows how to insert the sonarQube steps template into the pipeline.yaml template with the minimum required params.
+The following example shows how to insert the sonarQube steps template into the [stages](../../stages.md) template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 - name: codePool
   type: object
   default:
@@ -50,8 +50,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
     code:

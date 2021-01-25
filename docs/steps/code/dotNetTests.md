@@ -3,14 +3,14 @@
 - [dotNet Test Steps Template](#dotnet-test-steps-template)
   - [Steps Template Usage](#steps-template-usage)
   - [Steps Template Schema](#steps-template-schema)
-  - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
   - [Direct Steps Template Usage](#direct-steps-template-usage)
 
 ## Steps Template Usage
 
 - The dotNetTests param within the dotNetTests steps template is a YAML object param that allows you to list multiple dotNet tests projects and arguments
   - A dotNet test task is inserted for each item in the dotNetTests list
-- In the [Pipeline](../../pipeline.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
+- In the [stages](../../stages.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
 
 ## Steps Template Schema
 
@@ -49,15 +49,15 @@ steps:
 
 ```
 
-## Adding Steps into Pipeline Template
+## Insert Steps Template into Stages Template
 
-The following example shows how to insert the dotNetTests steps template into the pipeline.yaml template with the minimum required params.
+The following example shows how to insert the dotNetTests steps template into the stages.yaml template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 - name: codePool
   type: object
   default:
@@ -95,8 +95,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
     code:
@@ -137,7 +137,7 @@ The above example is the recommended pattern for standardizing stages, jobs, and
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 - name: unitTests # param nested
   type: string
   default: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj'
@@ -179,7 +179,7 @@ stages:
     pool: ${{ parameters.codePool }} # param passed to pool of code jobs
     dependsOn: [] # job does not depend on other jobs
     steps:
-      - template: steps/code/dotNetTests.yaml@template # resource identifier required as this is not extending from pipeline.yaml
+      - template: steps/code/dotNetTests.yaml@template # resource identifier required as this is not extending from stages.yaml
         parameters:
         # preSteps: 
           # - task: add preSteps into job

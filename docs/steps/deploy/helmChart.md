@@ -1,17 +1,23 @@
 # Helm Chart Steps Template
 
+- [Helm Chart Steps Template](#helm-chart-steps-template)
+  - [Steps Template Usage](#steps-template-usage)
+  - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
+
+## Steps Template Usage
+
 - The helmChart steps template uses the 'helm install/upgrade' command to deploy helm charts directly to a Kubernetes cluster
 - Alternatively the [helmManifest](helmManifest.md) steps template uses the 'helm template' command to render Helm charts into manifests which are deployed to Kubernetes
 
-## Helm Chart Steps in Pipeline Template
+## Insert Steps Template into Stages Template
 
-The following example shows how to insert the helmChart steps template into the [pipeline](../../pipeline.md) template with the minimum required params.
+The following example shows how to insert the helmChart steps template into the [stages](../../stages.md) template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 
 - name: deployPool # Nested into pool param of deploy jobs
   type: object
@@ -50,8 +56,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages
