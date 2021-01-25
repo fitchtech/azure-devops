@@ -101,9 +101,7 @@ steps:
             arguments: '${{ test.arguments }}'
           ${{ if not(test.arguments) }}:
             arguments: '--collect "Code Coverage"'
-          ${{ if ne(test.publishTestResults, '') }}:
-            publishTestResults: ${{ test.publishTestResults }}
-          ${{ if eq(test.publishTestResults, '') }}:
+          ${{ if test.publishTestResults }}:
             publishTestResults: true
           ${{ if test.testRunTitle }}:
             testRunTitle: ${{ test.testRunTitle }}
