@@ -45,7 +45,7 @@ parameters:
 # Kube Deployment Params
 - name: kubectlVersion # Kube installer if param defined
   type: string
-  default: '1.18.6'
+  default: ''
 - name: kubernetesServiceConnection # Required for imagePullSecret create and deployment task. Except when using an ADO Environment Resource then it's not required for the deployment task
   type: string
   default: ''
