@@ -25,7 +25,7 @@ parameters:
   type: object
   default: 
     vmImage: 'Ubuntu-16.04'
-- name: dotNetProject # Required param to restore and publish a dotNet project
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -34,6 +34,9 @@ parameters:
 - name: dockerArgs # Nested into dockerArgs of build jobs
   type: string
   default: '' # optional to add --build-arg in docker build task
+- name: dockerTags
+  type: object
+  default: $(Build.BuildNumber)
 - name: containerRegistry # Nested into containerRegistry param in containerImage job
   type: string
   default: '' # ADO Service Connection name
@@ -84,7 +87,7 @@ extends:
               parameters:
               # preSteps: 
                 # - task: add preSteps into job
-                dotNetProject: '${{ parameters.dotNetProject }}'
+                dotNetProjects: '${{ parameters.dotNetProjects }}'
                 containerRegistry: '${{ parameters.containerRegistry }}'
                 containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
                 twistlockEnabled: true # enable twistlock scan task
@@ -116,7 +119,7 @@ parameters:
   type: object
   default:
     vmImage: 'Ubuntu-16.04'
-- name: dotNetProject # Required param to restore and publish a dotNet project
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -162,7 +165,7 @@ stages:
     steps:
       - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from pipeline.yaml
         parameters:
-          dotNetProject: '${{ parameters.dotNetProject }}'
+          dotNetProjects: '${{ parameters.dotNetProjects }}'
           containerRegistry: '${{ parameters.containerRegistry }}'
           containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
           dockerFile: '${{ parameters.dockerFile }}'
@@ -190,7 +193,7 @@ resources:
 steps:
 - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from pipeline.yaml
   parameters:
-    dotNetProject: '**.csproj'
+    dotNetProjects: '**.csproj'
     containerRegistry: 'ACR'
     containerRepository: 'imageName'
     dockerFile: '**.dockerfile'

@@ -2,6 +2,7 @@
 
 - [dotNet Test Steps Template](#dotnet-test-steps-template)
   - [Steps Template Usage](#steps-template-usage)
+  - [Steps Template Schema](#steps-template-schema)
   - [Adding Steps into Pipeline Template](#adding-steps-into-pipeline-template)
   - [Direct Steps Template Usage](#direct-steps-template-usage)
 
@@ -10,6 +11,43 @@
 - The dotNetTests param within the dotNetTests steps template is a YAML object param that allows you to list multiple dotNet tests projects and arguments
   - A dotNet test task is inserted for each item in the dotNetTests list
 - In the [Pipeline](../../pipeline.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
+
+## Steps Template Schema
+
+```yml
+steps:
+# - template: for code analysis steps
+  - template: steps/code/dotNetTests.yaml
+  # parameters: within dotNetTests.yaml template
+    parameters:
+    # preSteps: Optional: inserts stepList after checkout and download
+      preSteps: 
+        - script: echo add stepList of tasks into steps
+    # dotNetTests: Required: list of dotNet test tasks that are inserted serially into steps
+      dotNetTests:
+      # - projects: at least one projects item required at minimum
+        - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Required: The path to the csproj file(s) to use. You can use wildcards and file matching pattern
+          arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\' # Optional: dotNet Test arguments
+          displayName: 'dotNet Unit Tests' # Optional: Pipeline task display name
+      # - projects: item for each dotNet test task to be inserted
+        - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search test projects
+          arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'  # Optional: dotNet Test arguments
+          displayName: 'dotNet CLI Tests' # Optional: Pipeline task display name
+          testRunTitle: 'CLI Test' # Optional: Provides a name for the test run
+          publishTestResults: true # Optional: default is false. Enabling this option will generate a test results TRX file in $(Agent.TempDirectory) and results will be published
+
+      dotNetProjects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. Useful when there's many tests in a solution or publish artifacts of dotNet after tests
+      dotNetVersion: '3.1.x' # Optional: if param has value, use dotNet version task inserted
+      dotNetFeed: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
+      dotNetArguments: '' # Optional: Additional arguments for dotNetProjects if dotNetCommand is build or publish. Excluding '--no-restore' and '--output' as they are predefined
+      dotNetCommand: restore # restore (default) | build | publish
+      publish: '' # Default: $(Common.TestResultsDirectory) | publish: '' will disable the publish task
+      publishArtifact: 'artifactName' # Default: $(Build.DefinitionName)_$(System.JobName)
+    # postSteps: Optional: inserts stepList before publish and clean
+      postSteps: 
+        - script: echo add stepList of tasks into steps
+
+```
 
 ## Adding Steps into Pipeline Template
 
@@ -146,11 +184,11 @@ stages:
         # preSteps: 
           # - task: add preSteps into job
           dotNetTests:
-          - displayName: 'dotNet Unit Tests'
-            projects: '${{ parametes.unitTests }}' # Pattern search for unit test projects
+          - projects: '${{ parametes.unitTests }}' # Pattern search for unit test projects
+            displayName: 'dotNet Unit Tests'
             arguments: '${{ parametes.testArgs }}'
-          - displayName: 'dotNet CLI Tests'
-            projects: '${{ parametes.cliTests }}' # Pattern search for cli test projects
+          - projects: '${{ parametes.cliTests }}' # Pattern search for cli test projects
+            displayName: 'dotNet CLI Tests'
             arguments: '${{ parametes.testArgs }}'
         # postSteps:
           # - task: add postSteps into job

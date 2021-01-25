@@ -32,8 +32,8 @@ parameters:
   type: string
   default: default
 - name: kubeManifests # Deployment manifest for canary deploy, promote, and reject jobs
-  type: string
-  default: '$(Pipeline.Workspace)/deployment.yaml'
+  type: object
+  default: '$(Pipeline.Workspace)/**deployment.yaml'
 
 # parameter defaults in the above section can be set on manual run of a pipeline to override
 
@@ -136,8 +136,6 @@ extends:
                   kubeManifests: ${{ parameters.kubeManifests }}
                 # postSteps:
                   # - task: add postSteps into job
-
-    # - deployment: insert additional deployment jobs into the devDeploy stage
 
   # test: jobList inserted into test stage in stages param
 

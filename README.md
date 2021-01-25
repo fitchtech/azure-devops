@@ -61,7 +61,8 @@ extends:
 
 | Documentation                                                                    | Description                                                                    |
 | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Static Code Analysis](steps/code/analysis.md)                                   | Run SonarQube for dotNet and run dotNet test for unit and cli tests            |
+| [dotNet Test Static Code Analysis](./code/dotNetTests.md)                        | Run SonarQube for dotNet and run dotNet test for unit and cli tests            |
+| [SonarQube Static Code Analysis](./code/sonarQube.md)                            | Run SonarQube for dotNet projects or solutions                                 |
 | [Build Container Image](steps/build/containerImage.md)                           | Build and push a docker image using an optional dotNet solution and dockerfile |
 | [Render Helm Charts and Publish Manifests Artifact](steps/build/helmTemplate.md) | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes   |
 | [Build dotNet Project and Publish Artifact](steps/build/dotNetCore.md)           | Build and publish a dotNet project without any tests                           |
@@ -74,7 +75,8 @@ extends:
 
 ## Design Principals and Patterns
 
-- Pipeline templates no longer than ~300 lines
+- Templates encapsulating steps: are no longer than ~500 lines
+- Templates encapsulating stages: are no longer than ~1000 lines
 - Expressions no longer than ~100 char
 - Parameters naming uses camelCase
 - Parameter naming consistent across templates
