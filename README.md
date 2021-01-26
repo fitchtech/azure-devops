@@ -4,7 +4,12 @@
   - [Getting Started](#getting-started)
     - [Repository Resource](#repository-resource)
     - [Repository Tagging](#repository-tagging)
-    - [Template Documentation](#template-documentation)
+  - [Template Documentation](#template-documentation)
+    - [Multistage Template](#multistage-template)
+    - [Code Stage](#code-stage)
+    - [Build Stage](#build-stage)
+    - [Deploy Stage](#deploy-stage)
+    - [Test Stage](#test-stage)
     - [Template Types](#template-types)
   - [Design Principals and Patterns](#design-principals-and-patterns)
     - [Development Motivations](#development-motivations)
@@ -73,22 +78,42 @@ extends:
 - Major version: breaking change to prior major version. When existing pipelines cannot update to the new version without implimenting a change in their pipeline.
 - Minor version: no breaking changes to the major version. Incrimental updates including bug fixes and new features. Changes are additive and do not remove functionality.
 
-### Template Documentation
+## Template Documentation
 
-| Documentation                                                                                    | Type        | Stages                         | Description                                                                                                           |
-| ------------------------------------------------------------------------------------------------ | ----------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| [Multi Stages Template for Nesting Steps Templates](./docs/stages.md)                            | stages/jobs | multistage                     | Multistage pipeline template. Expression driven stage creation for inserting steps templates into the jobs of a stage |
-| [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md)                             | steps       | [code](docs/steps/code.md)     | Run SonarQube for dotNet and run dotNet test for unit and cli tests                                                   |
-| [SonarQube Static Code Analysis](./docs/steps/code/sonarQube.md)                                 | steps       | [code](docs/steps/code.md)     | Run SonarQube for dotNet projects or solutions                                                                        |
-| [Build and Push Container Image](./docs/steps/build/containerImage.md)                           | steps       | [build](docs/steps/build.md)   | Build and push a docker image using an optional dotNet solution and dockerfile                                        |
-| [Build and Publish Manifests Artifact from Helm Charts](./docs/steps/build/helmTemplate.md)      | steps       | [build](docs/steps/build.md)   | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes                                          |
-| [Build, Publish, or Pack dotNet Projects and Publish Artifact](./docs/steps/build/dotNetCore.md) | steps       | [build](docs/steps/build.md)   | Build and publish a dotNet project without any tests                                                                  |
-| Pack and Push Nuget Artifacts                                                                    | steps       | [build](docs/steps/build.md)   | Build and pack a dotNet project to publish Nuget packages to an artifact feed                                         |
-| [Deploy ARM Templates](./docs/steps/deploy/armTemplate.md)                                       | steps       | [deploy](docs/steps/deploy.md) | Deploy an ARM template(s)                                                                                             |
-| [Deploy Helm Charts](./docs/steps/deploy/helmChart.md)                                           | steps       | [deploy](docs/steps/deploy.md) | Use Helm charts to deploy components to Kubernetes                                                                    |
-| [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md)                   | steps       | [deploy](docs/steps/deploy.md) | Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes                                          |
-| [Deploy Kubernetes Manifests](./docs/steps/deploy/kubeManifest.md)                               | steps       | [deploy](docs/steps/deploy.md) | Deploy Kubernetes manifests and secrets                                                                               |
-| [Visual Studio Tests](./docs/steps/test/visualStudioTest.md)                                     | steps       | test                           | Run VS Test suites in a dotNet project                                                                                |
+### Multistage Template
+
+[Stages Template for Nesting Steps Templates](./docs/stages.md) into jobs of a stage. Provides expression driven stage creation for inserting steps templates into the jobs of a stage in stages. A stage in stages is only inserted when the stage has jobs and values for the minimum required parameters.
+
+### Code Stage
+
+Steps templates to insert into jobs of code stage in the [stages](./docs/stages.md)
+
+- [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md): Run SonarQube for dotNet and run dotNet test for unit and cli tests
+- [SonarQube Static Code Analysis](./docs/steps/code/sonarQube.md): Run SonarQube for dotNet projects or solutions
+
+### Build Stage
+
+Steps templates to insert into jobs of build stage in the [stages](./docs/stages.md)
+
+- [Build and Push Container Image](./docs/steps/build/containerImage.md): Build and push a docker image using an optional dotNet solution and dockerfile
+- [Build and Publish Manifests Artifact from Helm Charts](./docs/steps/build/helmTemplate.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
+- [Build, Publish, or Pack dotNet Projects and Publish Artifact](./docs/steps/build/dotNetCore.md): Build and publish a dotNet project without any tests
+- [Pack and Push Nuget Artifacts](./docs/steps/build/nugetPackage): Build and pack a dotNet project to publish Nuget packages to an artifact feed
+
+### Deploy Stage
+
+Steps templates to insert into jobs of deploy stage in the [stages](./docs/stages.md)
+
+- [Deploy ARM Templates](./docs/steps/deploy/armTemplate.md): Deploy an ARM template(s)
+- [Deploy Helm Charts](./docs/steps/deploy/helmChart.md): Use Helm charts to deploy components to Kubernetes
+- [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
+- [Deploy Kubernetes Manifests](./docs/steps/deploy/kubeManifest.md): Deploy Kubernetes manifests and secrets
+
+### Test Stage
+
+Steps templates to insert into jobs of test stage in the [stages](./docs/stages.md)
+
+- [Visual Studio Tests](./docs/steps/test/visualStudioTest.md): Run VS Test suites in a dotNet project
 
 ### Template Types
 
