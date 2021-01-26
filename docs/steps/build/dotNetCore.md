@@ -38,7 +38,7 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: dotNetProjects # pattern to match of projects to build 
+- name: dotNetProjects # pattern to match of projects to build, publish, or pack
   type: string
   default: '**.csproj'
 
