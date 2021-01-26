@@ -2,7 +2,7 @@
 # Includes dotNet tests, dotNet build/publish jobs, Docker build/push jobs, ARM template deployment, and Kubernetes deployment with multiple strategies 
 
 parameters:
-# parameters passed into pipeline.yaml template and nested steps templates for jobs and deployments 
+# parameters passed into stages.yaml template and nested steps templates for jobs and deployments 
 
 # Code: dotNet Tests Params
 - name: dotNetTests
@@ -196,7 +196,7 @@ parameters:
   default: self
 
 # Globals: Optional Params
-- name: stages # Optional to override default value of stages stageList in the pipeline.yaml template
+- name: stages # Optional to override default value of stages stageList in the stages.yaml template
   type: stageList
   default: ''
 - name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
@@ -219,14 +219,14 @@ parameters:
   default: 'registry-cred'
 
 stages:
-  - template: ../pipeline.yaml
-  # parameters: within pipeline.yaml
+  - template: ../stages.yaml
+  # parameters: within stages.yaml
     parameters:
       stagesPrefix: ${{ parameters.stagesPrefix }}
       stagesSuffix: ${{ parameters.stagesSuffix }}
       stagesCondition: ${{ parameters.stagesCondition }}
       ${{ if parameters.stages }}:
-      # If stages stageList param has value then override default stages value in pipeline.yaml template
+      # If stages stageList param has value then override default stages value in stages.yaml template
         stages: ${{ parameters.stages }}
     # code: jobList inserted into code stage in stages
       code:
