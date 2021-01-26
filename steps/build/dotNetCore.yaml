@@ -59,6 +59,12 @@ parameters:
 - name: dotNetFeed
   type: string
   default: ''
+- name: nuGetFeedType
+  type: string
+  default: internal
+  values:
+  - internal
+  - external
 - name: dotNetPublishWebProjects
   type: boolean
   default: false
@@ -77,12 +83,24 @@ parameters:
 - name: versionEnvVar # Name of environment variable to use for version number
   type: string
   default: NugetVersion
-- name: dotNetPackConfig
+- name: dotNetConfiguration
   type: string
-  default: Debug
+  default: Release
 - name: dotNetPush # enables dotNet push after dotNet pack
   type: boolean
   default: true
+- name: searchPatternPush
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+- name: packDirectory
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)'
+- name: includeNuGetOrg
+  type: boolean
+  default: true
+- name: externalEndpoints
+  type: string
+  default: ''
 
 steps:
 - template: ../preSteps.yaml
@@ -106,7 +124,7 @@ steps:
     projects: '${{ parameters.dotNetProjects }}'
     feedsToUse: 'select'
     vstsFeed: '${{ parameters.dotNetFeed }}'
-    includeNuGetOrg: true
+    includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
 - ${{ if in(parameters.dotNetCommand, 'build', 'publish') }}:
   - task: DotNetCoreCLI@2
     displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
@@ -115,7 +133,7 @@ steps:
       ${{ if parameters.dotNetFeed }}:
         vstsFeed: ${{ parameters.dotNetFeed }}
       projects: '${{ parameters.dotNetProjects }}'
-      includeNuGetOrg: true
+      includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       ${{ if eq(parameters.dotNetCommand, 'build') }}:
         arguments: --no-restore --output $(Pipeline.Workspace)/Build ${{ parameters.dotNetArguments }}'
       ${{ if eq(parameters.dotNetCommand, 'publish') }}:
@@ -125,39 +143,34 @@ steps:
   - task: DotNetCoreCLI@2
     displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
     inputs:
-      command: ${{ parameters.dotNetCommand }}
+      command: pack
       ${{ if parameters.dotNetFeed }}:
         vstsFeed: ${{ parameters.dotNetFeed }}
-      projects: '${{ parameters.dotNetProjects }}'
-      includeNuGetOrg: true
-      arguments: --no-restore --output $(Pipeline.Workspace)/Build ${{ parameters.dotNetArguments }}'
-  - ${{ if parameters.includeSymbols }}:
-    - task: PublishSymbols@2
-      displayName: 'Publish Symbols Path'
-      inputs:
-        SearchPattern: '$(Pipeline.Workspace)/*.pdb'
-        SymbolServerType: TeamServices
-  - task: DotNetCoreCLI@2
-    displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
-    inputs:
-      command: ${{ parameters.dotNetCommand }}
-      ${{ if parameters.dotNetFeed }}:
-        vstsFeed: ${{ parameters.dotNetFeed }}
-      includeNuGetOrg: true
+      includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       packagesToPack: '${{ parameters.dotNetProjects }}'
-      configuration: '${{ parameters.dotNetPackConfig }}'
-      packDirectory: '$(Pipeline.Workspace)/NuGet'
+      configuration: '${{ parameters.dotNetConfiguration }}'
+      packDirectory: '${{ parameters.packDirectory }}'
       includesymbols: '${{ parameters.includeSymbols }}'
       versioningScheme: '${{ parameters.versioningScheme }}'
       ${{ if eq(parameters.versioningScheme, 'byEnvVar') }}:
         versionEnvVar: '${{ parameters.versionEnvVar }}'
+  - ${{ if parameters.includeSymbols }}:
+    - task: PublishSymbols@2
+      displayName: 'Publish Symbols Path'
+      inputs:
+        SearchPattern: '${{ parameters.packDirectory }}/*.pdb'
+        publishSymbols: true
+        SymbolServerType: TeamServices
   - ${{ if parameters.dotNetPush }}:
     - task: DotNetCoreCLI@2
       displayName: 'dotNet Push NuGet'
       inputs:
         command: push
-        packagesToPush: '$(Pipeline.Workspace)/NuGet/*.nupkg'
-        publishVstsFeed: '${{ parameters.dotNetFeed }}'
+        searchPatternPush: '${{ parameters.searchPatternPush }}'
+        feedPublish: '${{ parameters.dotNetFeed }}'
+        nuGetFeedType: ${{ parameters.nuGetFeedType }}
+        ${{ if and(parameters.externalEndpoints, eq(parameters.nuGetFeedType, 'external')) }}:
+          externalEndpoints: ${{ parameters.externalEndpoints }}
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
