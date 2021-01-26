@@ -30,7 +30,7 @@ parameters:
   default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
 - name: publishEnabled
   type: boolean
-  default: false
+  default: true
 # Use dotNet
 - name: dotNetType
   type: string
@@ -92,7 +92,7 @@ parameters:
 - name: searchPatternPush
   type: string
   default: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-- name: packDirectory
+- name: outputDir
   type: string
   default: '$(Build.ArtifactStagingDirectory)'
 - name: includeNuGetOrg
@@ -134,10 +134,8 @@ steps:
         vstsFeed: ${{ parameters.dotNetFeed }}
       projects: '${{ parameters.dotNetProjects }}'
       includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
-      ${{ if eq(parameters.dotNetCommand, 'build') }}:
-        arguments: --no-restore --output $(Pipeline.Workspace)/Build ${{ parameters.dotNetArguments }}'
-      ${{ if eq(parameters.dotNetCommand, 'publish') }}:
-        arguments: '--no-restore --output $(Pipeline.Workspace)/Publish ${{ parameters.dotNetArguments }}'
+      arguments: --no-restore --output ${{ parameters.outputDir }} ${{ parameters.dotNetArguments }}'
+      ${{ if and(eq(parameters.dotNetCommand, 'publish'), parameters.dotNetPublishWebProjects) }}:
         publishWebProjects: '${{ parameters.dotNetPublishWebProjects }}'
 - ${{ if eq(parameters.dotNetCommand, 'pack') }}:
   - task: DotNetCoreCLI@2
@@ -149,7 +147,7 @@ steps:
       includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       packagesToPack: '${{ parameters.dotNetProjects }}'
       configuration: '${{ parameters.dotNetConfiguration }}'
-      packDirectory: '${{ parameters.packDirectory }}'
+      outputDir: '${{ parameters.outputDir }}'
       includesymbols: '${{ parameters.includeSymbols }}'
       versioningScheme: '${{ parameters.versioningScheme }}'
       ${{ if eq(parameters.versioningScheme, 'byEnvVar') }}:
@@ -158,7 +156,7 @@ steps:
     - task: PublishSymbols@2
       displayName: 'Publish Symbols Path'
       inputs:
-        SearchPattern: '${{ parameters.packDirectory }}/*.pdb'
+        SearchPattern: '${{ parameters.outputDir }}/*.pdb'
         publishSymbols: true
         SymbolServerType: TeamServices
   - ${{ if parameters.dotNetPush }}:
@@ -176,8 +174,5 @@ steps:
     postSteps: ${{ parameters.postSteps }}
     ${{ if and(parameters.publishEnabled, in(parameters.dotNetCommand, 'build', 'publish')) }}:
       artifact: '${{ parameters.publishArtifact }}'
-      ${{ if eq(parameters.dotNetCommand, 'build') }}:
-        publish: '$(Pipeline.Workspace)/Build'
-      ${{ if eq(parameters.dotNetCommand, 'publish') }}:
-        publish: '$(Pipeline.Workspace)/Publish'
+      publish: '${{ parameters.outputDir }}'
     clean: ${{ parameters.clean }}
