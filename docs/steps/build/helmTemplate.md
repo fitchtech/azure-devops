@@ -11,7 +11,7 @@
 
 ## Insert Steps Template into Stages Template
 
-The following example shows how to insert the helmTemplate) steps template into the [stages](../../stages.md) template with the minimum required params.
+The following example shows how to insert the helmTemplate steps template into the [stages](../../stages.md) template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
