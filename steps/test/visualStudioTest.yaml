@@ -23,11 +23,11 @@ parameters:
   default: false
 - name: replaceTokensRoot
   type: string
-  default: '**/appsettings'
+  default: '$(Pipeline.Workspace)'
 - name: replaceTokensTargets
   type: object
   default: |
-    appsettings.*.json
+    **appsettings.*.json
 # Use dotNet Type and Version
 - name: dotNetType
   type: string
@@ -42,7 +42,7 @@ parameters:
 - name: dotNetProjects # dotNetProjects required to dotNet build a project
   type: string
   default: ''
-- name: dotNetBuildArguments
+- name: dotNetArguments
   type: string
   default: ''
 - name: dotNetFeed
@@ -55,9 +55,6 @@ parameters:
 - name: keyVaultSubscription
   type: string
   default: ''
-- name: keyVaultEnabled
-  type: boolean
-  default: false
 - name: keyVaultSecretFilter
   type: string
   default: '*'
@@ -111,9 +108,9 @@ parameters:
   type: string
   default: always
   values:
-  - 'always'
-  - 'onAbortOnly'
-  - 'never'
+  - always
+  - onAbortOnly
+  - never
 - name: rerunFailedTests
   type: boolean
   default: true
@@ -138,9 +135,13 @@ parameters:
 - name: distributionBatchType
   type: string
   default: basedOnTestCases
-- name: batchingBasedOnAgentsOption
-  type: string
-  default: autoBatchSize
+  values:
+  - basedOnTestCases
+  - basedOnExecutionTime
+  - basedOnAssembly
+- name: customBatchSizeValue # Set to value greater than 0 to enable custom batch sizing
+  type: number
+  default: 0
 # postSteps
 - name: postSteps
   type: stepList
@@ -173,8 +174,8 @@ steps:
       dotNetVersion: ${{ parameters.dotNetVersion }}
       dotNetProjects: ${{ parameters.dotNetProjects }}
       dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetBuildArguments }}
-- ${{ if parameters.keyVaultName }}:
+      dotNetArguments: ${{ parameters.dotNetArguments }}
+- ${{ if and(parameters.keyVaultName, parameters.keyVaultSubscription) }}:
   - task: AzureKeyVault@1
     displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
     inputs:
@@ -208,7 +209,11 @@ steps:
   displayName: '${{ parameters.displayName }}'
   inputs:
     distributionBatchType: '${{ parameters.distributionBatchType }}'
-    batchingBasedOnAgentsOption: '${{ parameters.batchingBasedOnAgentsOption }}'
+    ${{ if and(eq(parameters.distributionBatchType, 'BasedOnTestCases '), gt(parameters.customBatchSizeValue, 0)) }}:
+      batchingBasedOnAgentsOption: customBatchSize
+      customBatchSizeValue: ${{ parameters.customBatchSizeValue }}
+    ${{ if eq(parameters.customBatchSizeValue, 0) }}:
+      batchingBasedOnAgentsOption: autoBatchSize
     testSelector: '${{ parameters.testSelector }}'
     ${{ if eq(parameters.testSelector, 'testPlan') }}:
       testPlan: '${{ parameters.testPlan }}'
