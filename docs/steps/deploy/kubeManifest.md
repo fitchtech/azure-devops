@@ -15,13 +15,13 @@
 
 ## Insert Steps Template into Stages Template
 
-The following example shows how to insert the kubeManifest steps template into the [pipeline](../../pipeline.md) template with the minimum required params.
+The following example shows how to insert the kubeManifest steps template into the [stages](../../stages.md) template with the minimum required params.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
-# params to pass into pipeline.yaml template:
+# params to pass into stages.yaml template:
 
 - name: deployPool # Nested into pool param of deploy jobs
   type: object
@@ -60,8 +60,8 @@ trigger:
 
 extends:
 # template: file path at repo resource id to extend from
-  template: pipeline.yaml@templates
-# parameters: within pipeline.yaml@templates
+  template: stages.yaml@templates
+# parameters: within stages.yaml@templates
   parameters:
   # code: jobList inserted into code stage in stages
   # build: jobList inserted into build stage in stages
