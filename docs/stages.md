@@ -23,7 +23,7 @@
 
 ## Templates Repository Resource
 
-To use the [stages](../stages.yaml) template in this repository the pipeline YAML file in your repository must include a resource named templates referencing the this AzurePipelines repository. This allows you to reference paths in the repository resource by using the resource identifier.
+To use the [stages](../stages.yaml) template in this repository the pipeline YAML file in your repository must include a resource named templates referencing this AzurePipelines repository. This allows you to reference paths in the repository resource by using the resource identifier.
 
 ```yaml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -51,8 +51,8 @@ extends:
     code: [] # jobList inserted into code stage in stages param
     build: [] # jobList inserted into build stage in stages param
     deploy: [] # deploymentList inserted into deploy stage in stages param
-    promote: [] # deploymentList inserted into promote stage in stages param
     test: [] # jobList inserted into test stage in stages param
+    promote: [] # deploymentList inserted into promote stage in stages param
     reject: [] # deploymentList inserted into reject stage in stages param
   # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name 
   # stages: [] # Optional to override default of stages stageList. 

@@ -10,6 +10,9 @@
     - [Build Stage](#build-stage)
     - [Deploy Stage](#deploy-stage)
     - [Test Stage](#test-stage)
+    - [Promote or Reject Deployments](#promote-or-reject-deployments)
+      - [Kubernetes Canary Strategy](#kubernetes-canary-strategy)
+      - [Blue Green Strategy](#blue-green-strategy)
     - [Template Types](#template-types)
   - [Design Principals and Patterns](#design-principals-and-patterns)
     - [Development Motivations](#development-motivations)
@@ -63,8 +66,8 @@ extends:
     code: [] # jobList inserted into code stage in stages param
     build: [] # jobList inserted into build stage in stages param
     deploy: [] # deploymentList inserted into deploy stage in stages param
-    promote: [] # deploymentList inserted into promote stage in stages param
     test: [] # jobList inserted into test stage in stages param
+    promote: [] # deploymentList inserted into promote stage in stages param
     reject: [] # deploymentList inserted into reject stage in stages param
     # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name
     # stages: [] # Optional to override default of stages stageList.
@@ -114,6 +117,28 @@ Steps templates to insert into jobs of deploy stage in the [stages](./docs/stage
 Steps templates to insert into jobs of test stage in the [stages](./docs/stages.md)
 
 - [Visual Studio Tests](./docs/steps/test/visualStudioTest.md): Run VS Test suites in a dotNet project
+
+### Promote or Reject Deployments
+
+The promote and reject stages are for deployment jobs to promote or reject deployments from the deploy stage. For example, when using a canary deployment strategy for Kubernetes manifests it conditionally promotes on the success of test jobs and ready state of the canary pods. If any test job fails the reject stage runs to automatically delete a deployment that is not functionig.
+
+Additionally these stages could be used with Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage deploy the green stack. Test the green field stack, if they succeed, then in the promote stage swap the environments. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
+
+#### Kubernetes Canary Strategy
+
+- Deploy: Kubernetes deployment manifest canary pods
+  - Deployment lifecycle hooks stepLists
+- Test: stage for functional tests of canaries. e.g. Visual Studio Tests
+- Promote: Kubernetes canary deployment to baseline if test stage succeeded
+- Reject: delete Kubernetes canary pods automatically if tests failed or pods not ready
+
+#### Blue Green Strategy
+
+- Deploy: Green IaC stack
+  - Deployment lifecycle hooks stepLists with runOnce, rolling, or matrix strategies
+- Test: stage for functional tests of green stack
+- Promote: Swap endpoints of stacks from green to blue or promote green to blue
+- Reject: delete green stack if tests failed
 
 ### Template Types
 
