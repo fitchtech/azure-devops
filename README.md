@@ -5,7 +5,8 @@
     - [Repository Resource](#repository-resource)
     - [Repository Tagging](#repository-tagging)
   - [Template Documentation](#template-documentation)
-    - [Multistage Template](#multistage-template)
+    - [Template Types](#template-types)
+    - [Stages Template](#stages-template)
     - [Code Stage](#code-stage)
     - [Build Stage](#build-stage)
     - [Deploy Stage](#deploy-stage)
@@ -13,19 +14,17 @@
     - [Promote or Reject Deployments](#promote-or-reject-deployments)
       - [Kubernetes Canary Strategy](#kubernetes-canary-strategy)
       - [Blue Green Strategy](#blue-green-strategy)
-    - [Template Types](#template-types)
   - [Design Principals and Patterns](#design-principals-and-patterns)
     - [Development Motivations](#development-motivations)
     - [Strategic Design](#strategic-design)
     - [Validation Methods](#validation-methods)
+    - [Idempotent Pipelines](#idempotent-pipelines)
+    - [Immutable Pipelines](#immutable-pipelines)
+    - [Build Number Format](#build-number-format)
   - [Azure Pipeline Concepts](#azure-pipeline-concepts)
     - [Build Verification Pipeline](#build-verification-pipeline)
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
-  - [Idempotent and Immutable](#idempotent-and-immutable)
-    - [Idempotent Pipelines](#idempotent-pipelines)
-    - [Immutable Pipelines](#immutable-pipelines)
-    - [Build Number Format](#build-number-format)
   - [Microsoft Docs](#microsoft-docs)
 
 ## Getting Started
@@ -83,7 +82,14 @@ extends:
 
 ## Template Documentation
 
-### Multistage Template
+### Template Types
+
+- stages template: inserts stages from stageLists for multi stage pipelines with parameterized inputs
+- jobs template: inserts jobs from jobLists into a stage of stages with parameterized inputs
+- steps template: inserts tasks into steps with parameterized inputs and optionally additional stepLists
+- pipeline template: nests stages, jobs, and steps templates into a single template to extend from with flexible parameters
+
+### Stages Template
 
 [Stages Template for Nesting Steps Templates](./docs/stages.md) into jobs of a stage. Provides expression driven stage creation for inserting steps templates into the jobs of a stage in stages. A stage in stages is only inserted when the stage has jobs and values for the minimum required parameters.
 
@@ -140,13 +146,6 @@ Additionally these stages could be used with Infrastructure as Code (IaC) for bl
 - Promote: Swap endpoints of stacks from green to blue or promote green to blue
 - Reject: delete green stack if tests failed
 
-### Template Types
-
-- stages template: inserts stages from stageLists for multi stage pipelines with parameterized inputs
-- jobs template: inserts jobs from jobLists into a stage of stages with parameterized inputs
-- steps template: inserts tasks into steps with parameterized inputs and optionally additional stepLists
-- pipeline template: nests stages, jobs, and steps templates into a single template to extend from with flexible parameters
-
 ## Design Principals and Patterns
 
 - Templates encapsulating stepLists, jobLists, and stageLists: no longer than ~500 lines
@@ -180,6 +179,26 @@ One limitation of Azure Pipelines YAML in general is that the only way to valida
 
 There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the development and itteration of these templates there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
 
+### Idempotent Pipelines
+
+When implementing idempotent pipeline patterns, subsequent runs are not additive if there are not changes to the code. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CI/CD Pipelines.
+
+### Immutable Pipelines
+
+When implementing immutable pipeline patterns, when an existing deployment image and pod spec is unchanged the current deployment is immutable. The current pod state does not mutate (i.e. terminate and deploy new pod or deploy canary).
+
+### Build Number Format
+
+The build number format is key to creating idempotent and immutable pipelines. The following format is recommended. By using this format the container image tag would not change if the code has not changed. Therefore subsequent runs of the CD pipeline would be immutable. Only manifest changes would be applied if the image is unchanged.
+
+```yml
+name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
+```
+
+With immutable and idempotent pipelines running it without code changes would validate the current deployment state is unchanged from the code. When the current state of the object kind in the Kubernetes environment matches the manifest being applied it’s unchanged, verifying the current state to manifests in the commit.
+
+This could also be referred to as Configuration Management of the Kubernetes resources. If the object had been changed manually, this is configuration drift. By running an immutable CDP any configuration drift in the current state of the Kubernetes objects would be reverted by applying manifests in the current commit.
+
 ## Azure Pipeline Concepts
 
 ### Build Verification Pipeline
@@ -200,28 +219,6 @@ When creating a CDP for a given environment you can, for example, add triggers f
 
 - release/dev\*
 - release/prod\*
-
-## Idempotent and Immutable
-
-### Idempotent Pipelines
-
-When implementing idempotent pipeline patterns, subsequent runs are not additive if there are not changes to the code. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CI/CD Pipelines.
-
-### Immutable Pipelines
-
-When implementing immutable pipeline patterns, when an existing deployment image and pod spec is unchanged the current deployment is immutable. The current pod state does not mutate (i.e. terminate and deploy new pod or deploy canary).
-
-### Build Number Format
-
-The build number format is key to creating idempotent and immutable pipelines. The following format is recommended. By using this format the container image tag would not change if the code has not changed. Therefore subsequent runs of the CD pipeline would be immutable. Only manifest changes would be applied if the image is unchanged.
-
-```yml
-name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
-```
-
-With immutable and idempotent pipelines running it without code changes would validate the current deployment state is unchanged from the code. When the current state of the object kind in the Kubernetes environment matches the manifest being applied it’s unchanged, verifying the current state to manifests in the commit.
-
-This could also be referred to as Configuration Management of the Kubernetes resources. If the object had been changed manually, this is configuration drift. By running an immutable CDP any configuration drift in the current state of the Kubernetes objects would be reverted by applying manifests in the current commit.
 
 ## Microsoft Docs
 
