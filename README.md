@@ -129,7 +129,7 @@ Steps templates to insert into jobs of the test stage in [stages](./docs/stages.
 
 With several deployment strategies in the deploy stage, deployments can be promoted on success or rejected on failure. For example, when using a canary deployment strategy for Kubernetes manifests. It can conditionally promote the canary pods on success of the test jobs and ready state of the canary pods. If the test jobs have failures then deployment jobs in the reject stage automatically delete the deployments that are not functioning.
 
-Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage the green stack is deployed. Test the green field stack and if they succeed, then in the promote stage swaps the environments. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
+Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage, the green stack is deployed. Test the green field stack and if they succeed. If so then swap the environments in the promote stage. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
 
 #### Kubernetes Canary Strategy
 
@@ -162,23 +162,23 @@ Additionally, these stages could use Infrastructure as Code (IaC) for blue/green
 - Parameter naming consistent across templates
 - Limit nesting templates to two levels
 - Expressions no longer than ~100 char
-- Only use pipeline variables for replace tokens and env vars
+- Only use pipeline variables for the replace tokens task or env vars in scripts
 
 ### Development Motivations
 
-Azure Pipelines multistage YAML became generally available in April, 2020. With this change in Azure build and release pipelines, now known as classic build and release pipelines, came a major shift in the design patterns for creating Azure Pipelines with YAML. Implementing YAML pipelines can be simple for smaller projects or when you have a single repository. However, when implementing pipeline YAML across multiple projects or repositories it can become extremely difficult to manage without a well thought out design strategy.
+Azure Pipelines multistage YAML became generally available in April 2020. With this change in Azure build and release pipelines, now known as classic build and release pipelines, came a major shift in the design patterns for creating Azure Pipelines with YAML. Implementing YAML pipelines can be simple for smaller projects or when you have a single repository. However, when implementing pipeline YAML across multiple projects or repositories it can become extremely difficult to manage without a well thought out design strategy.
 
 Developing Azure Pipeline YAML can be very time consuming and costly without a good strategy. The motivation for this project and repository is to reduce the time and effort in implementing Azure Pipelines. By creating a centralized repository of pipeline templates that have been tried and tested functionality. With design patterns and anti-patterns that evolved from development of pipeline templates across multiple projects, teams, and environment through to production.
 
 ### Strategic Design
 
-It is important to use a strategy for developing that use a centralized pipeline template repository. When you have multiple repositories, projects, or teams if the pipeline YAML is created in each repository it is vary easy for configuration to vary drastically from one pipeline to another. Making it impossible to standardize the design of pipelines. Using a centralized repository for pipeline templates solves this issue. It also accelerates the pace of innovation by removing the burden of developing each pipeline and ensuring each functions correctly and consistently with limited failures.
+It is important to use a strategy for developing that use a centralized pipeline template repository. When you have multiple repositories, projects, or teams if the pipeline YAML is created in each repository it is likely configurations will vary drastically from one pipeline to another. Making it impossible to standardize the design of pipelines. Using a centralized repository for pipeline templates solves this issue. It also accelerates the pace of innovation by removing the burden of developing each pipeline and ensuring each functional with limited failures.
 
 ### Validation Methods
 
-One limitation of Azure Pipelines YAML in general is that the only way to validate the functionality of your pipeline is to run it. Linting of pipeline YAML is limited and does not cover templates and nesting. Additionally, the only way to generate the runtime YAML which compiles multiple templates and generates variables is to run it in Azure Pipelines.
+One limitation of Azure Pipelines YAML, in general, is that the only way to validate the functionality of your pipeline is to run it. Linting of pipeline YAML is limited and does not cover templates and nesting. Additionally, the only way to generate the runtime YAML which compiles multiple templates and generates variables is to run it in Azure Pipelines.
 
-There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the itterative development of these templates there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
+There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the iterative development of these templates, there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
 
 ### Idempotent Pipelines
 
@@ -204,7 +204,7 @@ This could also be referred to as Configuration Management of the Kubernetes res
 
 ### Build Verification Pipeline
 
-A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This includes the code stage for static code analysis including dotNet tests and SonarQube analysis jobs. Additionally the build stage runs jobs for dotNet publish artifact and container image artifact publish. A dotNet and container image artifact for each app.
+A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This includes the code stage for static code analysis including dotNet tests and SonarQube analysis jobs. Additionally, the build stage runs jobs for dotNet publish artifact and container image artifact publish. A dotNet and container image artifact for each app.
 
 ### Continuous Integration Pipeline
 

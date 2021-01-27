@@ -3,6 +3,7 @@
 - [Kubernetes Manifest Steps Template](#kubernetes-manifest-steps-template)
   - [Steps Template Usage](#steps-template-usage)
   - [Insert Steps Template into Stages Template](#insert-steps-template-into-stages-template)
+
 ## Steps Template Usage
 
 - Deploy Kubernetes Manifests to the Kubernetes Service Connection or ADO Environment Resource
@@ -27,7 +28,7 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: containerRegistry # Container registry and kubernetes service connection params used to create image pull secret in Kubernetes for the registry
+- name: containerRegistry # Container registry and Kubernetes service connection params used to create image pull secret in Kubernetes for the registry
   type: string
   default: '' # ADO Service Connection name
 - name: kubeServiceConnection # Kubernetes Service Connection Name

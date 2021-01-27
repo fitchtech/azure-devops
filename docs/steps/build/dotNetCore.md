@@ -105,7 +105,7 @@ steps:
 # template: insert dotNetCore build and publish pipeline artifact steps into job
 - template: steps/build/dotNetCore.yaml
   parameters:
-  # When nesting multiple steps templates into a single job add clean, checkout and download params set to false.
+  # When nesting multiple steps templates into a single job add clean, checkout, and download params set to false.
   # checkout: self # preSteps checkout step enabled by default to checkout the source repo
     download: false # disables preSteps download steps
     preSteps: 
@@ -123,7 +123,7 @@ steps:
 # template: insert dotNetCore pack and push Nuget artifact steps into job
 - template: steps/build/dotNetCore.yaml
   parameters:
-  # When nesting multiple steps templates into a single job add clean, checkout and download params set to false.
+  # When nesting multiple steps templates into a single job add clean, checkout, and download params set to false.
     checkout: false # disables preSteps checkout steps
     download: false # disables preSteps download steps
     preSteps: 

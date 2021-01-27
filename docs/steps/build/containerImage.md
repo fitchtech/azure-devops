@@ -14,7 +14,7 @@
 
 The following example shows how to insert the containerImage steps template into the [stages](../../stages.md) template with the minimum required params. This shows one containerImage job added to the build stage jobLists. Additional, you can add as many build jobs as needed. This example has no deployments. However, it is recommended that you could create a single multistage pipeline that includes code, build, deploy, test, and promote stages in a single pipeline.
 
-Alternatively you could create a separate deployment pipeline that triggers from the completion of a build pipeline. This pattern could be used to create a build pipeline decoupled from deployments. To do this would require a pipeline resource trigger be added to the resources in your deployment pipeline. The resource in your deployment pipeline would be the build pipeline as a source. When the build pipeline completes if the source pipeline triggers match then the deployment pipeline would run.
+Alternatively, you could create a separate deployment pipeline that triggers from the completion of a build pipeline. This pattern could be used to create a build pipeline decoupled from deployments. To do this would require a pipeline resource trigger be added to the resources in your deployment pipeline. The resource in your deployment pipeline would be the build pipeline as a source. When the build pipeline completes if the source pipeline triggers match then the deployment pipeline would run.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)

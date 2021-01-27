@@ -7,7 +7,7 @@
 ## Steps Template Usage
 
 - The helmChart steps template uses the 'helm install/upgrade' command to deploy helm charts directly to a Kubernetes cluster
-- Alternatively the [helmManifest](helmManifest.md) steps template uses the 'helm template' command to render Helm charts into manifests which are deployed to Kubernetes
+- Alternatively, the [helmManifest](helmManifest.md) steps template uses the 'helm template' command to render Helm charts into manifests which are deployed to Kubernetes
 
 ## Insert Steps Template into Stages Template
 

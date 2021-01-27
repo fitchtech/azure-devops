@@ -24,7 +24,7 @@ steps:
         - script: echo add stepList of tasks into steps
       replaceTokens: true # Enable replace tokens task for variable replacement
       replaceTokensTargets: '**appsettings.*.json' # Target file match pattern for replace tokens task
-      keyVaultName: keyVaultName # Get secrets from an Azure KeyVault. Usefuly for replace tokens task when you need to inject secrets into settings
+      keyVaultName: keyVaultName # Get secrets from an Azure KeyVault. Useful with replace tokens task when you need to inject secrets into settings
       keyVaultSubscription: 'subscriptionServiceConnection' # Azure service connection to subscription of Azure KeyVault
       testSelector: testPlan # testPlan (default) | testAssemblies | testRun
       testPlan: 123456 # Required if testSelector is testPlan. The ID number of the testPlan
