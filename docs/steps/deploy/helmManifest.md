@@ -40,7 +40,7 @@ parameters:
 
 resources:
   repositories:
-    - repository: templates # Resource identitifier for template usage
+    - repository: templates # Resource identifier for template usage
       type: github
       name: fitchtech/AzurePipelines # This repository
       ref: refs/tags/v1 # The tagged release of the repository
