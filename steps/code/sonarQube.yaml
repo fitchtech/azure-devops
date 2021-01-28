@@ -97,7 +97,7 @@ steps:
       projectVersion: '${{ parameters.sonarQubeProjectVersion }}'
       extraProperties: '${{ parameters.sonarQubeExtraProperties }}'
 - ${{ if parameters.dotNetProjects }}:
-  - template: dotNetCore.yaml
+  - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
