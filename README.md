@@ -25,6 +25,7 @@
     - [Build Verification Pipeline](#build-verification-pipeline)
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
+    - [Multistage Pipelines](#multistage-pipelines)
   - [Microsoft Docs](#microsoft-docs)
 
 ## Getting Started
@@ -204,7 +205,7 @@ This could also be referred to as Configuration Management of the Kubernetes res
 
 ### Build Verification Pipeline
 
-A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This includes the code stage for static code analysis including dotNet tests and SonarQube analysis jobs. Additionally, the build stage runs jobs for dotNet publish artifact and container image artifact publish. A dotNet and container image artifact for each app.
+A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This includes the code stage for static code analysis including dotNet tests and SonarQube analysis jobs. Additionally, the build stage runs jobs for dotNet publish an artifact and container image artifact publish. A dotNet and container image artifact for each app.
 
 ### Continuous Integration Pipeline
 
@@ -220,6 +221,14 @@ When creating a CDP for a given environment you can, for example, add triggers f
 
 - release/dev\*
 - release/prod\*
+
+### Multistage Pipelines
+
+Multistage pipeline templates can include stages for BVP, CIP, and CDP, into one template. When extending from that template it should insert the stages and jobs required conditionally if the parameters needed have values. Based on the requirements of your project you could create one CICD Pipeline that includes stages for build verification, integration, and deployment. Or you could create multiple pipelines decoupling build and deploy using pipeline completion triggers as discussed previously.
+
+Typically, when deploying to one environment there would be one CICD pipeline. Whereas if you have multiple environments, it's best to create one pipeline for build and another for deployment to each environment. If you're using a deployment strategy such as canary or blue/green then this would be a single pipeline. Even though blue/green deployments are to multiple environments this is deployed with the lifecycle hooks in a single CDP.
+
+When you have multiple environments for different projects, teams, or phases within a project then decouple your CI and CD pipelines. For example, a project where you deploy to a development environment, then integration testing environment, then finally to the production environment. With multiple CD pipelines, you could trigger them on completion of the CIP serially or in parallel depending on your needs.
 
 ## Microsoft Docs
 
