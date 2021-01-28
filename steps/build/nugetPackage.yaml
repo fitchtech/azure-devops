@@ -110,7 +110,7 @@ steps:
     artifact: ${{ parameters.downloadArtifact }}
     preSteps: ${{ parameters.preSteps }}
 - ${{ if parameters.dotNetProjects }}:
-  - template: ../dotNetCore.yaml
+  - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
@@ -125,7 +125,7 @@ steps:
       outputDir: ${{ parameters.outputDir }}
       publishEnabled: false
 - ${{ if parameters.dotNetPackages }}:
-  - template: ../dotNetCore.yaml
+  - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
