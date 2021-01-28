@@ -15,54 +15,90 @@ parameters:
 - name: download
   type: string
   default: current
-- name: artifactName # projectFile or artifactName param required
+- name: downloadArtifact
   type: string
   default: ''
 # postSteps
 - name: postSteps
   type: stepList
   default: []
+- name: publishArtifact
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+- name: publishEnabled # Publish a pipeline artifact of build and pack outputDir
+  type: boolean
+  default: true
 # dotNet type and version
 - name: dotNetType
   type: string
-  default: 'sdk'
+  default: sdk
   values:
-  - 'sdk'
-  - 'runtime'
+  - sdk
+  - runtime
 - name: dotNetVersion
   type: string
   default: '3.1.x'
 # dotNet Restore and Build
-- name: projectFile # projectFile or artifactName param required
+- name: dotNetProjects # Optional file match pattern to build or publish projects
+  type: string
+  default: ''
+- name: dotNetCommand
+  type: string
+  default: build
+  values:
+  - build
+  - publish
+- name: dotNetArguments 
   type: string
   default: ''
 - name: dotNetFeed # Default ADO VSTS artifact feed for restore and push
   type: string
   default: ''
-- name: dotNetBuildArguments 
+- name: nuGetFeedType
+  type: string
+  default: internal
+  values:
+  - internal
+  - external
+- name: externalEndpoints
   type: string
   default: ''
+- name: includeNuGetOrg
+  type: boolean
+  default: true
 # dotNet Pack
+- name: dotNetPackages # Required to enable pack. Pattern to search for csproj or nuspec files. Separate multiple patterns with semicolon. Exclude patterns with a ! prefix e.g. **/*.csproj;!**/*.Tests.csproj
+  type: string
+  default: ''
+- name: dotNetFeedPublish # dotNet push feed to publish of dotNet pack output NuGet package
+  type: string
+  default: ''
+- name: dotNetConfiguration
+  type: string
+  default: Release
+- name: dotNetPush # enables dotNet push after dotNet pack
+  type: boolean
+  default: true
 - name: includeSymbols # Publish Symbols
   type: boolean
   default: true
 - name: versioningScheme # byEnvVar is default, set value or EnvVar
   type: string
-  default: 'byEnvVar'
+  default: byEnvVar
   values:
-  - 'off'
-  - 'byPrereleaseNumber'
-  - 'byEnvVar'
-  - 'byBuildNumber'
+  - off
+  - byPrereleaseNumber
+  - byEnvVar
+  - byBuildNumber
 - name: versionEnvVar # Name of environment variable to use for version number
   type: string
-  default: 'NugetVersion'
-- name: dotNetPackConfig
+  default: NugetVersion
+- name: searchPatternPush
   type: string
-  default: 'Debug'
-- name: dotNetPush # enables dotNet push after dotNet pack
-  type: boolean
-  default: true
+  default: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+- name: outputDir
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)'
 
 steps:
 - template: ../preSteps.yaml
@@ -71,21 +107,24 @@ steps:
     checkout: ${{ parameters.checkout }}
     submodules: ${{ parameters.submodules }}
     download: ${{ parameters.download }}
-    artifact: ${{ parameters.artifactName }}
+    artifact: ${{ parameters.downloadArtifact }}
     preSteps: ${{ parameters.preSteps }}
-- ${{ if and(not(parameters.artifactName), parameters.projectFile) }}:
+- ${{ if parameters.dotNetProjects }}:
   - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: build
+      dotNetCommand: ${{ parameters.dotNetCommand }}
       dotNetType: ${{ parameters.dotNetType }}
       dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.projectFile }}
+      dotNetProjects: ${{ parameters.dotNetProjects }}
+      dotNetArguments: ${{ parameters.dotNetArguments}}
       dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetBuildArguments}}
-- ${{ if or(parameters.projectFile, parameters.artifactName) }}:
+      nuGetFeedType: ${{ parameters.nuGetFeedType }}
+      outputDir: ${{ parameters.outputDir }}
+      publishEnabled: false
+- ${{ if parameters.dotNetPackages }}:
   - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
@@ -93,14 +132,22 @@ steps:
       download: false
       dotNetCommand: pack
       dotNetPush: ${{ parameters.dotNetPush}}
-      dotNetPackConfig: ${{ parameters.dotNetPackConfig}}
+      dotNetConfiguration: ${{ parameters.dotNetConfiguration}}
+      dotNetProjects: ${{ parameters.dotNetPackages }}
       dotNetFeed: ${{ parameters.dotNetFeed }}
+      dotNetFeedPublish: ${{ parameters.dotNetFeedPublish }}
+      nuGetFeedType: ${{ parameters.nuGetFeedType }}
+      ${{ if and(parameters.externalEndpoints, eq(parameters.nuGetFeedType, 'external')) }}:
+        externalEndpoints: ${{ parameters.externalEndpoints }}
+      outputDir: ${{ parameters.outputDir }}
       includeSymbols: ${{ parameters.includeSymbols}}
       versioningScheme: ${{ parameters.versioningScheme }}
       versionEnvVar: ${{ parameters.versionEnvVar }}
+      searchPatternPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
-    publish: ''
-    artifact: ''
+    ${{ if parameters.publishEnabled }}:
+      artifact: '${{ parameters.publishArtifact }}'
+      publish: '${{ parameters.outputDir }}'
     clean: ${{ parameters.clean }}

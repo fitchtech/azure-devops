@@ -56,10 +56,13 @@ parameters:
 - name: dotNetArguments
   type: string
   default: ''
-- name: dotNetFeed
+- name: dotNetFeed # dotNet restore feed
   type: string
   default: ''
-- name: nuGetFeedType
+- name: dotNetFeedPublish # dotNet push feed to publish of dotNet pack output NuGet package
+  type: string
+  default: ''
+- name: nugetFeedType
   type: string
   default: internal
   values:
@@ -68,6 +71,9 @@ parameters:
 - name: dotNetPublishWebProjects
   type: boolean
   default: false
+- name: nugetConfigPath # The NuGet.config in your repository that specifies the feeds from which to restore packages.
+  type: string
+  default: ''
 # dotNet Pack
 - name: includeSymbols # Publish Symbols
   type: boolean
@@ -122,29 +128,31 @@ steps:
   inputs:
     command: restore
     projects: '${{ parameters.dotNetProjects }}'
-    feedsToUse: 'select'
-    vstsFeed: '${{ parameters.dotNetFeed }}'
+    nuGetFeedType: ${{ parameters.nugetFeedType }}
     includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
+    ${{ if parameters.nugetConfigPath }}:
+      feedsToUse: config
+      nugetConfigPath: ${{ parameters.nugetConfigPath }}
+    ${{ if not(parameters.nugetConfigPath) }}:
+      feedsToUse: select
+      ${{ if parameters.dotNetFeed }}:
+        feedRestore: '${{ parameters.dotNetFeed }}'
+    ${{ if and(parameters.externalEndpoints, eq(parameters.nugetFeedType, 'external')) }}:
+      externalEndpoints: ${{ parameters.externalEndpoints }}
 - ${{ if in(parameters.dotNetCommand, 'build', 'publish') }}:
   - task: DotNetCoreCLI@2
     displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
     inputs:
       command: ${{ parameters.dotNetCommand }}
-      ${{ if parameters.dotNetFeed }}:
-        vstsFeed: ${{ parameters.dotNetFeed }}
       projects: '${{ parameters.dotNetProjects }}'
-      includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       arguments: --no-restore --output ${{ parameters.outputDir }} ${{ parameters.dotNetArguments }}'
-      ${{ if and(eq(parameters.dotNetCommand, 'publish'), parameters.dotNetPublishWebProjects) }}:
+      ${{ if eq(parameters.dotNetCommand, 'publish') }}:
         publishWebProjects: '${{ parameters.dotNetPublishWebProjects }}'
 - ${{ if eq(parameters.dotNetCommand, 'pack') }}:
   - task: DotNetCoreCLI@2
     displayName: 'dotNet ${{ parameters.dotNetCommand }} ${{ parameters.dotNetProjects }}'
     inputs:
       command: pack
-      ${{ if parameters.dotNetFeed }}:
-        vstsFeed: ${{ parameters.dotNetFeed }}
-      includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       packagesToPack: '${{ parameters.dotNetProjects }}'
       configuration: '${{ parameters.dotNetConfiguration }}'
       outputDir: '${{ parameters.outputDir }}'
@@ -152,6 +160,17 @@ steps:
       versioningScheme: '${{ parameters.versioningScheme }}'
       ${{ if eq(parameters.versioningScheme, 'byEnvVar') }}:
         versionEnvVar: '${{ parameters.versionEnvVar }}'
+      nuGetFeedType: ${{ parameters.nugetFeedType }}
+      includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
+      ${{ if parameters.nugetConfigPath }}:
+        feedsToUse: config
+        nugetConfigPath: ${{ parameters.nugetConfigPath }}
+      ${{ if not(parameters.nugetConfigPath) }}:
+        feedsToUse: select
+        ${{ if parameters.dotNetFeed }}:
+          feedRestore: '${{ parameters.dotNetFeed }}'
+      ${{ if and(parameters.externalEndpoints, eq(parameters.nugetFeedType, 'external')) }}:
+        externalEndpoints: ${{ parameters.externalEndpoints }}
   - ${{ if parameters.includeSymbols }}:
     - task: PublishSymbols@2
       displayName: 'Publish Symbols Path'
@@ -165,9 +184,17 @@ steps:
       inputs:
         command: push
         searchPatternPush: '${{ parameters.searchPatternPush }}'
-        feedPublish: '${{ parameters.dotNetFeed }}'
-        nuGetFeedType: ${{ parameters.nuGetFeedType }}
-        ${{ if and(parameters.externalEndpoints, eq(parameters.nuGetFeedType, 'external')) }}:
+        feedPublish: '${{ parameters.dotNetFeedPublish }}'
+        nuGetFeedType: ${{ parameters.nugetFeedType }}
+        includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
+        ${{ if parameters.nugetConfigPath }}:
+          feedsToUse: config
+          nugetConfigPath: ${{ parameters.nugetConfigPath }}
+        ${{ if not(parameters.nugetConfigPath) }}:
+          feedsToUse: select
+          ${{ if parameters.dotNetFeed }}:
+            feedRestore: '${{ parameters.dotNetFeed }}'
+        ${{ if and(parameters.externalEndpoints, eq(parameters.nugetFeedType, 'external')) }}:
           externalEndpoints: ${{ parameters.externalEndpoints }}
 - template: ../postSteps.yaml
   parameters:
