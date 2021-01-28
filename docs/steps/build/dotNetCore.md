@@ -21,7 +21,7 @@ dotNetCommand options are build, publish, and pack:
 
 - Build a project for code analysis or test jobs. Optional publish pipeline artifact
 - Publish a project for container image build. Optional publish pipeline artifact
-- Pack a project for Nuget pack and push of Nuget artifact and symbols to feed
+- Pack project and push Nuget package artifact and symbols to feed
 
 ## Insert Steps Template into Stages Template
 

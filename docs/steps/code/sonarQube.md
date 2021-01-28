@@ -65,7 +65,7 @@ extends:
         steps:
         # - template: for code analysis steps
           - template: steps/code/sonarQube.yaml
-          # parameters within analysis.yaml template
+          # parameters within sonarQube.yaml template
             parameters:
             # preSteps: 
               # - task: add preSteps into job
