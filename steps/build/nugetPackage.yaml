@@ -51,7 +51,7 @@ parameters:
 - name: dotNetArguments 
   type: string
   default: ''
-- name: dotNetFeed # Default ADO VSTS artifact feed for restore and push
+- name: dotNetFeed # feed for dotNet restore
   type: string
   default: ''
 - name: nuGetFeedType
@@ -110,7 +110,7 @@ steps:
     artifact: ${{ parameters.downloadArtifact }}
     preSteps: ${{ parameters.preSteps }}
 - ${{ if parameters.dotNetProjects }}:
-  - template: ../build/dotNetCore.yaml
+  - template: ../dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
@@ -125,7 +125,7 @@ steps:
       outputDir: ${{ parameters.outputDir }}
       publishEnabled: false
 - ${{ if parameters.dotNetPackages }}:
-  - template: ../build/dotNetCore.yaml
+  - template: ../dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
@@ -137,8 +137,7 @@ steps:
       dotNetFeed: ${{ parameters.dotNetFeed }}
       dotNetFeedPublish: ${{ parameters.dotNetFeedPublish }}
       nuGetFeedType: ${{ parameters.nuGetFeedType }}
-      ${{ if and(parameters.externalEndpoints, eq(parameters.nuGetFeedType, 'external')) }}:
-        externalEndpoints: ${{ parameters.externalEndpoints }}
+      externalEndpoints: ${{ parameters.externalEndpoints }}
       outputDir: ${{ parameters.outputDir }}
       includeSymbols: ${{ parameters.includeSymbols}}
       versioningScheme: ${{ parameters.versioningScheme }}
