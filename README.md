@@ -60,7 +60,7 @@ trigger:
       - v*.*.*-* # CI Trigger when tag matches format
 
 extends:
-  # file path to template at repo resource id to extend from
+  # file path to the template at the repository resource id to extend from
   template: stages.yaml@templates
   parameters:
     code: [] # jobList inserted into code stage in stages param
@@ -79,17 +79,18 @@ extends:
 
 ### Repository Tagging
 
-- Major version: breaking change to prior major version. Breaks when existing pipelines cannot update to the new version without implementing changes in existing pipelines.
-- Minor version: no breaking changes to the major version. Incremental updates, including bug fixes and new features. Changes are additive and do not remove functionality.
+- **Major version**: breaking change to prior major version. Breaks when existing pipelines cannot update to the new version without implementing changes in existing pipelines.
+- **Minor version**: no breaking changes to the major version. Incremental updates, including bug fixes and new features. Changes are additive and do not remove functionality.
+- **Bug fix**: the latest release version tag of this repository may be deleted and recreated to fix an issue. So long as that does not break or change functionality. This is so that pipelines referencing this tag inherit that fix automatically without needing to change the tag reference in their code.  
 
 ## Template Documentation
 
 ### Template Types
 
-- stages template: inserts stages from stageLists for multistage pipelines with parameterized inputs
-- jobs template: inserts jobs from jobLists into a stage of stages with parameterized inputs
-- steps template: inserts tasks into steps with parameterized inputs and optionally additional stepLists
-- pipeline template: nests stages, jobs, and steps templates into a single template to extend from with flexible parameters
+- **steps**: inserts tasks into steps with parameterized inputs and optionally additional stepLists
+- **jobs**: inserts jobs from jobLists into a stage of stages with parameterized inputs
+- **stages**: inserts stages from stageLists for multistage pipelines with parameterized inputs
+- **pipeline**: nests stages, jobs, and steps templates into a single template to extend from with flexible parameters
 
 ### Stages Template
 
@@ -128,25 +129,25 @@ Steps templates to insert into jobs of the test stage in [stages](./docs/stages.
 
 ### Promote or Reject Deployments
 
-With several deployment strategies in the deploy stage, deployments can be promoted on success or rejected on failure. For example, when using a canary deployment strategy for Kubernetes manifests. It can conditionally promote the canary pods on success of the test jobs and ready state of the canary pods. If the test jobs have failures then deployment jobs in the reject stage automatically delete the deployments that are not functioning.
+With several deployment strategies in the deploy stage, deployments can be promoted on success or rejected on failure. For example, when using a canary deployment strategy for Kubernetes manifests. It can conditionally promote the canary pods on the success of test jobs and the ready state of canary pods. If the test jobs have failures then deployment jobs in the reject stage automatically delete the deployments that are not functioning.
 
-Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage, the green stack is deployed. Test the green field stack and if they succeed. If so then swap the environments in the promote stage. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
+Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage, the green environment is deployed. Test the deployment and if they succeed swap the environments during the promote stage. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
 
 #### Kubernetes Canary Strategy
 
 - Deploy: Kubernetes deployment manifest canary pods
   - Deployment lifecycle hooks stepLists
-- Test: stage for functional tests of canaries. e.g. Visual Studio Tests
-- Promote: Kubernetes canary deployment to baseline if test stage succeeded
+- Test: the stage for functional tests of canaries. e.g. Visual Studio Tests
+- Promote: Kubernetes canary deployment to baseline if test stage succeeded and the pods are in a ready state
 - Reject: delete Kubernetes canary pods automatically if tests failed or pods not ready
 
 #### Blue Green Strategy
 
 - Deploy: Green IaC stack
   - Deployment lifecycle hooks stepLists with runOnce, rolling, or matrix strategies
-- Test: stage for functional tests of green stack
-- Promote: Swap endpoints of stacks from green to blue or promote green to blue
-- Reject: delete green stack if tests failed
+- Test: the stage for functional tests of the green environment
+- Promote: Swap endpoints of environments from green to blue and optionally delete the previous deployment
+- Reject: delete green environment if tests failed
 
 ## Design Principals and Patterns
 
@@ -169,7 +170,7 @@ Additionally, these stages could use Infrastructure as Code (IaC) for blue/green
 
 Azure Pipelines multistage YAML became generally available in April 2020. With this change in Azure build and release pipelines, now known as classic build and release pipelines, came a major shift in the design patterns for creating Azure Pipelines with YAML. Implementing YAML pipelines can be simple for smaller projects or when you have a single repository. However, when implementing pipeline YAML across multiple projects or repositories it can become extremely difficult to manage without a well thought out design strategy.
 
-Developing Azure Pipeline YAML can be very time consuming and costly without a good strategy. The motivation for this project and repository is to reduce the time and effort in implementing Azure Pipelines. By creating a centralized repository of pipeline templates that have been tried and tested functionality. With design patterns and anti-patterns that evolved from development of pipeline templates across multiple projects, teams, and environment through to production.
+Developing Azure Pipeline YAML can be very time consuming and costly without a good strategy. The motivation for this project and repository is to reduce the time and effort in implementing Azure Pipelines. By creating a centralized repository of pipeline templates that have been tried and tested functionality. With design patterns and anti-patterns that evolved from the development of pipeline templates across multiple projects, teams, and environments through to production.
 
 ### Strategic Design
 
@@ -183,11 +184,13 @@ There is not currently any way to validate Azure Pipelines YAML locally. This ma
 
 ### Idempotent Pipelines
 
-When implementing idempotent pipeline patterns, subsequent runs are not additive if there are not changes to the code. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead, use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CI/CD Pipelines.
+When implementing idempotent pipeline patterns, subsequent runs are not additive when the code is unchanged. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead, use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CICD Pipelines.
 
 ### Immutable Pipelines
 
-When implementing immutable pipeline patterns, when an existing deployment image and pod spec is unchanged the current deployment is immutable. The current pod state does not mutate (i.e. terminate and deploy new pod or deploy canary).
+When implementing immutable pipeline patterns, the current existing deployment image and configuration are unchanged when the pipeline is immutable. The current state does not mutate, i.e. immutable.
+
+For example with Kubernetes, terminate and deploy new pods or alter the deployment specifications. When you run a deployment pipeline manually from the same commit as the current deployment it would not change. However, it would validate the current running state matches the code commit.
 
 ### Build Number Format
 
@@ -205,19 +208,19 @@ This could also be referred to as Configuration Management of the Kubernetes res
 
 ### Build Verification Pipeline
 
-A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). This includes the code stage for static code analysis including dotNet tests and SonarQube analysis jobs. Additionally, the build stage runs jobs for dotNet publish an artifact and container image artifact publish. A dotNet and container image artifact for each app.
+A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). The code stage is for static code analysis jobs including dotNet tests and SonarQube analysis. The build stage can run jobs to dotNet build or publish artifacts. This could be a single pipeline for multiple repositories by adding repository resource triggers for each repository the pipeline needs to run for. By using a file naming convention you could use a file matching pattern in the dotNet project parameters to create a build job for each repository.
 
 ### Continuous Integration Pipeline
 
-Continuous Integration Pipelines (CIP) can be triggered on BVP completion. The build stage container image job downloads artifacts from the BVP. Optionally run white source scan of dotNet artifact and Twistlock scan of container image, then push the image to a container registry with the tag using the build number format.
+Continuous Integration Pipelines (CIP) can be a CI trigger on the protected branch which your PR merges into. In the build stage container image job, the latest artifacts for the branch are downloaded. Alternatively, you could do the dotNet publish task before Docker build instead of as separate jobs. Docker builds the image then pushes it to a container registry with the tag using the build number format.
 
-Optionally you can add a CI Trigger on Feature and Release branches to run the build stage to dotNet publish the commit, build and push the container image to the registry. When the pipeline completes the CDP is triggered for the commit.
+You could also use a CI Trigger on Feature and Release branches to run the build stage to dotNet publish the commit, build and push the container image to the registry. When the pipeline completes the CDP is triggered for the commit.
 
 ### Continuous Deployment Pipeline
 
-Continuous Deployment Pipeline (CDP) can be triggered on CIP completion. The deploy stage deploys Azure Resource Manager (ARM) Templates, Kubernetes Manifests, Helm Charts, etc. You may choose to decouple build and deployment pipelines when you're deploying to multiple environments.
+Continuous Deployment Pipeline (CDP) can be triggered on CIP completion. The deploy stage deploys Azure Resource Manager (ARM) Templates, Kubernetes Manifests, Helm Charts, etc. Deployments can use a runOnce, canary, or rolling strategy lifecycle hooks.
 
-When creating a CDP for a given environment you can, for example, add triggers for release branches prefixed with dev. So that your dev environment CDP is triggered for dev releases. Whereas your production environment pipeline is triggered when merged into the prod branch.
+You may choose to decouple build and deployment pipelines when you're deploying to multiple environments. When creating a CDP for a given environment you can, for example, add triggers for release branches prefixed with dev. So that your dev environment CDP is triggered for dev releases. Whereas your production environment pipeline is triggered when merged into the prod branch.
 
 - release/dev\*
 - release/prod\*
