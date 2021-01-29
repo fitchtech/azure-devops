@@ -1,6 +1,7 @@
-# Azure Pipeline Templates
+# Azure Automations as Code
 
-- [Azure Pipeline Templates](#azure-pipeline-templates)
+- [Azure Automations as Code](#azure-automations-as-code)
+  - [Introduction](#introduction)
   - [Getting Started](#getting-started)
     - [Repository Resource](#repository-resource)
     - [Repository Tagging](#repository-tagging)
@@ -18,8 +19,8 @@
     - [Development Motivations](#development-motivations)
     - [Strategic Design](#strategic-design)
     - [Validation Methods](#validation-methods)
-    - [Idempotent Pipelines](#idempotent-pipelines)
     - [Immutable Pipelines](#immutable-pipelines)
+    - [Idempotent Pipelines](#idempotent-pipelines)
     - [Build Number Format](#build-number-format)
   - [Azure Pipeline Concepts](#azure-pipeline-concepts)
     - [Build Verification Pipeline](#build-verification-pipeline)
@@ -27,6 +28,12 @@
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
     - [Multistage Pipelines](#multistage-pipelines)
   - [Microsoft Docs](#microsoft-docs)
+
+## Introduction
+
+Managing Azure Automation as Code is the final piece to managing the entire lifecycle of your Azure cloud resources. Azure Pipeline templates in a centralized repository resource provide developers a method to quickly create multistage pipelines with flexible parameters for standardizing the steps of jobs in each stage. Predefining automation tasks for code analysis, build, deployment, and testing of Azure resources with gated or automatic releases.
+
+Traditionally, managing Azure classic build and release pipelines throughout an organization was difficult and easy for configuration to vary across projects with many snowflake pipelines. Putting the burden on developers and engineers to manage their pipelines manually. Taking the time away from experimentation and innovation. While Azure Pipeline YAML allows you to create multistage pipelines as code, defining the tasks inside of each repository is challenging. Often leading to inefficient steps and increased failure rate of builds and deployments.
 
 ## Getting Started
 
@@ -182,15 +189,17 @@ One limitation of Azure Pipelines YAML, in general, is that the only way to vali
 
 There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the iterative development of these templates, there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
 
-### Idempotent Pipelines
-
-When implementing idempotent pipeline patterns, subsequent runs are not additive when the code is unchanged. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead, use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CICD Pipelines.
-
 ### Immutable Pipelines
 
 When implementing immutable pipeline patterns, the current existing deployment image and configuration are unchanged when the pipeline is immutable. The current state does not mutate, i.e. immutable.
 
+Using immutable automation patterns when an existing deployment’s state matches the code nothing is changed or mutated, it is immutable. Only changes are applied. Subsequent runs of idempotent and immutable automation would validate the state of a previously deployed resource against the commit invoking the automation.
+
 For example with Kubernetes, terminate and deploy new pods or alter the deployment specifications. When you run a deployment pipeline manually from the same commit as the current deployment it would not change. However, it would validate the current running state matches the code commit.
+
+### Idempotent Pipelines
+
+When implementing idempotent automation patterns, subsequent runs are none additive and only changes to the code are built and deployed. Using dates and run count within the build number format is an anti-pattern as it’s not idempotent. Instead, use the repository name, branch/tag name, and commit ID for the build number format. This provides a pattern for idempotent CICD Pipelines.
 
 ### Build Number Format
 
@@ -202,7 +211,7 @@ name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) 
 
 With immutable and idempotent pipelines running it without code changes would validate the current deployment state is unchanged from the code. When the current state of the object kind in the Kubernetes environment matches the manifest being applied it’s unchanged, verifying the current state to manifests in the commit.
 
-This could also be referred to as Configuration Management of the Kubernetes resources. If the object had been changed manually, this is configuration drift. By running an immutable CDP any configuration drift in the current state of the Kubernetes objects would be reverted by applying manifests in the current commit.
+This could also be referred to as Configuration Management or Resource Management with code. When a resource is modified outside of your code lifecycle this reflects configuration drift. Running the pipeline from a given release commit any configuration drift in the resource would be reverted. These methods provide a GitOps strategy to your Azure Pipelines.
 
 ## Azure Pipeline Concepts
 
