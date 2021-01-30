@@ -145,7 +145,7 @@ steps:
     inputs:
       command: ${{ parameters.dotNetCommand }}
       projects: '${{ parameters.dotNetProjects }}'
-      arguments: --no-restore --output ${{ parameters.outputDir }} ${{ parameters.dotNetArguments }}'
+      arguments: --no-restore --configuration ${{ parameters.dotNetConfiguration }} --output ${{ parameters.outputDir }} ${{ parameters.dotNetArguments }}'
       ${{ if eq(parameters.dotNetCommand, 'publish') }}:
         publishWebProjects: '${{ parameters.dotNetPublishWebProjects }}'
 - ${{ if eq(parameters.dotNetCommand, 'pack') }}:
