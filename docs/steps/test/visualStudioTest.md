@@ -7,9 +7,10 @@
 
 ## Steps Template Usage
 
-- This template is used to run VSTest jobs for tests such as Build Verification or Functional Tests.
+- This template is used to run VSTest jobs for tests such as Build Verification or Functional Tests
 - To run the test the job needs to dotNet build the test project or download an artifact of the build.
 - This template has an option to replace tokens in target files with variables. This is useful when you need to use variables to replace values in files
+- You can define the test plan and suite for a vsTest. This requires you [create a test plan](https://docs.microsoft.com/en-us/azure/devops/test/create-a-test-plan?view=azure-devops) in Azure DevOps
 
 ## Steps Template Schema
 
@@ -26,25 +27,23 @@ steps:
       replaceTokensTargets: '**appsettings.*.json' # Target file match pattern for replace tokens task
       keyVaultName: keyVaultName # Get secrets from an Azure KeyVault. Useful with replace tokens task when you need to inject secrets into settings
       keyVaultSubscription: 'subscriptionServiceConnection' # Azure service connection to subscription of Azure KeyVault
-      testSelector: testPlan # testPlan (default) | testAssemblies | testRun
       testPlan: 123456 # Required if testSelector is testPlan. The ID number of the testPlan
       testSuite: 123456 # Required if testSelector is testPlan. The ID number of the testSuite
       testConfiguration: 523 # Required if testSelector is testPlan. The ID number of the testConfiguration
-      runInParallel: false # default: true | run tests serially or in parallel
       testRunTitle: 'Test Run Title'
-      testDiagnosticsEnabled: false # default: true
-      testCollectDumpOn: onAbortOnly # default: always | onAbortOnly | never
-      rerunFailedTests: true
+      testDiagnosticsEnabled: false # Default: true
+      testCollectDumpOn: always # Default: onAbortOnly | always | never
+      runInParallel: false # Default: true | run tests serially or in parallel
       rerunMaxAttempts: 2
       continueOnError: true
       distributionBatchType: basedOnExecutionTime # default: basedOnTestCases | basedOnExecutionTime | basedOnAssembly
-      customBatchSizeValue: 10 # Value greater than 0 enables batchingBasedOnAgentsOption: customBatchSize
+      customBatchSizeValue: 10 # Optional when distributionBatchType is basedOnExecutionTime. Value greater than 0 enables batchingBasedOnAgentsOption: customBatchSize
+      customRunTimePerBatchValue: 10 # Optional when distributionBatchType is BasedOnExecutionTime
       dotNetProjects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. 
       dotNetVersion: '3.1.x' # Optional: if param has value, use dotNet version task inserted
       dotNetFeed: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
       dotNetArguments: '' # Optional: Additional arguments for dotNetProjects if dotNetCommand is build or publish. Excluding '--no-restore' and '--output' as they are predefined
-      dotNetCommand: restore # restore (default) | build | publish
-      publish: '' # Default: $(Common.TestResultsDirectory) | publish: '' will disable the publish task
+      publishEnabled: false # Disable the publish task, default true. Publishes the testResultsFolder
       publishArtifact: 'artifactName' # Default: $(Build.DefinitionName)_$(System.JobName)
     # postSteps: Optional: inserts stepList before publish and clean
       postSteps: 
@@ -54,7 +53,7 @@ steps:
 
 ## Insert Steps Template into Stages Template
 
-The following example shows how to insert the dotNetTests steps template into the [stages](../../stages.md) template with the minimum required params.
+The following example shows how to insert the dotNetTests steps template into the [stages](../../stages.md) template.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -71,12 +70,10 @@ parameters:
     - job: vsTest
       dependsOn: []
       dotNetProjects: '*.csproj'
-      testSelector: testPlan #  testPlan | testAssemblies | testRun
       testPlan: 123456
       testSuite: 123456
       testConfiguration: 523
       testRunTitle: 'Functional Test'
-      rerunFailedTests: true
       rerunMaxAttempts: 2
       continueOnError: false
 
@@ -91,7 +88,7 @@ parameters:
   type: string
   default: ''
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
@@ -121,29 +118,41 @@ extends:
   # test: jobList inserted into test stage in stages param
     test:
       - ${{ each test in parameters.vsTests }}:
-        # parameters: job, dotNetProjects, testSelector, testPlan, and testSuite are the required minimum params
         - ${{ if and(test.job, test.dotNetProjects, parameters.testPlan, parameters.testSuite) }}:
-          - job: ${{ test.job }} # job name must be unique within stage
+        # - job: name must be unique within stage
+          - job: ${{ test.job }}
+          # for each job param of test item in vsTests, insert param
             ${{ each parameter in test }}:
-              ${{ if in(parameter.key, 'displayName', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'services') }}:
+              ${{ if in(parameter.key, 'displayName', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'services') }}:
                 ${{ parameter.key }}: ${{ parameter.value }}
-            ${{ if not(test.displayName) }}:
-              displayName: 'Visual Studio Test Job' # If no test.displayName, use this as default
-            ${{ if not(test.pool) }}:
-              pool: ${{ parameters.testPool }} # If no test.pool, use default parameters.testPool
             # If test job depends on other jobs in test stage insert dependencies
             ${{ if test.dependsOn }}:
               dependsOn:
               - ${{ each dependency in test.dependsOn }}:
                 - ${{ dependency }}
+            # If no test.dependsOn job does not depend on others
             ${{ if not(test.dependsOn) }}:
-              dependsOn: [] # job does not depend on other jobs
+              dependsOn: []
+            # If variables defined add key value pairs
             ${{ if test.variables }}:
               variables:
               ${{ each variable in test.variables }}:
                 ${{ variable.key }}: ${{ variable.value }}
-          # If matrix or parallel strategy for Visual Studio Test jobs
-            ${{ if or(parameters.matrix, gt(parameters.parallel, 1)) }}:
+            # If no test.displayName use default
+            ${{ if not(test.displayName) }}:
+              displayName: 'Visual Studio Test Job'
+            # If no test.pool use parameters.testPool value
+            ${{ if not(test.pool) }}:
+              pool: ${{ parameters.testPool }}
+            # If test.matrix or test.parallel strategy for Visual Studio Test jobs
+            ${{ if or(test.matrix, gt(test.parallel, 1)) }}:
+              strategy:
+                ${{ if test.matrix }}:
+                  matrix: ${{ test.matrix }}
+                ${{ if not(test.matrix) }}:
+                  parallel: ${{ test.parallel }}
+            # If the test has no test.matrix or test.parallel values then use parameters.matrix and parameters.parallel as default
+            ${{ if and(or(parameters.matrix, gt(parameters.parallel, 1)), or(not(test.matrix), le(test.parallel, 1), not(test.parallel))) }}:
               strategy:
                 ${{ if parameters.matrix }}:
                   matrix: ${{ parameters.matrix }}
@@ -156,28 +165,15 @@ extends:
                 parameters:
                 # preSteps: 
                   # - task: add preSteps into job
-                  ${{ if test.dotNetProjects }}:
-                    dotNetProjects: ${{ test.dotNetProjects }}
-                  ${{ if and(test.testPlan, test.testSuite) }}:
-                    ${{ if test.testSelector }}:
-                      testSelector: ${{ test.testSelector }}
-                    ${{ if not(test.testSelector) }}:
-                      testSelector: testPlan
-                    testPlan: ${{ test.testPlan }}
-                    testSuite: ${{ test.testSuite }}
-                  testConfiguration: ${{ test.testConfiguration }}
-                  ${{ if test.testRunTitle }}:
-                    testRunTitle: ${{ test.testRunTitle }}
+                # for each parameter in test that is not a job parameter, these are the parameters for the steps
+                  ${{ each parameter in test }}:
+                    ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'steps', 'services') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # If testPlan and testSuite has values testSelector is testPlan
+                  ${{ if and(test.testPlan, test.testSuite, not(test.testSelector)) }}:
+                    testSelector: testPlan
                   ${{ if not(test.testRunTitle) }}:
                     testRunTitle: 'Visual Studio Test'
-                  ${{ if test.rerunFailedTests }}:
-                    rerunFailedTests: true
-                    ${{ if test.rerunMaxAttempts }}:
-                      rerunMaxAttempts: ${{ test.rerunMaxAttempts }}
-                    ${{ if not(test.rerunMaxAttempts) }}:
-                      rerunMaxAttempts: 2
-                  ${{ if test.continueOnError }}:
-                    continueOnError: true
                 # postSteps:
                   # - task: add postSteps into job
 
