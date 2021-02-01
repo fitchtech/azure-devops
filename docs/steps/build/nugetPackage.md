@@ -6,7 +6,7 @@
 
 ## Steps Template Usage
 
-dotNetCommand options are build, publish, and pack:
+command options are build, publish, and pack:
 
 - Pack project and push Nuget package artifact and symbols to feed
 - Optionally dotNet build or publish a project prior to dotNet pack and push
@@ -23,7 +23,7 @@ parameters:
 - name: dotNetPackages # Required to enable pack. Pattern to search for csproj or nuspec files. Separate multiple patterns with semicolon. Exclude patterns with a ! prefix e.g. **/*.csproj;!**/*.Tests.csproj
   type: string
   default: '**.csproj'
-- name: dotNetProjects # Optional file match pattern to build or publish projects
+- name: projects # Optional file match pattern to build or publish projects
   type: string
   default: '**.csproj'
 - name: buildPool # Nested into pool param of build jobs
@@ -71,10 +71,10 @@ extends:
             # preSteps: 
               # - task: add preSteps into job
               dotNetPackages: ${{ parameters.dotNetPackages }} # Required pattern to pack and push projects for NuGet Packages
-              dotNetProjects: ${{ parameters.dotNetProjects }} # Optional pattern to restore and build a project prior to dotNet pack and push 
-              dotNetFeed: 'projectName/feedName' # for project-scoped feed. FeedName only for organization-scoped feed
-              dotNetFeedPublish: 'projectName/feedName' # Push NuGet package to a select feed hosted in your organization. You must have Package Management installed and licensed to select a feed
-            # dotNetCommand: build # build (default) or publish. This is the command used for dotNetProjects 
+              projects: ${{ parameters.projects }} # Optional pattern to restore and build a project prior to dotNet pack and push 
+              feedRestore: 'projectName/feedName' # for project-scoped feed. FeedName only for organization-scoped feed
+              feedPublish: 'projectName/feedName' # Push NuGet package to a select feed hosted in your organization. You must have Package Management installed and licensed to select a feed
+            # command: build # build (default) or publish. This is the command used for projects 
               publishEnabled: false # Set publishEnabled false to disable artifact publish of dotNet outputDir. It is enabled by default
             # postSteps:
               # - task: add postSteps into job

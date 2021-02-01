@@ -16,9 +16,9 @@
 
 ```yml
 steps:
-# - template: for code analysis steps
-  - template: steps/code/dotNetTests.yaml
-  # parameters: within dotNetTests.yaml template
+# - template: for vsTest steps
+  - template: steps/test/visualStudioTest.yaml
+  # parameters: within visualStudioTest.yaml template
     parameters:
     # preSteps: Optional: inserts stepList after checkout and download
       preSteps: 
@@ -27,9 +27,9 @@ steps:
       replaceTokensTargets: '**appsettings.*.json' # Target file match pattern for replace tokens task
       keyVaultName: keyVaultName # Get secrets from an Azure KeyVault. Useful with replace tokens task when you need to inject secrets into settings
       keyVaultSubscription: 'subscriptionServiceConnection' # Azure service connection to subscription of Azure KeyVault
-      testPlan: 123456 # Required if testSelector is testPlan. The ID number of the testPlan
-      testSuite: 123456 # Required if testSelector is testPlan. The ID number of the testSuite
-      testConfiguration: 523 # Required if testSelector is testPlan. The ID number of the testConfiguration
+      testPlan: 123456 # The ID number of the testPlan
+      testSuite: 123456 # The ID number of the testSuite
+      testConfiguration: 523 # The ID number of the testConfiguration
       testRunTitle: 'Test Run Title'
       testDiagnosticsEnabled: false # Default: true
       testCollectDumpOn: always # Default: onAbortOnly | always | never
@@ -39,10 +39,10 @@ steps:
       distributionBatchType: basedOnExecutionTime # default: basedOnTestCases | basedOnExecutionTime | basedOnAssembly
       customBatchSizeValue: 10 # Optional when distributionBatchType is basedOnExecutionTime. Value greater than 0 enables batchingBasedOnAgentsOption: customBatchSize
       customRunTimePerBatchValue: 10 # Optional when distributionBatchType is BasedOnExecutionTime
-      dotNetProjects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. 
-      dotNetVersion: '3.1.x' # Optional: if param has value, use dotNet version task inserted
-      dotNetFeed: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
-      dotNetArguments: '' # Optional: Additional arguments for dotNetProjects if dotNetCommand is build or publish. Excluding '--no-restore' and '--output' as they are predefined
+      projects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. 
+      version: '3.1.x' # Optional: if param has value, use dotNet version task inserted
+      feedRestore: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
+      arguments: '' # Optional: Additional arguments for projects if command is build or publish. Excluding '--no-restore' and '--output' as they are predefined
       publishEnabled: false # Disable the publish task, default true. Publishes the testResultsFolder
       publishArtifact: 'artifactName' # Default: $(Build.DefinitionName)_$(System.JobName)
     # postSteps: Optional: inserts stepList before publish and clean
@@ -69,7 +69,7 @@ parameters:
   default:
     - job: vsTest
       dependsOn: []
-      dotNetProjects: '*.csproj'
+      projects: '*.csproj'
       testPlan: 123456
       testSuite: 123456
       testConfiguration: 523
@@ -84,7 +84,7 @@ parameters:
   type: number
   default: 1
 
-- name: dotNetProjects # Optional param, nested into dotNetProjects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
+- name: projects # Optional param, nested into projects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
   type: string
   default: ''
 
@@ -118,7 +118,8 @@ extends:
   # test: jobList inserted into test stage in stages param
     test:
       - ${{ each test in parameters.vsTests }}:
-        - ${{ if and(test.job, test.dotNetProjects, parameters.testPlan, parameters.testSuite) }}:
+      # This expression would require you provide a dotNet project to build and the test plan and suite ID 
+        - ${{ if and(test.job, test.projects, parameters.testPlan, parameters.testSuite) }}:
         # - job: name must be unique within stage
           - job: ${{ test.job }}
           # for each job param of test item in vsTests, insert param
@@ -152,7 +153,7 @@ extends:
                 ${{ if not(test.matrix) }}:
                   parallel: ${{ test.parallel }}
             # If the test has no test.matrix or test.parallel values then use parameters.matrix and parameters.parallel as default
-            ${{ if and(or(parameters.matrix, gt(parameters.parallel, 1)), or(not(test.matrix), le(test.parallel, 1), not(test.parallel))) }}:
+            ${{ if and(or(parameters.matrix, gt(parameters.parallel, 1)), not(test.matrix), le(test.parallel, 1)) }}:
               strategy:
                 ${{ if parameters.matrix }}:
                   matrix: ${{ parameters.matrix }}
@@ -169,15 +170,12 @@ extends:
                   ${{ each parameter in test }}:
                     ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'steps', 'services') }}:
                       ${{ parameter.key }}: ${{ parameter.value }}
-                  # If testPlan and testSuite has values testSelector is testPlan
-                  ${{ if and(test.testPlan, test.testSuite, not(test.testSelector)) }}:
-                    testSelector: testPlan
                   ${{ if not(test.testRunTitle) }}:
                     testRunTitle: 'Visual Studio Test'
                 # postSteps:
                   # - task: add postSteps into job
 
-    # - job: insert additional jobs into the code stage
+    # - job: insert additional jobs into the test stage
 
   # reject: deploymentList inserted into reject stage in stages param
 

@@ -7,7 +7,7 @@
 ## Steps Template Usage
 
 - In the [stages](../../stages.md) Template code jobList param you can add multiple jobs for static code analysis so long as the job name is unique within the stage
-- The sonarQube steps template provides options for adding SonarQube analysis task in the right order before and after dotNet build of dotNetProjects
+- The sonarQube steps template provides options for adding SonarQube analysis task in the right order before and after dotNet build of projects
 
 ## Insert Steps Template into Stages Template
 
@@ -26,7 +26,7 @@ parameters:
 - name: sonarQube # Required sonarQube Service Connection name to insert steps
   type: string
   default: ''
-- name: dotNetProjects # Nested into dotNetProjects param of sonarQube steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to build for SonarQube analysis
+- name: projects # Nested into projects param of sonarQube steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to build for SonarQube analysis
   type: string
   default: '*.sln'
 
@@ -70,7 +70,7 @@ extends:
             # preSteps: 
               # - task: add preSteps into job
               sonarQube: ${{ parameters.sonarQube }}
-              dotNetProjects: ${{ parameters.dotNetProjects }}
+              projects: ${{ parameters.projects }}
             # postSteps:
               # - task: add postSteps into job
 

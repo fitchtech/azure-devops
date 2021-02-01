@@ -36,11 +36,11 @@ steps:
           testRunTitle: 'CLI Test' # Optional: Provides a name for the test run
           publishTestResults: true # Optional: default is false. Enabling this option will generate a test results TRX file in $(Agent.TempDirectory) and results will be published
 
-      dotNetProjects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. Useful when there's many tests in a solution or publish artifacts of dotNet after tests
-      dotNetVersion: '3.1.x' # Optional: if param has value, use dotNet version task inserted
-      dotNetFeed: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
-      dotNetArguments: '' # Optional: Additional arguments for dotNetProjects if dotNetCommand is build or publish. Excluding '--no-restore' and '--output' as they are predefined
-      dotNetCommand: restore # restore (default) | build | publish
+      projects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. Useful when there's many tests in a solution or publish artifacts of dotNet after tests
+      version: '3.1.x' # Optional: if param has value, use dotNet version task inserted
+      feedRestore: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
+      arguments: '' # Optional: Additional arguments for projects if command is build or publish. Excluding '--no-restore' and '--output' as they are predefined
+      command: restore # restore (default) | build | publish
       publish: '' # Default: $(Common.TestResultsDirectory) | publish: '' will disable the publish task
       publishArtifact: 'artifactName' # Default: $(Build.DefinitionName)_$(System.JobName)
     # postSteps: Optional: inserts stepList before publish and clean
@@ -71,7 +71,7 @@ parameters:
   - displayName: 'dotNet CLI Tests'
     projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
     arguments: '--no-restore --collect "Code Coverage"'
-- name: dotNetProjects # Optional param, nested into dotNetProjects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
+- name: projects # Optional param, nested into projects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
   type: string
   default: ''
 
@@ -115,7 +115,7 @@ extends:
             # preSteps: 
               # - task: add preSteps into job
               dotNetTests: ${{ parameters.dotNetTests }}
-              dotNetProjects: ${{ parameters.dotNetProjects }}
+              projects: ${{ parameters.projects }}
             # postSteps:
               # - task: add postSteps into job
 

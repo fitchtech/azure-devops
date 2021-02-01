@@ -17,7 +17,7 @@ Like all steps templates, the dotNetCore steps template can be nested in the [st
 
 ## Steps Template Usage
 
-dotNetCommand options are build, publish, and pack:
+command options are build, publish, and pack:
 
 - Build a project for code analysis or test jobs. Optional publish pipeline artifact
 - Publish a project for container image build. Optional publish pipeline artifact
@@ -38,7 +38,7 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: dotNetProjects # pattern to match of projects to build, publish, or pack
+- name: projects # pattern to match of projects to build, publish, or pack
   type: string
   default: '**.csproj'
 
@@ -81,8 +81,8 @@ extends:
             parameters:
             # preSteps: 
               # - task: add preSteps into job
-            # dotNetCommand: build # default in template is build
-              dotNetProjects: ${{ parameters.dotNetProjects }} # pattern to match of projects to build 
+            # command: build # default in template is build
+              projects: ${{ parameters.projects }} # pattern to match of projects to build 
               publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
             # postSteps:
               # - task: add postSteps into job
@@ -110,13 +110,13 @@ steps:
     download: false # disables preSteps download steps
     preSteps: 
      - script: echo 'add preSteps stepsList to job' # list of tasks that run before the main steps of the template. Inserted into steps after checkout/download
-    dotNetCommand: build # build | publish | pack
-  # dotNetType: runtime # sdk is the default, only set this to override sdk with runtime
-  # dotNetVersion: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
-    dotNetProjects: '**.csproj' # pattern match of projects or solution to build or publish
+    command: build # build | publish | pack
+  # packageType: runtime # sdk is the default, only set this to override sdk with runtime
+  # version: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
+    projects: '**.csproj' # pattern match of projects or solution to build or publish
     publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
-  # dotNetFeed: '' # Azure DevOps Artifacts Feed
-  # dotNetArguments: '' # Output and no-restore arguments are injected for you. This param is for inserting any additional build/publish args for the task
+  # feedRestore: '' # Azure DevOps Artifacts Feed
+  # arguments: '' # Output and no-restore arguments are injected for you. This param is for inserting any additional build/publish args for the task
     postSteps:
      - script: echo 'add postSteps stepsList to job' # list of tasks that run after the main steps of the template. Inserted into steps before publish/clean
 
@@ -128,11 +128,11 @@ steps:
     download: false # disables preSteps download steps
     preSteps: 
      - script: echo 'add preSteps stepsList to job' # list of tasks that run before the main steps of the template. Inserted into steps after checkout/download
-    dotNetCommand: pack # build | publish | pack
-  # dotNetType: runtime # sdk is the default, only set this to override sdk with runtime
-  # dotNetVersion: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
-    dotNetProjects: '**.csproj' # pattern match of projects or solution to build or publish
-    dotNetPush: true # Push Nuget artifact to ADO Feed
+    command: pack # build | publish | pack
+  # packageType: runtime # sdk is the default, only set this to override sdk with runtime
+  # version: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
+    projects: '**.csproj' # pattern match of projects or solution to build or publish
+    push: true # Push Nuget artifact to ADO Feed
     includeSymbols: true # Publish Symbols
     dotNetPackConfig: 'Debug' # dotNet configuration
     postSteps:

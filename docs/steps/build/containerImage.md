@@ -25,7 +25,7 @@ parameters:
   type: object
   default: 
     vmImage: 'Ubuntu-16.04'
-- name: dotNetProjects # Required param to restore and publish a dotNet project
+- name: projects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -91,7 +91,7 @@ extends:
               parameters:
               # preSteps: 
                 # - task: add preSteps into job
-                dotNetProjects: '${{ parameters.dotNetProjects }}'
+                projects: '${{ parameters.projects }}'
                 containerRegistry: '${{ parameters.containerRegistry }}'
                 containerRepository: '${{ parameters.containerRepository }}'
                 dockerFile: '${{ parameters.dockerFile }}'
@@ -127,7 +127,7 @@ parameters:
   type: object
   default:
     vmImage: 'Ubuntu-16.04'
-- name: dotNetProjects # Required param to restore and publish a dotNet project
+- name: projects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -173,7 +173,7 @@ stages:
     steps:
       - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
         parameters:
-          dotNetProjects: '${{ parameters.dotNetProjects }}'
+          projects: '${{ parameters.projects }}'
           containerRegistry: '${{ parameters.containerRegistry }}'
           containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
           dockerFile: '${{ parameters.dockerFile }}'
@@ -201,7 +201,7 @@ resources:
 steps:
 - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
   parameters:
-    dotNetProjects: '**.csproj'
+    projects: '**.csproj'
     containerRegistry: 'ACR'
     containerRepository: 'imageName'
     dockerFile: '**.dockerfile'
