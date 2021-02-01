@@ -28,18 +28,24 @@ parameters:
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: containerRegistry # Container registry and Kubernetes service connection params used to create image pull secret in Kubernetes for the registry
+- name: dockerRegistryEndpoint # Container registry and Kubernetes service connection params used to create image pull secret in Kubernetes for the registry
   type: string
   default: '' # ADO Service Connection name
-- name: kubeServiceConnection # Kubernetes Service Connection Name
+- name: kubernetesServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
-- name: kubeNamespace
+- name: namespace
   type: string
   default: default
-- name: kubeManifests # Deployment manifest for canary deploy, promote, and reject jobs
+- name: manifests # Deployment manifest for canary deploy, promote, and reject jobs
   type: object
   default: '$(Pipeline.Workspace)/**deployment.yaml'
+- name: strategy
+  type: string
+  default: canary
+  values:
+  - canary
+  - runOnce
 
 # parameter defaults in the above section can be set on manual run of a pipeline to override
 
@@ -76,72 +82,74 @@ extends:
         # key: 'value' # pairs of variables scoped to this job
         dependsOn: []
         strategy:
-          runOnce:
+          ${{ parameters.strategy }}:
             deploy:
               steps:
               - template: steps/deploy/kubeManifest.yaml
                 parameters:
                 # preSteps: 
                   # - task: add preSteps into job
-                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
+                  namespace: ${{ parameters.namespace }} # pass in namespace param
                   imagePullSecret: 'registry-cred'
-                  dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
-                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                  kubeAction: deploy
-                  kubeStrategy: canary
-                  kubeManifests: ${{ parameters.kubeManifests }}
+                  dockerRegistryEndpoint: ${{ parameters.dockerRegistryEndpoint }}
+                  kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                  action: deploy
+                  strategy: ${{ parameters.strategy }}
+                  manifests: ${{ parameters.manifests }}
                 # postSteps:
                   # - task: add postSteps into job
 
   # promote: deploymentList inserted into promote stage in stages param
     promote:
-      - deployment: kubePromote # job name unique to stage
-        displayName: 'Promote Canary Deployment'
-        pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-        condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
-      # variables:
-        # key: 'value' # pairs of variables scoped to this job
-        dependsOn: []
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-              - template: steps/deploy/kubeManifest.yaml
-                parameters:
-                # preSteps: 
-                  # - task: add preSteps into job
-                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
-                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                  kubeAction: promote
-                  kubeStrategy: canary
-                  kubeManifests: ${{ parameters.kubeManifests }}
-                # postSteps:
-                  # - task: add postSteps into job
+      - ${{ if eq(parameters.strategy, 'canary') }}:
+        - deployment: kubePromote # job name unique to stage
+          displayName: 'Promote Canary Deployment'
+          pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+          condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+        # variables:
+          # key: 'value' # pairs of variables scoped to this job
+          dependsOn: []
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                - template: steps/deploy/kubeManifest.yaml
+                  parameters:
+                  # preSteps: 
+                    # - task: add preSteps into job
+                    namespace: ${{ parameters.namespace }} # pass in namespace param
+                    kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                    action: promote
+                    strategy: canary
+                    manifests: ${{ parameters.manifests }}
+                  # postSteps:
+                    # - task: add postSteps into job
 
   # reject: deploymentList inserted into reject stage in stages param
     reject:
-      - deployment: kubeReject # job name unique to stage
-        displayName: 'Reject Canary Deployment'
-        pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-        condition: and(failed(), ne(variables['Build.Reason'], 'PullRequest'))
-      # variables:
-        # key: 'value' # pairs of variables scoped to this job
-        dependsOn: kubePromote
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-              - template: steps/deploy/kubeManifest.yaml
-                parameters:
-                # preSteps: 
-                  # - task: add preSteps into job
-                  namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
-                  kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                  kubeAction: reject
-                  kubeStrategy: canary
-                  kubeManifests: ${{ parameters.kubeManifests }}
-                # postSteps:
-                  # - task: add postSteps into job
+      - ${{ if eq(parameters.strategy, 'canary') }}:
+        - deployment: kubeReject # job name unique to stage
+          displayName: 'Reject Canary Deployment'
+          pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+          condition: and(failed(), ne(variables['Build.Reason'], 'PullRequest'))
+        # variables:
+          # key: 'value' # pairs of variables scoped to this job
+          dependsOn: []
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                - template: steps/deploy/kubeManifest.yaml
+                  parameters:
+                  # preSteps: 
+                    # - task: add preSteps into job
+                    namespace: ${{ parameters.namespace }} # pass in namespace param
+                    kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                    action: reject
+                    strategy: canary
+                    manifests: ${{ parameters.manifests }}
+                  # postSteps:
+                    # - task: add postSteps into job
 
   # test: jobList inserted into test stage in stages param
 
