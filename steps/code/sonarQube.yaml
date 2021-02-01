@@ -29,25 +29,25 @@ parameters:
   type: string
   default: ''
 # Use dotNet
-- name: dotNetType
+- name: packageType
   type: string
   default: sdk
   values:
   - sdk
   - runtime
-- name: dotNetVersion
+- name: version
   type: string
   default: '3.1.x'
 # dotNet Build and Restore Params
-- name: dotNetProjects # dotNet projects or vs solution for dotNet build and restore
+- name: projects # dotNet projects or vs solution for dotNet build and restore
   type: string
-- name: dotNetFeed # default dotNet artifact feed
-  type: string
-  default: ''
-- name: dotNetArguments # default dotNet build arguments
+- name: feedRestore # default dotNet artifact feed
   type: string
   default: ''
-- name: dotNetCommand
+- name: arguments # default dotNet build arguments
+  type: string
+  default: ''
+- name: command
   type: string
   default: build
   values:
@@ -96,18 +96,18 @@ steps:
       projectName: '${{ parameters.sonarQubeProjectName }}'
       projectVersion: '${{ parameters.sonarQubeProjectVersion }}'
       extraProperties: '${{ parameters.sonarQubeExtraProperties }}'
-- ${{ if parameters.dotNetProjects }}:
+- ${{ if parameters.projects }}:
   - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: ${{ parameters.dotNetCommand }}
-      dotNetType: ${{ parameters.dotNetType }}
-      dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.dotNetProjects }}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetArguments }}
+      command: ${{ parameters.command }}
+      packageType: ${{ parameters.packageType }}
+      version: ${{ parameters.version }}
+      projects: ${{ parameters.projects }}
+      feedRestore: ${{ parameters.feedRestore }}
+      arguments: ${{ parameters.arguments }}
 - ${{ if parameters.sonarQube }}:
   - task: SonarQubeAnalyze@4
     displayName: 'Run SonarQube Analysis'

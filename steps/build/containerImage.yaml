@@ -30,25 +30,25 @@ parameters:
   default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
 
 # dotNet Publish project to copy output to Docker image
-- name: dotNetType
+- name: packageType
   type: string
   default: runtime
   values:
   - sdk
   - runtime
-- name: dotNetVersion # Optional param to enable use dotNet task 
+- name: version # Optional param to enable use dotNet task 
   type: string
   default: '3.1.x'
-- name: dotNetProjects # Required param to restore and publish a dotNet project
+- name: projects # Required param to restore and publish a dotNet project
   type: string
   default: ''
-- name: dotNetArguments
+- name: arguments
   type: string
   default: ''
-- name: dotNetFeed
+- name: feedRestore
   type: string
   default: ''
-- name: dotNetPublishWebProjects
+- name: publishWebProjects
   type: boolean
   default: false
 
@@ -146,19 +146,19 @@ steps:
     inputs:
       artifact: ${{ parameters.downloadArtifact }}
       path: ${{ parameters.downloadPath }}
-- ${{ if parameters.dotNetProjects }}:
+- ${{ if parameters.projects }}:
   - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: publish
-      dotNetType: ${{ parameters.dotNetType }}
-      dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.dotNetProjects }}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetArguments}}
-      dotNetPublishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
+      command: publish
+      packageType: ${{ parameters.packageType }}
+      version: ${{ parameters.version }}
+      projects: ${{ parameters.projects }}
+      feedRestore: ${{ parameters.feedRestore }}
+      arguments: ${{ parameters.arguments}}
+      publishWebProjects: ${{ parameters.publishWebProjects }}
 - ${{ if and(parameters.dockerInstall, parameters.dockerVersion) }}:
   - task: DockerInstaller@0
     displayName: 'Install Docker'
@@ -212,7 +212,7 @@ steps:
   - script: |
       docker save ${{ parameters.containerRegistryUrl }}/${{ parameters.containerRepository }}:latest -o ${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}
     displayName: 'Docker Save ${{ parameters.containerRepository }}'
-- ${{ if and(parameters.dotNetProjects, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
+- ${{ if and(parameters.projects, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
   - ${{ if parameters.deleteContents }}:
     - task: DeleteFiles@1
       displayName: 'Delete Unwanted Files'

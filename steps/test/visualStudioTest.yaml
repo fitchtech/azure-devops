@@ -15,7 +15,7 @@ parameters:
 - name: download
   type: string
   default: current
-- name: artifactName # artifactName or dotNetProjects required
+- name: artifactName # artifactName or projects required
   type: string
   default: ''
 # Replace Tokens in files
@@ -30,26 +30,26 @@ parameters:
   default: |
     **appsettings.*.json
 # Use dotNet Type and Version
-- name: dotNetType
+- name: packageType
   type: string
   default: 'sdk'
   values:
   - 'sdk'
   - 'runtime'
-- name: dotNetVersion
+- name: version
   type: string
   default: ''
 # dotNet restore/build 
-- name: dotNetProjects # dotNetProjects required to dotNet build a project before vsTest tasks
+- name: projects # projects required to dotNet build a project before vsTest tasks
   type: string
   default: ''
-- name: dotNetArguments
+- name: arguments
   type: string
   default: ''
-- name: dotNetFeed
+- name: feedRestore
   type: string
   default: ''
-- name: dotNetConfiguration
+- name: configuration
   type: string
   default: Release
 # Get Azure KeyVault as Variables for Replace Tokens
@@ -163,22 +163,22 @@ steps:
     checkout: ${{ parameters.checkout }}
     submodules: ${{ parameters.submodules }}
     download: ${{ parameters.download }}
-    ${{ if and(parameters.artifactName, not(parameters.dotNetProjects)) }}:
+    ${{ if and(parameters.artifactName, not(parameters.projects)) }}:
       artifact: ${{ parameters.artifactName }}
     preSteps: ${{ parameters.preSteps }}
-- ${{ if or(parameters.dotNetProjects, parameters.artifactName) }}:
+- ${{ if or(parameters.projects, parameters.artifactName) }}:
   - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: build
-      dotNetType: ${{ parameters.dotNetType }}
-      dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.dotNetProjects }}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetArguments }}
-      dotNetConfiguration: ${{ parameters.dotNetConfiguration }}
+      command: build
+      packageType: ${{ parameters.packageType }}
+      version: ${{ parameters.version }}
+      projects: ${{ parameters.projects }}
+      feedRestore: ${{ parameters.feedRestore }}
+      arguments: ${{ parameters.arguments }}
+      configuration: ${{ parameters.configuration }}
 - ${{ if and(parameters.keyVaultName, parameters.keyVaultSubscription) }}:
   - task: AzureKeyVault@1
     displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
@@ -255,7 +255,7 @@ steps:
     codeCoverageEnabled: ${{ parameters.codeCoverageEnabled }}
     vsTestVersion: '${{ parameters.vsTestVersion }}'
     platform: '${{ parameters.platform }}'
-    configuration: '${{ parameters.dotNetConfiguration }}'
+    configuration: '${{ parameters.configuration }}'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
