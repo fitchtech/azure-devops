@@ -87,6 +87,15 @@ parameters:
 - name: versionEnvVar # Name of environment variable to use for version number
   type: string
   default: NugetVersion
+- name: majorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 1
+- name: minorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
+- name: patchVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
 # dotNet Restore, Build, Publish, Pack, and Push
 - name: configuration
   type: string
@@ -136,6 +145,9 @@ steps:
       publishSymbols: ${{ parameters.publishSymbols }}
       versioningScheme: ${{ parameters.versioningScheme }}
       versionEnvVar: ${{ parameters.versionEnvVar }}
+      majorVersion: ${{ parameters.majorVersion }}
+      minorVersion: ${{ parameters.minorVersion }}
+      patchVersion: ${{ parameters.patchVersion }}
       outputDir: ${{ parameters.outputDir }}
       publishEnabled: false
 - template: ../postSteps.yaml

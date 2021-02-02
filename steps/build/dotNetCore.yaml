@@ -85,9 +85,15 @@ parameters:
 - name: versionEnvVar # Name of environment variable to use for version number
   type: string
   default: NugetVersion
-- name: configuration
-  type: string
-  default: Release
+- name: majorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 1
+- name: minorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
+- name: patchVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
 - name: push # enables dotNet push after dotNet pack
   type: boolean
   default: true
@@ -98,6 +104,9 @@ parameters:
   type: string
   default: '$(Build.ArtifactStagingDirectory)/*.nupkg'
 # Global options
+- name: configuration # Set --configuration flag, e.g. configuration: Debug or configuration: Release
+  type: string
+  default: ''
 - name: outputDir
   type: string
   default: '$(Build.ArtifactStagingDirectory)'
@@ -144,7 +153,10 @@ steps:
     inputs:
       command: ${{ parameters.command }}
       projects: '${{ parameters.projects }}'
-      arguments: --no-restore --configuration ${{ parameters.configuration }} --output ${{ parameters.outputDir }} ${{ parameters.arguments }}'
+      ${{ if parameters.configuration }}:
+        arguments: --no-restore --configuration ${{ parameters.configuration }} --output ${{ parameters.outputDir }} ${{ parameters.arguments }}'
+      ${{ if not(parameters.configuration) }}:
+        arguments: --no-restore --output ${{ parameters.outputDir }} ${{ parameters.arguments }}'
       ${{ if eq(parameters.command, 'publish') }}:
         publishWebProjects: '${{ parameters.publishWebProjects }}'
 - ${{ if parameters.searchPatternPack }}:
@@ -153,12 +165,17 @@ steps:
     inputs:
       command: pack
       searchPatternPack: '${{ parameters.searchPatternPack }}'
-      configuration: '${{ parameters.configuration }}'
+      ${{ if parameters.configuration }}:
+        configuration: '${{ parameters.configuration }}'
       outputDir: '${{ parameters.outputDir }}'
       includesymbols: '${{ parameters.includeSymbols }}'
       versioningScheme: '${{ parameters.versioningScheme }}'
       ${{ if eq(parameters.versioningScheme, 'byEnvVar') }}:
         versionEnvVar: '${{ parameters.versionEnvVar }}'
+      ${{ if eq(parameters.versioningScheme, 'ByPrereleaseNumber') }}:
+        majorVersion: ${{ parameters.majorVersion }}
+        minorVersion: ${{ parameters.minorVersion }}
+        patchVersion: ${{ parameters.patchVersion }}
       includeNuGetOrg: ${{ parameters.includeNuGetOrg }}
       ${{ if parameters.nugetConfigPath }}:
         feedsToUse: config
