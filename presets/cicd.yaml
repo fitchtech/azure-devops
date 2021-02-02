@@ -133,25 +133,25 @@ parameters:
   default: false
 
 # Deploy: Kubernetes Manifests
-- name: kubeServiceConnection # Kubernetes Service Connection Name
+- name: kubernetesServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
-- name: kubeEnvironment
+- name: environment
   type: object
   default: ''
-- name: kubeNamespace
+- name: namespace
   type: string
   default: default
-- name: kubeManifests # Deployment manifest for canary deploy, promote, and reject jobs
+- name: manifests # Deployment manifest for canary deploy, promote, and reject jobs
   type: object
   default: ''
-- name: kubeStrategy
+- name: strategy
   type: string
   default: canary
   values:
   - runOnce
   - canary
-- name: kubeAction # Default deploy; promote or reject prior canary kube deploy
+- name: action # Default deploy; promote or reject prior canary kube deploy
   type: string
   default: deploy
   values:
@@ -436,19 +436,19 @@ stages:
                             overrideParameters: '${{ deployment.override }}' # Optionally add args to override values in parameters file
                           ${{ if deployment.postSteps }}:
                             postSteps: ${{ deployment.postSteps }}
-        # If kubeManifests has value then insert single deployment job
-        - ${{ if and(parameters.kubeManifests, or(parameters.kubeEnvironment, parameters.kubeServiceConnection)) }}:
+        # If manifests has value then insert single deployment job
+        - ${{ if and(parameters.manifests, or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
           - deployment: kubeDeploy # job name unique to stage
             displayName: 'Kube Deployment'
             pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
             dependsOn: []
-            ${{ if parameters.kubeEnvironment }}:
-              environment: ${{ parameters.kubeEnvironment }}
+            ${{ if parameters.environment }}:
+              environment: ${{ parameters.environment }}
             strategy:
               # strategy: canary | runOnce
-              ${{ parameters.kubeStrategy }}:
+              ${{ parameters.strategy }}:
                 # If strategy is canary, insert increments
-                ${{ if eq(parameters.kubeStrategy, 'canary') }}:
+                ${{ if eq(parameters.strategy, 'canary') }}:
                   increments: ${{ parameters.kubeCanaryIncrements }}
                 # Insert preDeploy lifecycle hook stepList
                 ${{ if gt(length(parameters.preDeploy), 0) }}:
@@ -461,13 +461,13 @@ stages:
                     - template: steps/deploy/kubeManifest.yaml
                       parameters:
                         kubectlVersion: ${{ parameters.kubectlVersion }}
-                        namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                        kubeManifests: ${{ parameters.kubeManifests }}
-                        kubeAction: ${{ parameters.kubeAction }}
-                        kubeStrategy: canary
-                        canaryPercentage: $(strategy.increment)
-                        ${{ if and(parameters.containerRegistry, parameters.kubeServiceConnection) }}:
+                        namespace: ${{ parameters.namespace }} # pass in namespace param
+                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                        manifests: ${{ parameters.manifests }}
+                        action: ${{ parameters.action }}
+                        strategy: canary
+                        percentage: $(strategy.increment)
+                        ${{ if and(parameters.containerRegistry, parameters.kubernetesServiceConnection) }}:
                           imagePullSecret: ${{ parameters.imagePullSecret }}
                           dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
                 # Insert routeTraffic lifecycle hook stepList
@@ -499,7 +499,7 @@ stages:
         # For each deployment in kubeDeployments insert a deployment job
         - ${{ each deployment in parameters.kubeDeployments }}:
           # If item in kubeDeployments has deployment key and value, with manifests for that item, and a service connection or environment. 
-          - ${{ if and(deployment.deployment, deployment.manifests, or(deployment.serviceConnection, parameters.kubeServiceConnection, deployment.environment, parameters.kubeEnvironment)) }}:
+          - ${{ if and(deployment.deployment, deployment.manifests, or(deployment.serviceConnection, parameters.kubernetesServiceConnection, deployment.environment, parameters.environment)) }}:
             - deployment: ${{ deployment.deployment }} # job name unique to stage
               displayName: 'Kube Deployment'
               ${{ if deployment.pool }}:
@@ -520,13 +520,13 @@ stages:
                 dependsOn: []
               ${{ if deployment.environment }}:
                 environment: ${{ deployment.environment }}
-              ${{ if and(not(deployment.environment), parameters.kubeEnvironment) }}:
-                environment: ${{ parameters.kubeEnvironment }}
+              ${{ if and(not(deployment.environment), parameters.environment) }}:
+                environment: ${{ parameters.environment }}
               strategy:
-                ${{ if deployment.kubeStrategy }}:
-                  ${{ deployment.kubeStrategy }}:
-                ${{ if not(deployment.kubeStrategy) }}:
-                  ${{ parameters.kubeStrategy }}:
+                ${{ if deployment.strategy }}:
+                  ${{ deployment.strategy }}:
+                ${{ if not(deployment.strategy) }}:
+                  ${{ parameters.strategy }}:
                 ${{ if deployment.preDeploy }}:
                   preDeploy:
                     ${{ if deployment.pool }}:
@@ -542,21 +542,21 @@ stages:
                         ${{ if deployment.preSteps }}:
                           preSteps: ${{ deployment.preSteps }}
                         kubectlVersion: ${{ parameters.kubectlVersion }}
-                        # Override parameters.kubeNamespace with deployment.namespace item in kubeDeployments param
+                        # Override parameters.namespace with deployment.namespace item in kubeDeployments param
                         ${{ if deployment.namespace }}:
                           namespace: ${{ deployment.namespace }} # pass in namespace item from kubeDeployments
                         ${{ if not(deployment.namespace) }}:
-                          namespace: ${{ parameters.kubeNamespace }} # Default to parameters.kubeNamespace if deployment.namespace null
-                        # Override parameters.kubeServiceConnection with deployment.serviceConnection item in kubeDeployments param
+                          namespace: ${{ parameters.namespace }} # Default to parameters.namespace if deployment.namespace null
+                        # Override parameters.kubernetesServiceConnection with deployment.serviceConnection item in kubeDeployments param
                         ${{ if deployment.serviceConnection }}:
                           kubernetesServiceConnection: ${{ deployment.serviceConnection }} # pass in serviceConnection item from kubeDeployments
-                        ${{ if and(not(deployment.serviceConnection), parameters.kubeServiceConnection) }}:
-                          kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # Default to parameters.kubeServiceConnection if deployment.serviceConnection null
-                        kubeManifests: ${{ deployment.manifests }}
-                        kubeAction: ${{ parameters.kubeAction }}
-                        ${{ if and(eq(parameters.kubeAction, 'deploy'), eq(parameters.kubeStrategy, 'canary')) }}:
-                          kubeStrategy: canary
-                        ${{ if and(parameters.containerRegistry, parameters.kubeServiceConnection) }}:
+                        ${{ if and(not(deployment.serviceConnection), parameters.kubernetesServiceConnection) }}:
+                          kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # Default to parameters.kubernetesServiceConnection if deployment.serviceConnection null
+                        manifests: ${{ deployment.manifests }}
+                        action: ${{ parameters.action }}
+                        ${{ if and(eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
+                          strategy: canary
+                        ${{ if and(parameters.containerRegistry, parameters.kubernetesServiceConnection) }}:
                           imagePullSecret: ${{ parameters.imagePullSecret }}
                           dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
                         ${{ if deployment.postSteps }}:
@@ -601,7 +601,7 @@ stages:
 
     # promote: deploymentList inserted into promote stage in stages param
       promote:
-        - ${{ if and(parameters.kubeManifests, eq(parameters.kubeAction, 'deploy'), eq(parameters.kubeStrategy, 'canary')) }}:
+        - ${{ if and(parameters.manifests, eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
           - deployment: kubePromote # job name unique to stage
             displayName: 'Promote Canary Deployment'
             pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -612,15 +612,15 @@ stages:
                   steps:
                     - template: steps/deploy/kubeManifest.yaml
                       parameters:
-                        namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                        kubeAction: promote
-                        kubeStrategy: canary
-                        kubeManifests: ${{ parameters.kubeManifests }}
+                        namespace: ${{ parameters.namespace }} # pass in namespace param
+                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                        action: promote
+                        strategy: canary
+                        manifests: ${{ parameters.manifests }}
 
     # reject: deploymentList inserted into reject stage in stages param
       reject:
-        - ${{ if and(parameters.kubeManifests, eq(parameters.kubeAction, 'deploy'), eq(parameters.kubeStrategy, 'canary')) }}:
+        - ${{ if and(parameters.manifests, eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
           - deployment: kubeReject # job name unique to stage
             displayName: 'Reject Canary Deployment'
             pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
@@ -631,11 +631,11 @@ stages:
                   steps:
                     - template: steps/deploy/kubeManifest.yaml
                       parameters:
-                        namespace: ${{ parameters.kubeNamespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubeServiceConnection }} # pass param for kube manifest deployment service connection
-                        kubeAction: reject
-                        kubeStrategy: canary
-                        kubeManifests: ${{ parameters.kubeManifests }}
+                        namespace: ${{ parameters.namespace }} # pass in namespace param
+                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
+                        action: reject
+                        strategy: canary
+                        manifests: ${{ parameters.manifests }}
 
     # test: jobList inserted into test stage in stages param
       test:
