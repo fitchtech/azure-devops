@@ -169,6 +169,8 @@ Additionally, these stages could use Infrastructure as Code (IaC) for blue/green
 - Parameter naming for templates resemble the task inputs they are mapped to
 - Parameters naming uses camelCase
 - Parameter naming consistent across templates
+- Parameter names in steps templates should be the same as the task input name
+  - Except when there is duplicates which should be prefixed with the task name
 - Limit nesting templates to two levels
 - Expressions no longer than ~100 char
 - Only use pipeline variables for the replace tokens task or env vars in scripts

@@ -34,15 +34,21 @@ name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) 
 
 parameters:
 # params to pass into stages.yaml template:
+- name: projects # pattern to match of projects to build, publish, or pack
+  type: string
+  default: '**.csproj'
+- name: command
+  type: string
+  default: build
+  values:
+  - build
+  - publish
 - name: buildPool # Nested into pool param of build jobs
   type: object
   default:
     vmImage: 'ubuntu-18.04'
-- name: projects # pattern to match of projects to build, publish, or pack
-  type: string
-  default: '**.csproj'
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
@@ -81,7 +87,7 @@ extends:
             parameters:
             # preSteps: 
               # - task: add preSteps into job
-            # command: build # default in template is build
+              command: ${{ parameters.command }} # default in template is build
               projects: ${{ parameters.projects }} # pattern to match of projects to build 
               publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
             # postSteps:
@@ -98,7 +104,7 @@ extends:
 
 ## Direct Steps Template Usage
 
-The following example shows inserting a steps template into the steps section. This is to show parameter usage in the template. See the [Insert Steps Templates into Stages Template](#insert-steps-templates-into-stages-template) section above for usinge this template in the [stages](../../stages.md) template
+The following example shows inserting a steps template into the steps section. This is to show parameter usage in the template. See the [Insert Steps Templates into Stages Template](#insert-steps-templates-into-stages-template) section above for using this template in the [stages](../../stages.md) template
 
 ```yml
 steps:
@@ -110,10 +116,11 @@ steps:
     download: false # disables preSteps download steps
     preSteps: 
      - script: echo 'add preSteps stepsList to job' # list of tasks that run before the main steps of the template. Inserted into steps after checkout/download
-    command: build # build | publish | pack
+    command: publish # default: build | publish | restore
   # packageType: runtime # sdk is the default, only set this to override sdk with runtime
   # version: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
     projects: '**.csproj' # pattern match of projects or solution to build or publish
+    configuration: Release # dotNet configuration flag, e.g. configuration: Release or configuration: Debug
     publishEnabled: true # Set publishEnabled true to publish artifact of dotNet build or publish outputs 
   # feedRestore: '' # Azure DevOps Artifacts Feed
   # arguments: '' # Output and no-restore arguments are injected for you. This param is for inserting any additional build/publish args for the task
@@ -128,13 +135,13 @@ steps:
     download: false # disables preSteps download steps
     preSteps: 
      - script: echo 'add preSteps stepsList to job' # list of tasks that run before the main steps of the template. Inserted into steps after checkout/download
-    command: pack # build | publish | pack
   # packageType: runtime # sdk is the default, only set this to override sdk with runtime
   # version: '3.1.x' # UseDotNet@2 version number by default, set to null to skip step
-    projects: '**.csproj' # pattern match of projects or solution to build or publish
-    push: true # Push Nuget artifact to ADO Feed
-    includeSymbols: true # Publish Symbols
-    dotNetPackConfig: 'Debug' # dotNet configuration
+    searchPatternPack: '**.csproj' # pattern match of projects or solution to build or publish
+    searchPatternPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    includeSymbols: true # dotNet pack include symbols
+    publishSymbols: true # enable publish symbols task after dotNet pack
+    configuration: Debug # dotNet configuration flag, e.g. configuration: Release or configuration: Debug
     postSteps:
      - script: echo 'add postSteps stepsList to job' # list of tasks that run after the main steps of the template. Inserted into steps before publish/clean
 
