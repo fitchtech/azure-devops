@@ -237,7 +237,7 @@ stages:
             pool: ${{ parameters.codePool }} # param passed to pool of code stage jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
-              - template: steps/code/dotNetTests.yaml
+              - template: ../steps/code/dotNetTests.yaml
               # parameters within dotNetTests.yaml template
                 parameters:
                   dotNetTests: ${{ parameters.dotNetTests }}
@@ -251,7 +251,7 @@ stages:
             pool: ${{ parameters.codePool }} # param passed to pool of code stage jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
-              - template: steps/code/sonarQube.yaml
+              - template: ../steps/code/sonarQube.yaml
               # parameters within sonarQube.yaml template
                 parameters:
                   sonarQube: ${{ parameters.sonarQube }}
@@ -268,7 +268,7 @@ stages:
             pool: ${{ parameters.buildPool }} # param passed to pool of build stage jobs
             dependsOn: [] # job does not depend on other jobs
             steps:
-              - template: steps/build/containerImage.yaml
+              - template: ../steps/build/containerImage.yaml
               # parameters within containerImage.yaml template
                 parameters:
                   ${{ if parameters.projects }}:
@@ -304,7 +304,7 @@ stages:
                 ${{ each variable in build.variables }}:
                   ${{ variable.key }}: ${{ variable.value }}
               steps:
-                - template: steps/build/containerImage.yaml
+                - template: ../steps/build/containerImage.yaml
                 # parameters within containerImage.yaml template
                   parameters:
                     # For each build in parameters.dockerFiles, insert each item except job keys
@@ -338,7 +338,7 @@ stages:
                       - ${{ parameters.preDeploy }}
                 deploy:
                   steps:
-                    - template: steps/deploy/armTemplate.yaml
+                    - template: ../steps/deploy/armTemplate.yaml
                       parameters:
                         checkout: ${{ parameters.deployCheckout }}
                         replaceTokens: ${{ parameters.armReplaceTokens }}
@@ -402,7 +402,7 @@ stages:
                 runOnce:
                   deploy:
                     steps:
-                      - template: steps/deploy/armTemplate.yaml
+                      - template: ../steps/deploy/armTemplate.yaml
                         parameters:
                           ${{ if deployment.preSteps }}:
                             preSteps: ${{ deployment.preSteps }}
@@ -458,7 +458,7 @@ stages:
                       - ${{ parameters.preDeploy }}
                 deploy:
                   steps:
-                    - template: steps/deploy/kubeManifest.yaml
+                    - template: ../steps/deploy/kubeManifest.yaml
                       parameters:
                         kubectlVersion: ${{ parameters.kubectlVersion }}
                         namespace: ${{ parameters.namespace }} # pass in namespace param
@@ -537,7 +537,7 @@ stages:
                       - ${{ deployment.preDeploy }}
                 deploy:
                   steps:
-                    - template: steps/deploy/kubeManifest.yaml
+                    - template: ../steps/deploy/kubeManifest.yaml
                       parameters:
                         ${{ if deployment.preSteps }}:
                           preSteps: ${{ deployment.preSteps }}
@@ -610,7 +610,7 @@ stages:
               runOnce:
                 deploy:
                   steps:
-                    - template: steps/deploy/kubeManifest.yaml
+                    - template: ../steps/deploy/kubeManifest.yaml
                       parameters:
                         namespace: ${{ parameters.namespace }} # pass in namespace param
                         kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
@@ -629,7 +629,7 @@ stages:
               runOnce:
                 deploy:
                   steps:
-                    - template: steps/deploy/kubeManifest.yaml
+                    - template: ../steps/deploy/kubeManifest.yaml
                       parameters:
                         namespace: ${{ parameters.namespace }} # pass in namespace param
                         kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
@@ -682,8 +682,7 @@ stages:
                   ${{ if not(parameters.matrix) }}:
                     parallel: ${{ parameters.parallel }}
               steps:
-              # - template: insert visualStudioTest template
-                - template: steps/test/visualStudioTest.yaml
+                - template: ../steps/test/visualStudioTest.yaml
                 # parameters within visualStudioTest.yaml template
                   parameters:
                   # preSteps: 
