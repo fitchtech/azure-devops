@@ -1,0 +1,349 @@
+# This pipeline template provides a single job for code, build, deploy, test, promote, and reject stages. 
+# Parameters used to insert steps into a job of a stage or steps template and steps parameters. Required to enable the stage/job. 
+parameters:
+# code: stage
+- name: codeSteps # stepList inserted into code stage in stages
+  type: stepList
+  default: []
+  # - script: echo insert steps into stepList
+- name: codeTemplate # dotNetTests | sonarQube | false (default) | ../steps/code/${{ parameters.codeTemplate }}.yaml
+  type: string
+  default: false
+- name: codeParameters # If codeTemplate, codeParameters are the parameters for the codeTemplate
+  type: object
+  default: ''
+  # dotNetTests:
+    # - projects: $(projects)
+    #   arguments: $(arguments)
+- name: codeMatrix # Generates copies of a job. Use variables of matrix per code job. Pass variables to inputs or parameters in each job
+  type: object
+  default: ''
+  # dotNetTest1:
+    # projects: 'test1.csproj'
+    # arguments: '--collect "Code Coverage"'
+  # dotNetTest2:
+    # projects: 'test2.csproj'
+    # arguments: '--collect "Code Coverage"
+- name: codeMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: codePool # Nested into pool param of code jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
+# build: stage
+- name: buildSteps # stepList inserted into build job
+  type: stepList
+  default: []
+- name: buildTemplate # containerImage | dotNetCore | helmTemplate | nugetPackage | false (default) | ../steps/build/${{ parameters.buildTemplate }}.yaml
+  type: string
+  default: false
+- name: buildParameters # If buildTemplate, buildParameters are the parameters for the buildTemplate
+  type: object
+  default: ''
+  # dockerFile: $(dockerfile)
+  # containerRepository: $(repository)
+  # containerRegistry: 'serviceConnectionName'
+- name: buildMatrix # Generates copies of a job. Use variables of matrix per build job. For Docker use build arguments with the matrix variable. Or to define multiple dockerfiles and arguments
+  type: object
+  default: ''
+  # containerImage1:
+    # dockerfile: 'app1.dockerfile'
+    # repository: 'app1'
+  # containerImage2:
+    # dockerfile: 'app2.dockerfile'
+    # repository: 'app2'
+- name: buildMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: buildPool # Nested into pool param of build jobs
+  type: object
+  default: 
+    vmImage: 'ubuntu-18.04'
+# deploy: stage
+- name: environment # Environment name and optionally a resource name to record the deployment history. <environment-name>.<resource-name>
+  type: object
+  default: ''
+- name: preDeploySteps # Deployment job preDeploy lifecycle hook
+  type: stepList
+  default: []
+- name: deploySteps # stepList inserted into deploy job
+  type: stepList
+  default: []
+- name: deployTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.deployTemplate }}.yaml
+  type: string
+  default: false
+- name: deployParameters # If deployTemplate, deployParameters are the parameters for the deployTemplate
+  type: object
+  default: ''
+- name: routeTrafficSteps # Deployment job routeTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: postRouteTrafficSteps # Deployment job postRouteTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: onFailureSteps # Deployment job on: failure: lifecycle hook
+  type: stepList
+  default: []
+- name: onSuccessSteps # Deployment job on: success: lifecycle hook
+  type: stepList
+  default: []
+- name: deployPool # Nested into pool param of deploy, promote, and reject jobs
+  type: object
+  default:
+    vmImage: 'ubuntu-18.04'
+- name: strategy
+  type: string
+  default: runOnce
+  values:
+  - runOnce
+  - canary
+  - rolling
+# test: stage
+- name: testSteps # stepList inserted into test job
+  type: stepList
+  default: []
+- name: testTemplate
+  type: string
+  default: false
+- name: testParameters # If testTemplate, testParameters are the parameters for the testTemplate
+  type: object
+  default: ''
+- name: testParallel # This strategy specifies how many duplicates of a job should run. It's useful for slicing up a large test matrix. The Visual Studio Test task understands how to divide the test load across the number of scheduled jobs.
+  type: number
+  default: 1
+- name: testMatrix
+  type: object
+  default: ''
+- name: testMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: testPool # Nested into pool param of test jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
+# promote: stage
+- name: promoteSteps # stepList inserted into promote job
+  type: stepList
+  default: []
+- name: promoteTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.promoteTemplate }}.yaml
+  type: string
+  default: false
+- name: promoteParameters # If promoteTemplate, promoteParameters are the parameters for the promoteTemplate
+  type: object
+  default: ''
+# reject: stage
+- name: rejectSteps # stepList inserted into reject job
+  type: stepList
+  default: []
+- name: rejectTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.rejectTemplate }}.yaml
+  type: string
+  default: false
+- name: rejectParameters # If rejectTemplate, rejectParameters are the parameters for the rejectTemplate
+  type: object
+  default: ''
+# overrides
+- name: stages # Optional to override default value of stages stageList in the stages.yaml template
+  type: stageList
+  default: ''
+- name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
+  type: string
+  default: ''
+- name: stagesPrefix # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
+  type: string
+  default: ''
+- name: stagesCondition # Optional param to override the condition of all stages
+  type: string
+  default: ''
+# jobsLists
+- name: codeJobs # jobsList inserted into code stage in stages
+  type: jobList
+  default: []
+- name: buildJobs # jobsList inserted into build stage in stages
+  type: jobList
+  default: []
+- name: deployJobs # deploymentList inserted into deploy stage in stages
+  type: deploymentList
+  default: []
+- name: testJobs # jobList inserted into test stage in stages
+  type: jobList
+  default: []
+- name: promoteJobs # deploymentList inserted into promote stage in stages
+  type: deploymentList
+  default: []
+- name: rejectJobs # deploymentList inserted into reject stage in stages
+  type: deploymentList
+  default: []
+
+stages:
+  - template: ../stages.yaml
+    parameters:
+      # if steps in codeSteps or template name in codeTemplate and parameters in codeParameters, then insert the code job
+      ${{ if or(gt(length(parameters.codeSteps), 0), and(parameters.codeTemplate, parameters.codeParameters), gt(length(parameters.codeJobs), 0)) }}:
+        code:
+          - ${{ if gt(length(parameters.codeSteps), 0) }}:
+            - job: codeSteps # job name must be unique within stage
+              displayName: 'Code Job' # job display name
+              pool: ${{ parameters.codePool }} # param passed to pool of code jobs
+              steps:
+                - ${{ parameters.codeSteps }}
+          - ${{ if and(parameters.codeTemplate, parameters.codeParameters) }}:
+            - job: codeTemplate # job name must be unique within stage
+              displayName: 'Code Job' # job display name
+              pool: ${{ parameters.codePool }} # param passed to pool of code jobs
+              steps:
+                - ${{ if gt(length(parameters.codeSteps), 0) }}:
+                  - ${{ parameters.codeSteps }}
+                - ${{ if and(parameters.codeTemplate, parameters.codeParameters) }}:
+                  - template: ../steps/code/${{ parameters.codeTemplate }}.yaml
+                    parameters:
+                      ${{ each param in parameters.codeParameters }}:
+                        ${{ param.key }}: ${{ param.value }}
+          - ${{ if gt(length(parameters.codeJobs), 0) }}:
+            - ${{ each job in parameters.codeJobs }}:
+              - ${{ if gt(length(job.steps), 0) }}:
+                - job: ${{ job.job }}
+                  ${{ each parameter in job }}:
+                    ${{ if ne(parameter.key, 'job') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  ${{ if not(job.pool) }}:
+                    pool: ${{ parameters.codePool }}
+                  steps: 
+                    - ${{ job.steps }}
+      # if steps in buildSteps or template name in buildTemplate and parameters in buildParameters, then insert the build job
+      ${{ if or(gt(length(parameters.buildSteps), 0), and(parameters.buildTemplate, parameters.buildParameters)) }}:
+        build:
+          - job: build # job name must be unique within stage
+            displayName: 'Build Job' # job display name
+            pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
+            ${{ if parameters.buildMatrix }}:
+              strategy:
+                matrix: ${{ parameters.buildMatrix }}
+                maxParallel: ${{ parameters.buildMaxParallel }}
+            steps:
+              - ${{ if gt(length(parameters.buildSteps), 0) }}:
+                - ${{ parameters.buildSteps }}
+              - ${{ if and(parameters.buildTemplate, parameters.buildParameters) }}:
+                - template: ../steps/build/${{ parameters.buildTemplate }}.yaml
+                  parameters:
+                    ${{ each param in parameters.buildParameters }}:
+                      ${{ param.key }}: ${{ param.value }}
+      # if steps in deploySteps or template name in deployTemplate and parameters in deployParameters, then insert the deploy job
+      ${{ if or(gt(length(parameters.deploySteps), 0), and(parameters.deployTemplate, parameters.deployParameters)) }}:
+        deploy:
+          - deployment: deploy # deployment name unique to stage
+            displayName: 'Deployment Job'
+            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+            ${{ if parameters.environment }}:
+              environment: ${{ parameters.environment }}
+            strategy:
+              ${{ parameters.strategy }}:
+                # Insert preDeploy lifecycle hook stepList
+                ${{ if gt(length(parameters.preDeploy), 0) }}:
+                  preDeploy:
+                    pool: ${{ parameters.deployPool }}
+                    steps:
+                      - ${{ parameters.preDeploy }}
+                # Insert deploySteps stepList
+                deploy:
+                  steps:
+                    - ${{ if parameters.deploySteps }}:
+                      - ${{ parameters.deploySteps }}
+                    - ${{ if and(parameters.deployTemplate, parameters.deployParameters) }}:
+                      - template: ../steps/deploy/${{ parameters.deployTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.deployParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+                # routeTraffic lifecycle hook
+                ${{ if gt(length(parameters.routeTrafficSteps), 0) }}:
+                  routeTraffic:
+                    pool: ${{ parameters.deployPool }}
+                    steps:
+                      - ${{ parameters.routeTrafficSteps }}
+                # postRouteTraffic lifecycle hook
+                ${{ if gt(length(parameters.postRouteTrafficSteps), 0) }}:
+                  postRouteTraffic:
+                    pool: ${{ parameters.deployPool }}
+                    steps:
+                      - ${{ parameters.postRouteTraffic }}
+                # on: failure: and success: lifecycle hooks
+                ${{ if or(gt(length(parameters.onFailureSteps), 0), gt(length(parameters.onSuccessSteps), 0)) }}:
+                  on:
+                    ${{ if gt(length(parameters.onSuccessSteps), 0) }}:
+                    # Insert onSuccess stepList
+                      success:
+                        pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ parameters.parameters.onSuccessSteps }}
+                    # Insert onFailure stepList
+                    ${{ if gt(length(parameters.onFailureSteps), 0) }}:
+                      failure:
+                        pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ parameters.onFailureSteps }}
+      # if steps in testSteps or template name in testTemplate and parameters in testParameters, then insert the test job
+      ${{ if or(gt(length(parameters.testSteps), 0), and(parameters.testTemplate, parameters.testParameters)) }}:
+        test:
+          - job: test # job name must be unique within stage
+            displayName: 'Test Job' # job display name
+            pool: ${{ parameters.testPool }} # param passed to pool of test jobs
+            # If test.matrix or test.parallel strategy for Visual Studio Test jobs
+            ${{ if or(parameters.testMatrix, gt(parameters.testParallel, 1)) }}:
+              strategy:
+                ${{ if test.matrix }}:
+                  matrix: ${{ test.matrix }}
+                ${{ if not(test.matrix) }}:
+                  parallel: ${{ test.parallel }}
+            steps:
+              - ${{ if gt(length(parameters.testSteps), 0) }}:
+                - ${{ parameters.testSteps }}
+              - ${{ if and(parameters.testTemplate, parameters.testParameters) }}:
+                - template: ../steps/test/${{ parameters.testTemplate }}.yaml
+                  parameters:
+                    ${{ each param in parameters.buildParameters }}:
+                      ${{ param.key }}: ${{ param.value }}
+      # if steps in promoteSteps or template name in promoteTemplate and parameters in promoteParameters, then insert the promote job
+      ${{ if or(gt(length(parameters.promoteSteps), 0), and(parameters.promoteTemplate, parameters.promoteParameters)) }}:
+        promote:
+          - deployment: promote # deployment name unique to stage
+            displayName: 'Promote Deployment Job'
+            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+            ${{ if parameters.environment }}:
+              environment: ${{ parameters.environment }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - ${{ if parameters.promoteSteps }}:
+                      - ${{ parameters.promoteSteps }}
+                    - ${{ if and(parameters.promoteTemplate, parameters.promoteParameters) }}:
+                      - template: ../steps/deploy/${{ parameters.promoteTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.promoteParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+      # if steps in rejectSteps or template name in rejectTemplate and parameters in rejectParameters, then insert the reject job
+      ${{ if or(gt(length(parameters.rejectSteps), 0), and(parameters.rejectTemplate, parameters.rejectParameters)) }}:
+        reject:
+          - deployment: reject # deployment name unique to stage
+            displayName: 'Reject Deployment Job'
+            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+            ${{ if parameters.environment }}:
+              environment: ${{ parameters.environment }}
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - ${{ if parameters.rejectSteps }}:
+                      - ${{ parameters.rejectSteps }}
+                    - ${{ if and(parameters.rejectTemplate, parameters.rejectParameters) }}:
+                      - template: ../steps/deploy/${{ parameters.rejectTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.rejectParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+      # If stages stageList param has value then override default stages value in stages.yaml template
+      ${{ if gt(length(parameters.stages), 0) }}:
+        stages: ${{ parameters.stages }}
+      # These parameters are nested from the parameters section above
+      stagesSuffix: ${{ parameters.stagesSuffix }}
+      stagesPrefix: ${{ parameters.stagesPrefix }}
+      stagesCondition: ${{ parameters.stagesCondition }}
