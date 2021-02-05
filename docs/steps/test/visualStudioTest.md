@@ -39,10 +39,10 @@ steps:
       distributionBatchType: basedOnExecutionTime # default: basedOnTestCases | basedOnExecutionTime | basedOnAssembly
       customBatchSizeValue: 10 # Optional when distributionBatchType is basedOnExecutionTime. Value greater than 0 enables batchingBasedOnAgentsOption: customBatchSize
       customRunTimePerBatchValue: 10 # Optional when distributionBatchType is BasedOnExecutionTime
-      projects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. 
-      version: '3.1.x' # Optional: if param has value, use dotNet version task inserted
-      feedRestore: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
-      arguments: '' # Optional: Additional arguments for projects if command is build or publish. Excluding '--no-restore' and '--output' as they are predefined
+      dotNetProjects: '*.sln' # Optional: File matching pattern to Visual Studio solution (*.sln) or dotNet project (*.csproj) to restore. 
+      dotNetVersion: '3.1.x' # Optional: if param has value, use dotNet version task inserted
+      dotNetFeedRestore: '' # Optional: GUID of Azure artifact feed. Use when projects restore NuGet artifacts from a private feed
+      dotNetArguments: '' # Optional: Additional arguments for projects if command is build or publish. Excluding '--no-restore' and '--output' as they are predefined
       publishEnabled: false # Disable the publish task, default true. Publishes the testResultsFolder
       publishArtifact: 'artifactName' # Default: $(Build.DefinitionName)_$(System.JobName)
     # postSteps: Optional: inserts stepList before publish and clean
@@ -69,7 +69,7 @@ parameters:
   default:
     - job: vsTest
       dependsOn: []
-      projects: '*.csproj'
+      dotNetProjects: '*.csproj'
       testPlan: 123456
       testSuite: 123456
       testConfiguration: 523
@@ -83,10 +83,6 @@ parameters:
 - name: parallel
   type: number
   default: 1
-
-- name: projects # Optional param, nested into projects param of dotNetTests steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to restore for multiple tests.
-  type: string
-  default: ''
 
 # parameter defaults in the above section can be set on the manual run of a pipeline to override
 
@@ -119,7 +115,7 @@ extends:
     test:
       - ${{ each test in parameters.vsTests }}:
       # This expression would require you provide a dotNet project to build and the test plan and suite ID 
-        - ${{ if and(test.job, test.projects, parameters.testPlan, parameters.testSuite) }}:
+        - ${{ if and(test.job, test.dotNetProjects, parameters.testPlan, parameters.testSuite) }}:
         # - job: name must be unique within stage
           - job: ${{ test.job }}
           # for each job param of test item in vsTests, insert param

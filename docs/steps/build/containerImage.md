@@ -12,9 +12,9 @@
 
 ## Insert Steps Template into Stages Template
 
-The following example shows how to insert the containerImage steps template into the [stages](../../stages.md) template with the minimum required params. This shows one containerImage job added to the build stage jobLists. Additional, you can add as many build jobs as needed. This example has no deployments. However, it is recommended that you could create a single multistage pipeline that includes code, build, deploy, test, and promote stages in a single pipeline.
+The following example shows how to insert the containerImage steps template into the [stages](../../stages.md) template with the minimum required params. This shows one containerImage job added to the build stage jobLists. Additionally, you can add as many build jobs as needed. This example has no deployments. However, it is recommended that you could create a single multistage pipeline that includes code, build, deploy, test, and promote stages in a single pipeline.
 
-Alternatively, you could create a separate deployment pipeline that triggers from the completion of a build pipeline. This pattern could be used to create a build pipeline decoupled from deployments. To do this would require a pipeline resource trigger be added to the resources in your deployment pipeline. The resource in your deployment pipeline would be the build pipeline as a source. When the build pipeline completes if the source pipeline triggers match then the deployment pipeline would run.
+Alternatively, you could create a separate deployment pipeline that triggers on the completion of a build pipeline. This pattern could be used to create a build pipeline decoupled from deployments. To do this would require a pipeline resource trigger added into the resources in your deployment pipeline. The resource in your deployment pipeline would be the build pipeline as a source. When the build pipeline completes if the source pipeline triggers match then the deployment pipeline would run.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -25,7 +25,7 @@ parameters:
   type: object
   default: 
     vmImage: 'Ubuntu-16.04'
-- name: projects # Required param to restore and publish a dotNet project
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -91,7 +91,7 @@ extends:
               parameters:
               # preSteps: 
                 # - task: add preSteps into job
-                projects: '${{ parameters.projects }}'
+                dotNetProjects: '${{ parameters.dotNetProjects }}'
                 containerRegistry: '${{ parameters.containerRegistry }}'
                 containerRepository: '${{ parameters.containerRepository }}'
                 dockerFile: '${{ parameters.dockerFile }}'
@@ -127,7 +127,7 @@ parameters:
   type: object
   default:
     vmImage: 'Ubuntu-16.04'
-- name: projects # Required param to restore and publish a dotNet project
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: '**.csproj' # path or pattern match of projects to dotNet publish
 - name: dockerFile # Nested into dockerFile of build jobs
@@ -173,7 +173,7 @@ stages:
     steps:
       - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
         parameters:
-          projects: '${{ parameters.projects }}'
+          dotNetProjects: '${{ parameters.dotNetProjects }}'
           containerRegistry: '${{ parameters.containerRegistry }}'
           containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
           dockerFile: '${{ parameters.dockerFile }}'
@@ -201,7 +201,7 @@ resources:
 steps:
 - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
   parameters:
-    projects: '**.csproj'
+    dotNetProjects: '**.csproj'
     containerRegistry: 'ACR'
     containerRepository: 'imageName'
     dockerFile: '**.dockerfile'
