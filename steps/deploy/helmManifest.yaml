@@ -111,9 +111,9 @@ steps:
       checkout: false
       download: false
       kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
-      kubeAction: deploy
-      kubeStrategy: ''
-      kubeManifests: '${{ parameters.outputDir }}/*'
+      action: deploy
+      strategy: ''
+      manifests: '${{ parameters.outputDir }}/*'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
