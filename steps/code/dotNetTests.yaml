@@ -24,7 +24,7 @@ parameters:
   default: []
 - name: publish
   type: string
-  default: '$(Common.TestResultsDirectory)'
+  default: '$(Agent.TempDirectory)'
 - name: publishArtifact
   type: string
   default: '$(Build.DefinitionName)_$(System.JobName)'
@@ -35,35 +35,23 @@ parameters:
   values:
   - sdk
   - runtime
-- name: version
-  type: string
-  default: '3.1.x'
-# dotNet Build and Restore Params
-- name: projects # dotNet projects or vs solution for dotNet build and restore
-  type: string
-- name: feedRestore # default dotNet artifact feed
+- name: version # Optional dotNet version string to enable use dotNet task
   type: string
   default: ''
-- name: arguments # default dotNet build arguments
+- name: feedRestore # dotNet restore using NuGet feed to restore
   type: string
   default: ''
-- name: command
-  type: string
-  default: restore
-  values:
-  - restore
-  - build
-  - publish
-# dotNet Test Tasks for each test in dotNetTests
-- name: dotNetTests # Inserts dotnet test for each item in list, project key required
+# dotNet Test Tasks for each test in tests
+- name: tests # Inserts dotnet test for each item in list, project key required
   type: object
   default:
-  - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+  - projects: '***[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
     arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
     displayName: 'dotNet Unit Tests'
-  - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
-    arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
-    displayName: 'dotNet CLI Tests'
+    testRunTitle: 'Unit Tests' # Optional, if task displayName is different than testRunTitle
+- name: publishTestResults #Enabling this option will generate a test results TRX file in $(Agent.TempDirectory) and results will be published to the server. This option appends --logger trx --results-directory $(Agent.TempDirectory) to the command line arguments.
+  type: boolean
+  default: true
 
 steps:
 - template: ../preSteps.yaml
@@ -74,21 +62,19 @@ steps:
     download: ${{ parameters.download }}
     artifact: ${{ parameters.downloadArtifact }}
     preSteps: ${{ parameters.preSteps }}
-- ${{ if parameters.projects }}:
-  - template: ../build/dotNetCore.yaml
-    parameters:
-      clean: false
-      checkout: false
-      download: false
-      command: ${{ parameters.command }}
-      packageType: ${{ parameters.packageType }}
-      version: ${{ parameters.version }}
-      projects: ${{ parameters.projects }}
-      feedRestore: ${{ parameters.feedRestore }}
-      arguments: ${{ parameters.arguments }}
-- ${{ if gt(length(parameters.dotNetTests), 0) }}:
-  - ${{ each test in parameters.dotNetTests }}:
+- ${{ if gt(length(parameters.tests), 0) }}:
+  - ${{ each test in parameters.tests }}:
     - ${{ if test.projects }}:
+      - template: ../build/dotNetCore.yaml
+        parameters:
+          clean: false
+          checkout: false
+          download: false
+          command: restore
+          packageType: ${{ parameters.packageType }}
+          version: ${{ parameters.version }}
+          projects: ${{ parameters.projects }}
+          feedRestore: ${{ parameters.feedRestore }}
       - task: DotNetCoreCLI@2
         ${{ if test.displayName }}:
           displayName: ${{ test.displayName }}
@@ -103,8 +89,12 @@ steps:
             arguments: '--collect "Code Coverage"'
           ${{ if test.publishTestResults }}:
             publishTestResults: true
+          ${{ if and(eq(test.publishTestResults, ''), parameters.publishTestResults) }}:
+            publishTestResults: true
           ${{ if test.testRunTitle }}:
             testRunTitle: ${{ test.testRunTitle }}
+          ${{ if and(not(test.testRunTitle), test.displayName) }}:
+            testRunTitle: ${{ test.displayName }}
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
