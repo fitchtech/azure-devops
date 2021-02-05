@@ -29,36 +29,45 @@ parameters:
   type: string
   default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
 
-# dotNet Publish project to copy output to Docker image
-- name: packageType
+# dotNet Publish project to copy output into Docker image
+- name: dotNetType
   type: string
   default: runtime
   values:
   - sdk
   - runtime
-- name: version # Optional param to enable use dotNet task 
-  type: string
-  default: '3.1.x'
-- name: projects # Required param to restore and publish a dotNet project
+- name: dotNetVersion # Optional param to enable use dotNet task 
   type: string
   default: ''
-- name: arguments
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: ''
-- name: feedRestore
+- name: dotNetArguments
   type: string
   default: ''
-- name: publishWebProjects
+- name: dotNetFeedRestore
+  type: string
+  default: ''
+- name: dotNetPublishWebProjects
   type: boolean
   default: false
 
-# Docker Tasks
-- name: dockerInstall # Optional task to install Docker on agent
+# Docker Instal Task (Optional)
+- name: dockerInstall # Optional to enable docker install on agent
   type: boolean
   default: false
-- name: dockerVersion # Default version for docker install task
+- name: dockerVersion # Optional to set specific docker version to install
   type: string
-  default: '17.09.0-ce'
+  default: ''
+- name: dockerReleaseType # Default docker release channel to install
+  type: string
+  default: stable
+  values:
+    - stable
+    - edge
+    - test
+    - nightly
+# Docker Build and Push
 - name: dockerFile # Path to Dockerfile
   type: string
   default: '**.dockerfile'
@@ -146,26 +155,27 @@ steps:
     inputs:
       artifact: ${{ parameters.downloadArtifact }}
       path: ${{ parameters.downloadPath }}
-- ${{ if parameters.projects }}:
+- ${{ if parameters.dotNetProjects }}:
   - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
       command: publish
-      packageType: ${{ parameters.packageType }}
-      version: ${{ parameters.version }}
-      projects: ${{ parameters.projects }}
-      feedRestore: ${{ parameters.feedRestore }}
-      arguments: ${{ parameters.arguments}}
-      publishWebProjects: ${{ parameters.publishWebProjects }}
-- ${{ if and(parameters.dockerInstall, parameters.dockerVersion) }}:
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments}}
+      publishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
+- ${{ if parameters.dockerInstall }}:
   - task: DockerInstaller@0
     displayName: 'Install Docker'
     target: host
     inputs:
-      dockerVersion: '${{ parameters.dockerVersion }}'
-      releaseType: stable
+      releaseType: ${{ parameters.dockerReleaseType }}
+      ${{ if parameters.dockerVersion }}:
+        dockerVersion: '${{ parameters.dockerVersion }}'
 - ${{ if parameters.containerRegistries }}:
   - ${{ each registry in parameters.containerRegistries }}:
     - task: Docker@2
@@ -212,7 +222,7 @@ steps:
   - script: |
       docker save ${{ parameters.containerRegistryUrl }}/${{ parameters.containerRepository }}:latest -o ${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}
     displayName: 'Docker Save ${{ parameters.containerRepository }}'
-- ${{ if and(parameters.projects, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
+- ${{ if and(parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
   - ${{ if parameters.deleteContents }}:
     - task: DeleteFiles@1
       displayName: 'Delete Unwanted Files'
