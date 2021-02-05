@@ -1,0 +1,26 @@
+# This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
+name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
+
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - v1*
+
+extends:
+  template: ../presets/stages-stepLists.yaml
+  parameters:
+    timeoutInMinutes: 1
+    cancelTimeoutInMinutes: 1
+    codeSteps:
+      - script: echo insert steps into stepList
+    buildSteps:
+      - script: echo insert steps into stepList
+    deploySteps:
+      - script: echo insert steps into stepList
+    promoteSteps:
+      - script: echo insert steps into stepList
+    rejectSteps:
+      - script: echo insert steps into stepList
