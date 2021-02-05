@@ -19,7 +19,7 @@ parameters:
   type: string
   default: ''
 # Replace Tokens in files
-- name: replaceTokens # Enable replace tokens task for kube manifests
+- name: replaceTokens # Enable replace tokens task. Useful for updating configuration settings in files like appsettings
   type: boolean
   default: false
 - name: replaceTokensRoot
@@ -30,26 +30,26 @@ parameters:
   default: |
     **appsettings.*.json
 # Use dotNet Type and Version
-- name: packageType
+- name: dotNetType
   type: string
-  default: 'sdk'
+  default: sdk
   values:
-  - 'sdk'
-  - 'runtime'
-- name: version
+  - sdk
+  - runtime
+- name: dotNetVersion
   type: string
   default: ''
 # dotNet restore/build 
-- name: projects # projects required to dotNet build a project before vsTest tasks
+- name: dotNetProjects # projects required to dotNet build a project before vsTest tasks
   type: string
   default: ''
-- name: arguments
+- name: dotNetArguments
   type: string
   default: ''
-- name: feedRestore
+- name: dotNetFeedRestore
   type: string
   default: ''
-- name: configuration
+- name: dotNetConfiguration
   type: string
   default: Release
 # Get Azure KeyVault as Variables for Replace Tokens
@@ -173,12 +173,12 @@ steps:
       checkout: false
       download: false
       command: build
-      packageType: ${{ parameters.packageType }}
-      version: ${{ parameters.version }}
-      projects: ${{ parameters.projects }}
-      feedRestore: ${{ parameters.feedRestore }}
-      arguments: ${{ parameters.arguments }}
-      configuration: ${{ parameters.configuration }}
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments }}
+      configuration: ${{ parameters.dotNetConfiguration }}
 - ${{ if and(parameters.keyVaultName, parameters.keyVaultSubscription) }}:
   - task: AzureKeyVault@1
     displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
