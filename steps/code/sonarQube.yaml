@@ -29,25 +29,25 @@ parameters:
   type: string
   default: ''
 # Use dotNet
-- name: packageType
+- name: dotNetType
   type: string
   default: sdk
   values:
   - sdk
   - runtime
-- name: version
+- name: dotNetVersion
   type: string
-  default: '3.1.x'
+  default: ''
 # dotNet Build and Restore Params
-- name: projects # dotNet projects or vs solution for dotNet build and restore
+- name: dotNetProjects # dotNet projects or vs solution for dotNet build and restore
   type: string
-- name: feedRestore # default dotNet artifact feed
-  type: string
-  default: ''
-- name: arguments # default dotNet build arguments
+- name: dotNetFeedRestore # default dotNet artifact feed
   type: string
   default: ''
-- name: command
+- name: dotNetArguments # default dotNet build arguments
+  type: string
+  default: ''
+- name: dotNetCommand
   type: string
   default: build
   values:
@@ -58,22 +58,22 @@ parameters:
 - name: sonarQube # SonarQube Service Connection Name
   type: string
   default: ''
-- name: sonarQubeScannerMode
+- name: scannerMode
   type: string
   default: 'MSBuild'
-- name: sonarQubeProjectKey
+- name: projectKey
   type: string
   default: ''
-- name: sonarQubeProjectName
+- name: projectName
   type: string
   default: ''
-- name: sonarQubeProjectVersion
+- name: projectVersion
   type: string
   default: '$(Build.BuildId)'
-- name: sonarQubeExtraProperties
+- name: extraProperties
   type: string
   default: 'sonar.coverage.exclusions=**/**Tests*.cs,**/**Wrapper*.cs,**/**Façade*.cs,**/**Creator*.cs,**/**Program.cs'
-- name: sonarQubePollingTimeoutSec
+- name: pollingTimeoutSec
   type: number
   default: 300
 
@@ -91,30 +91,30 @@ steps:
     displayName: 'Prepare analysis with SonarQube'
     inputs:
       SonarQube: '${{ parameters.sonarQube }}'
-      scannerMode: '${{ parameters.sonarQubeScannerMode }}'
-      projectKey: '${{ parameters.sonarQubeProjectKey }}'
-      projectName: '${{ parameters.sonarQubeProjectName }}'
-      projectVersion: '${{ parameters.sonarQubeProjectVersion }}'
-      extraProperties: '${{ parameters.sonarQubeExtraProperties }}'
+      scannerMode: '${{ parameters.scannerMode }}'
+      projectKey: '${{ parameters.projectKey }}'
+      projectName: '${{ parameters.projectName }}'
+      projectVersion: '${{ parameters.projectVersion }}'
+      extraProperties: '${{ parameters.extraProperties }}'
 - ${{ if parameters.projects }}:
   - template: ../build/dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      command: ${{ parameters.command }}
-      packageType: ${{ parameters.packageType }}
-      version: ${{ parameters.version }}
-      projects: ${{ parameters.projects }}
-      feedRestore: ${{ parameters.feedRestore }}
-      arguments: ${{ parameters.arguments }}
+      command: ${{ parameters.dotNetCommand }}
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments }}
 - ${{ if parameters.sonarQube }}:
   - task: SonarQubeAnalyze@4
     displayName: 'Run SonarQube Analysis'
   - task: SonarQubePublish@4
     displayName: 'Publish SonarQube Quality Gate Result'
     inputs:
-      pollingTimeoutSec: '${{ parameters.sonarQubePollingTimeoutSec }}'
+      pollingTimeoutSec: '${{ parameters.pollingTimeoutSec }}'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
