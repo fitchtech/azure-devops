@@ -240,7 +240,7 @@ stages:
               - template: ../steps/code/dotNetTests.yaml
               # parameters within dotNetTests.yaml template
                 parameters:
-                  dotNetTests: ${{ parameters.dotNetTests }}
+                  tests: ${{ parameters.dotNetTests }}
                   version: ${{ parameters.version }}
                   ${{ each param in parameters.dotNetTestsParams }}:
                     ${{ param.key }}: ${{ param.value }}
