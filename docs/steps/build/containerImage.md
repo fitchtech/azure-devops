@@ -91,14 +91,14 @@ extends:
               parameters:
               # preSteps: 
                 # - task: add preSteps into job
-                dotNetProjects: '${{ parameters.dotNetProjects }}'
-                containerRegistry: '${{ parameters.containerRegistry }}'
-                containerRepository: '${{ parameters.containerRepository }}'
-                dockerFile: '${{ parameters.dockerFile }}'
+                dotNetProjects: ${{ parameters.dotNetProjects }}
+                containerRegistry: ${{ parameters.containerRegistry }}
+                containerRepository: ${{ parameters.containerRepository }}
+                dockerFile: ${{ parameters.dockerFile }}
                 dockerTags: ${{ parameters.dockerTags }}
                 # If dockerArgs is not false
                 ${{ if parameters.dockerArgs }}:
-                  dockerArgs: '${{ parameters.dockerArgs }}'
+                  dockerArgs: ${{ parameters.dockerArgs }}
                 # If twistlockEnabled is true, insert twistlock scan task
                 ${{ if parameters.twistlockEnabled }}:
                   twistlockEnabled: true # enable twistlock scan task
@@ -173,11 +173,11 @@ stages:
     steps:
       - template: steps/build/containerImage.yaml@template # resource identifier required as this is not extending from stages.yaml
         parameters:
-          dotNetProjects: '${{ parameters.dotNetProjects }}'
-          containerRegistry: '${{ parameters.containerRegistry }}'
+          dotNetProjects: ${{ parameters.dotNetProjects }}
+          containerRegistry: ${{ parameters.containerRegistry }}
           containerRepository: '${{ parameters.containerRepository }}/${{ parameters.imageName }}'
-          dockerFile: '${{ parameters.dockerFile }}'
-          dockerArgs: '${{ parameters.dockerArgs }}'
+          dockerFile: ${{ parameters.dockerFile }}
+          dockerArgs: ${{ parameters.dockerArgs }}
           dockerTags: ${{ parameters.dockerTags }}
 
 ```

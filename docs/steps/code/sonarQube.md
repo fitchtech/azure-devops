@@ -26,7 +26,7 @@ parameters:
 - name: sonarQube # Required sonarQube Service Connection name to insert steps
   type: string
   default: ''
-- name: projects # Nested into projects param of sonarQube steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to build for SonarQube analysis
+- name: dotNetProjects # Nested into projects param of sonarQube steps. Can be Visual Studio solution (*.sln) or dotNet projects (*.csproj) to build for SonarQube analysis
   type: string
   default: '*.sln'
 
@@ -70,7 +70,7 @@ extends:
             # preSteps: 
               # - task: add preSteps into job
               sonarQube: ${{ parameters.sonarQube }}
-              projects: ${{ parameters.projects }}
+              dotNetProjects: ${{ parameters.dotNetProjects }}
             # postSteps:
               # - task: add postSteps into job
 

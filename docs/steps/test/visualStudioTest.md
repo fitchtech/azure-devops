@@ -53,7 +53,7 @@ steps:
 
 ## Insert Steps Template into Stages Template
 
-The following example shows how to insert the dotNetTests steps template into the [stages](../../stages.md) template.
+The following example shows how to insert the Visual Studio Test steps template into the [stages](../../stages.md) template.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
