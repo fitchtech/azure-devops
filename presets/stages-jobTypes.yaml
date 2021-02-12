@@ -8,45 +8,56 @@ parameters:
 - name: dotNetTests
   type: object
   default: ''
+# Single job with multiple projects patterns, each item as serial test tasks
 # dotNetTests:
-  # - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
-  #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  # tests:
+    # - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+    #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    #   displayName: 'dotNet Unit Tests'
+    # - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+    #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    #   displayName: 'dotNet CLI Tests'
+# OR single job with a single test project pattern
+# dotNetTests:
+  # projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+  # arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+# OR multiple jobs in parallel
+# dotNetTests:
+  # - job: test1
   #   displayName: 'dotNet Unit Tests'
-  # - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+  #   projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+  #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+  # - job: test2
+  #   projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
   #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
   #   displayName: 'dotNet CLI Tests'
-- name: dotNetTestsParams
-  type: object
-  default: ''
 
 # Code: sonarQube analysis of dotNet projects or solutions
-- name: sonarQube # The sonarQube Service Connection name required to insert steps for using Azure Pipelines SonarQube Analysis extension
-  type: string
-  default: ''
 - name: sonarQubeProjects # Nested into projects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
-  type: string
-  default: '*.csproj'
-- name: sonarQubeParams
   type: object
   default: ''
-
+# sonarQubeProjects:
+  # - sonarQube: 'serviceConnectionName'
+  #   projects: '**.csproj'
+# OR
+# sonarQubeProjects:
+  # - sonarCloud: 'serviceConnectionName'
+  #   projects: '**.csproj'
+# OR
+# sonarQubeProjects:
+  # - 
 # Code: Stage Params
 - name: codePool # Pool for jobs in code stage jobs
   type: object
   default:
     vmImage: 'windows-latest'
 
-# Build: dotNet Projects
-- name: projects # Required param to restore and publish a dotNet project
-  type: string
-  default: '' # path or pattern match of projects to dotNet publish
-# dotNetProject: '**.csproj'
 
 # Build: Container Image Jobs
-- name: containerRegistry # Required ADO Service Connection name for container image build jobs
+- name: containerRegistry # Required ADO Service Connection name for all container image build jobs
   type: string
   default: '' 
-- name: containerRepository # repo path in registry
+- name: containerRepository # Repository in registry for image
   type: string
   default: '$(Build.DefinitionName)'
 - name: dockerTags # Default tags to set in addition to pipeline metadata tags
@@ -58,28 +69,44 @@ parameters:
 - name: dockerContext
   type: string
   default: '$(Build.Repository.LocalPath)'
+- name: dockerFile 
+  type: string
+  default: ''
 
 # Build: Multiple Container Images
-- name: dockerFiles # list of container image build jobs
+- name: dockerBuilds # list of container image build jobs
   type: object
   default: ''
-# dockerFiles:
+# dockerBuilds:
   # - job: containerImage1
   #   dockerFile: App1.Dockerfile
-  #   containerRegistry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
+  #   containerRegistry: 'Docker' # Optional override of containerRegistry parameter. Container registry service connection name
   #   containerRepository: 'App1' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
   # - job: containerImage2
   #   dependsOn: containerImage1
   #   dockerFile: App2.Dockerfile
-  #   containerRegistry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
+  #   containerRegistry: 'Docker' # Optional override of containerRegistry parameter. Container registry service connection name
   #   containerRepository: 'App2' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
   #   dockerArgs: '--build-arg repository=baseimages/dotnet/core/aspnet'
   #   dockerTags: '$(Build.BuildNumber)' # Optional list of image tags. Default is $(Build.BuildNumber)
 
-# Build: Single Container Image
-- name: dockerFile # Single dockerFile within dockerContext
+# Build: dotNet build jobs
+- name: dotNetBuilds
+  type: object
+  default: ''
+# dotNetBuilds:
+  # - job: dotNet
+  #   projects: '**.csproj'
+  #   command: publish
+- name: dotNetProjects # Pattern match for dotNet projects
   type: string
   default: ''
+- name: dotNetCommand # Default command for dotNet build jobs
+  type: string
+  default: build
+  values:
+  - build
+  - publish
 
 # Build: Stage Params
 - name: buildPool # Pool param of build stage jobs
@@ -95,10 +122,10 @@ parameters:
   type: string
   default: ''
 # Deploy: Multiple ARM Templates
-- name: armTemplates # List of ARM Template deployment jobs
+- name: armDeployments # List of ARM Template deployment jobs
   type: object
   default: ''
-# armTemplates:
+# armDeployments:
   # - deployment: 'armTemplate1' # deployment name must be unique
   #   template: 'deployment1.json'
   #   parameters: 'parameters1.json'
@@ -114,77 +141,24 @@ parameters:
   #   dependsOn:
   #     - armTemplate1
   #     - armTemplate2
-# Deploy: Single ARM Template
-- name: armTemplate
-  type: string
+# Deploy: ARM Templates
+- name: armDeployments
+  type: object
   default: ''
-- name: armParameters
-  type: string
-  default: ''
-- name: armOverrides
-  type: string
-  default: ''
-# Deploy: ARM Template Optional Params
-- name: armTemplatePath # Root path of ARM templates
-  type: string
-  default: '$(Build.Repository.LocalPath)'
-- name: armReplaceTokens # Enable replace tokens task in ARM template deployment jobs
-  type: boolean
-  default: false
 
 # Deploy: Kubernetes Manifests
 - name: kubernetesServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
-- name: environment
+- name: kubernetesDeployments
   type: object
   default: ''
-- name: namespace
-  type: string
-  default: default
-- name: manifests # Deployment manifest for canary deploy, promote, and reject jobs
-  type: object
-  default: ''
-- name: strategy
-  type: string
-  default: canary
-  values:
-  - runOnce
-  - canary
-- name: action # Default deploy; promote or reject prior canary kube deploy
-  type: string
-  default: deploy
-  values:
-  - deploy
-  - scale
-  - patch
-  - delete
-
-- name: kubeDeployments
-  type: object
-  default:
-  - deployment: kubeDeploy
-
-- name: kubeCanaryIncrements
+- name: kubernetesCanaryIncrements # When using strategy: canary this is the default increments unless increments: string is set
   type: string
   default: '10'
-
-# Deploy: lifecycle hooks
-- name: preDeploy # Deployment job preDeploy lifecycle hook
-  type: stepList
-  default: []
-- name: routeTraffic # Deployment job routeTraffic lifecycle hook
-  type: stepList
-  default: []
-- name: postRouteTraffic # Deployment job postRouteTraffic lifecycle hook
-  type: stepList
-  default: []
-- name: onFailure # Deployment job on: failure: lifecycle hook
-  type: stepList
-  default: []
-- name: onSuccess # Deployment job on: success: lifecycle hook
-  type: stepList
-  default: []
+- name: kubernetesNamespace # Use to specify the namespace for all kubernetesDeployment jobs
+  type: string
+  default: ''
 
 # Deploy: Stage Params
 - name: deployPool # Nested into pool param of deploy jobs
@@ -194,6 +168,16 @@ parameters:
 - name: deployCheckout
   type: string
   default: self
+
+# Test: Visual Studio Tests
+- name: vsTests
+  type: object
+  default: ''
+# Test: Stage Params
+- name: testPool # Pool for jobs in test stage jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
 
 # Globals: Optional Params
 - name: stages # Optional to override default value of stages stageList in the stages.yaml template
@@ -208,15 +192,24 @@ parameters:
 - name: stagesCondition # Optional param to override the condition of all stages
   type: string
   default: ''
-- name: version
+- name: timeoutInMinutes # in each job, how long to run the job before automatically cancelling
+  type: number
+  default: 0
+- name: cancelTimeoutInMinutes # in each job, how much time to give 'run always even if cancelled tasks' before killing them
+  type: number
+  default: 0
+- name: dotNetVersion # Use this param to set the dotNet version in all jobs
   type: string
-  default: '3.1.x'
+  default: ''
 - name: kubectlVersion # Kube installer if param defined
   type: string
-  default: '1.18.6'
+  default: ''
 - name: imagePullSecret
   type: string
   default: 'registry-cred'
+- name: environment # Use this parameter to set the default environment for all deployment jobs
+  type: object
+  default: ''
 
 stages:
   - template: ../stages.yaml
@@ -231,87 +224,91 @@ stages:
     # code: jobList inserted into code stage in stages
       code:
         # If dotNetTests param has value, then insert dotNetTests job into stage
-        - ${{ if parameters.dotNetTests }}:
-          - job: dotNetTests # job name must be unique within stage
-            displayName: 'dotNet Tests Static Code Analysis' # job display name
-            pool: ${{ parameters.codePool }} # param passed to pool of code stage jobs
-            dependsOn: [] # job does not depend on other jobs
-            steps:
-              - template: ../steps/code/dotNetTests.yaml
-              # parameters within dotNetTests.yaml template
-                parameters:
-                  tests: ${{ parameters.dotNetTests }}
-                  version: ${{ parameters.version }}
-                  ${{ each param in parameters.dotNetTestsParams }}:
-                    ${{ param.key }}: ${{ param.value }}
+        - ${{ if gt(length(parameters.dotNetTests), 0) }}:
+          - ${{ each dotNetTest in parameters.dotNetTests }}:
+            # If the item in dotNetTests is a job then insert a job if it has a tests or projects property
+            - ${{ if and(dotNetTest.job, or(dotNetTest.tests, dotNetTest.projects)) }}:
+              - job: ${{ dotNetTest.job }}
+                ${{ each parameter in dotNetTest }}:
+                  ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(dotNetTest.pool) }}:
+                  pool: ${{ parameters.codePool }}
+                ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                steps:
+                  - template: ../steps/code/dotNetTests.yaml
+                    parameters:
+                      ${{ each parameter in dotNetTest }}:
+                        ${{ if notIn(parameter.key, 'tests', 'projects', 'arguments', 'testRunTitle', 'publishTestResults', 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                          ${{ parameter.key }}: ${{ parameter.value }}
+                      ${{ if and(parameters.dotNetVersion, not(dotNetTest.version)) }}:
+                        version: ${{ parameters.dotNetVersion }}
+                      tests:
+                        # If the job has tests then insert each test task
+                        - ${{ each test in dotNetTest.tests }}:
+                          - ${{ if test.projects }}:
+                            - ${{ test }}
+                        # If the job has projects insert test task
+                        - ${{ if dotNetTest.projects }}:
+                          - projects: ${{ dotNetTest.projects }}
+                            ${{ each parameter in dotNetTest }}:
+                              ${{ if in(parameter.key, 'arguments', 'displayName', 'testRunTitle', 'publishTestResults') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if and(dotNetTest.displayName, not(dotNetTest.testRunTitle)) }}:
+                              testRunTitle: ${{ dotNetTest.displayName }}
+                            ${{ if not(dotNetTest.arguments) }}:
+                              arguments: '--collect "Code Coverage"'
         # If sonarQube param has value, then insert sonarQube job into stage
-        - ${{ if parameters.sonarQube }}:
-          - job: sonarQube # job name must be unique within stage
-            displayName: 'sonarQube Static Code Analysis' # job display name
-            pool: ${{ parameters.codePool }} # param passed to pool of code stage jobs
-            dependsOn: [] # job does not depend on other jobs
-            steps:
-              - template: ../steps/code/sonarQube.yaml
-              # parameters within sonarQube.yaml template
-                parameters:
-                  sonarQube: ${{ parameters.sonarQube }}
-                  projects: ${{ parameters.sonarQubeProjects }}
-                  version: ${{ parameters.version }}
-                  ${{ each param in parameters.sonarQubeParams }}:
-                    ${{ param.key }}: ${{ param.value }}
+        - ${{ if gt(length(parameters.sonarQubeAnalysis), 0) }}:
+          - ${{ each sonarQube in parameters.sonarQubeAnalysis }}:
+            - ${{ if and(sonarQube.job, or(sonarQube.tests, sonarQube.projects)) }}:
+              - job: ${{ sonarQube.job }}
+                ${{ each item in sonarQube }}:
+                  ${{ if in(item.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ item.key }}: ${{ item.value }}
+                ${{ if not(sonarQube.pool) }}:
+                  pool: ${{ parameters.codePool }}
+                ${{ if and(not(sonarQube.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                ${{ if and(not(sonarQube.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                steps:
+                  - template: ../steps/code/sonarQube.yaml
+                    parameters: 
+                      ${{ each parameter in sonarQube }}:
+                        ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                          ${{ parameter.key }}: ${{ parameter.value }}
+                      ${{ if and(parameters.dotNetVersion, not(sonarQube.dotNetVersion)) }}:
+                        dotNetVersion: ${{ parameters.dotNetVersion }}
+
     # build: jobList inserted into build stage in stages
       build:
-        # If dockerFile and containerRegistry param has value, then insert container image build job into build stage
-        - ${{ if and(parameters.dockerFile, parameters.containerRegistry) }}:
-          - job: containerImage # job name must be unique within stage
-            displayName: 'Build Container Image' # job display name
-            pool: ${{ parameters.buildPool }} # param passed to pool of build stage jobs
-            dependsOn: [] # job does not depend on other jobs
-            steps:
-              - template: ../steps/build/containerImage.yaml
-              # parameters within containerImage.yaml template
-                parameters:
-                  ${{ if parameters.projects }}:
-                    projects: '${{ parameters.projects }}'
-                    version: ${{ parameters.version }}
-                  containerRegistry: '${{ parameters.containerRegistry }}'
-                  containerRepository: ${{ parameters.containerRepository }}
-                  dockerFile: '${{ parameters.dockerFile }}'
-                  dockerContext: '${{ parameters.dockerContext }}'
-                  dockerArgs: '${{ parameters.dockerArgs }}'
-                  dockerTags: ${{ parameters.dockerTags }}
-        # For each dockerFile in dockerFiles param, insert container image build job into build stage
-        - ${{ each build in parameters.dockerFiles }}:
+        # For each dockerFile in dockerBuilds param, insert container image build job into build stage
+        - ${{ each build in parameters.dockerBuilds }}:
           # parameters: job, dockerFile, containerRepository, and containerRegistry are the required minimum params
           - ${{ if and(build.job, build.dockerFile, build.containerRepository, or(parameters.containerRegistry, build.containerRegistry)) }}:
             - job: ${{ build.job }} # job name must be unique within stage
               ${{ each parameter in build }}:
-                ${{ if in(parameter.key, 'displayName', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'services') }}:
+                ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
                   ${{ parameter.key }}: ${{ parameter.value }}
               ${{ if not(build.displayName) }}:
                 displayName: 'Build Container Image ${{ build.dockerFile }}' # If no build.displayName, use this as default
               ${{ if not(build.pool) }}:
                 pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
-              # If docker build job depends on other jobs in build stage insert dependencies
-              ${{ if build.dependsOn }}:
-                dependsOn:
-                - ${{ each dependency in build.dependsOn }}:
-                  - ${{ dependency }}
               ${{ if not(build.dependsOn) }}:
                 dependsOn: [] # job does not depend on other jobs
-              ${{ if build.variables }}:
-                variables:
-                ${{ each variable in build.variables }}:
-                  ${{ variable.key }}: ${{ variable.value }}
               steps:
                 - template: ../steps/build/containerImage.yaml
                 # parameters within containerImage.yaml template
                   parameters:
-                    # For each build in parameters.dockerFiles, insert each item except job keys
+                  # For each parameter in build, insert each item except job keys
                     ${{ each parameter in build }}:
                       ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
                         ${{ parameter.key }}: ${{ parameter.value }}
-                    ${{ if not(build.containerRegistry) }}:
+                    ${{ if and(not(build.containerRegistry), parameters.containerRegistry) }}:
                       containerRegistry: '${{ parameters.containerRegistry }}'
                     ${{ if and(not(build.dockerContext), parameters.dockerContext) }}:
                       dockerContext: '${{ parameters.dockerContext }}'
@@ -319,381 +316,456 @@ stages:
                       dockerArgs: '${{ parameters.dockerArgs }}'
                     ${{ if and(not(build.dockerTags), parameters.dockerTags) }}:
                       dockerTags: ${{ parameters.dockerTags }}
+                    ${{ if and(parameters.dotNetVersion, build.dotNetProjects, not(build.dotNetVersion)) }}:
+                      dotNetVersion: ${{ parameters.dotNetVersion }}
+
+        # If dockerFile, insert job for dockerFile
+        - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
+          - job: containerImage
+            displayName: 'Build Container Image ${{ build.dockerFile }}'
+            pool: ${{ parameters.buildPool }}
+            dependsOn: []
+            steps:
+              - template: ../steps/build/containerImage.yaml
+              # parameters within containerImage.yaml template
+                parameters:
+                  dockerFile: ${{ parameters.dockerFile }}
+                  dockerArgs: ${{ parameters.dockerArgs }}
+                  dockerContext: ${{ parameters.dockerContext }}
+                  dockerTags: ${{ parameters.dockerTags }}
+                  containerRegistry: ${{ parameters.containerRegistry }}
+                  containerRepository: ${{ parameters.containerRepository }}
+
+        - ${{ each build in parameters.dotNetBuilds }}:
+          - ${{ if and(build.job, build.projects) }}:
+            - job: ${{ build.job }} # job name must be unique within stage
+              ${{ each parameter in build }}:
+                ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                  ${{ parameter.key }}: ${{ parameter.value }}
+              ${{ if not(build.displayName) }}:
+                displayName: 'Build dotNet Projects ${{ build.projects }}' # If no build.displayName, use this as default
+              ${{ if not(build.pool) }}:
+                pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
+              ${{ if not(build.dependsOn) }}:
+                dependsOn: [] # job does not depend on other jobs
+              steps:
+                - template: ../steps/build/dotNetCore.yaml
+                # parameters within dotNetCore.yaml template
+                  parameters:
+                  # For each parameter in build, insert each item except job keys
+                    ${{ each parameter in build }}:
+                      ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                        ${{ parameter.key }}: ${{ parameter.value }}
+                    ${{ if and(parameters.dotNetVersion, not(build.version)) }}:
+                      version: ${{ parameters.dotNetVersion }}
+                    ${{ if not(build.command) }}:
+                      command: ${{ parameters.dotNetCommand }}
+
+        - ${{ if parameters.dotNetProjects }}:
+          - job: dotNet
+            displayName: 'Build dotNet Projects ${{ parameters.dotNetProjects }}'
+            pool: ${{ parameters.buildPool }}
+            dependsOn: []
+            steps:
+              - template: ../steps/build/dotNetCore.yaml
+                parameters:
+                  projects: ${{ parameters.dotNetProjects }}
+                  command: ${{ parameters.dotNetCommand }}
+                  ${{ if parameters.dotNetVersion }}:
+                    dotNetVersion: ${{ parameters.dotNetVersion }}
 
     # deploy: deploymentList inserted into deploy stage in stages param
       deploy:
-        # If armTemplate, armSubscription, and armResourceGroup has value insert ARM template deployment job
-        - ${{ if and(parameters.armTemplate, parameters.armSubscription, parameters.armResourceGroup) }}:
-          - deployment: armTemplate
-            displayName: 'Deploy ARM Template'
-            pool: ${{ parameters.deployPool }}
-            dependsOn: []
-            strategy:
-              runOnce:
-                # Insert preDeploy lifecycle hook stepList
-                ${{ if gt(length(parameters.preDeploy), 0) }}:
-                  preDeploy:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.preDeploy }}
-                deploy:
-                  steps:
-                    - template: ../steps/deploy/armTemplate.yaml
-                      parameters:
-                        checkout: ${{ parameters.deployCheckout }}
-                        replaceTokens: ${{ parameters.armReplaceTokens }}
-                        azureSubscription: ${{ parameters.armSubscription }}
-                        resourceGroupName: ${{ parameters.armResourceGroup }}
-                        templateFile: ${{ parameters.armTemplate }} # ARM template within templatePath
-                        templatePath: '${{ parameters.armTemplatePath }}'
-                        ${{ if parameters.armParameters }}:
-                          parametersFile: ${{ parameters.armParameters }} # Parameters file within templatePath 
-                        ${{ if parameters.armOverrides }}:
-                          overrideParameters: '${{ parameters.armOverrides }}' # Optionally add args to override values in parameters file
-                # Insert routeTraffic lifecycle hook stepList
-                ${{ if gt(length(parameters.routeTraffic), 0) }}:
-                  routeTraffic:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.routeTraffic }}
-                # Insert routeTraffic lifecycle hook stepList
-                ${{ if gt(length(parameters.postRouteTraffic), 0) }}:
-                  postRouteTraffic:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.postRouteTraffic }}
-                # Insert onFailure and onSuccess stepList
-                ${{ if or(gt(length(parameters.onFailure), 0), gt(length(parameters.onSuccess), 0)) }}:
-                  on:
-                    ${{ if gt(length(parameters.onFailure), 0) }}:
-                      failure:
-                        pool: ${{ parameters.deployPool }}
-                        steps:
-                          - ${{ parameters.onFailure }}
-                    ${{ if gt(length(parameters.onSuccess), 0) }}:
-                      success:
-                        pool: ${{ parameters.deployPool }}
-                        steps:
-                          - ${{ parameters.onSuccess }}
-
-        # For each deployment item in armTemplates parameter insert arm deployment jobs
-        - ${{ each deployment in parameters.armTemplates }}:
-          # If deployment key, template, subscription, and resource group have values; insert ARM template deployment job
-          - ${{ if and(deployment.deployment, deployment.template, or(parameters.armSubscription, deployment.subscription), or(parameters.armResourceGroup, deployment.resourceGroup)) }}:
-            - deployment: ${{ deployment.deployment }} # deployment name unique to stage
-              displayName: 'Deploy ARM Template ${{ deployment.template }}'
-              ${{ if deployment.pool }}:
-                pool: ${{ deployment.pool }} # Override parameters.deployPool with deployment.pool
-              ${{ if not(deployment.pool) }}:
-                pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-              ${{ if deployment.condition }}:
-                condition: ${{ deployment.condition }}
-              ${{ if deployment.variables }}:
-                variables:
-                ${{ each variable in deployment.variables }}:
-                  ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
-              ${{ if deployment.dependsOn }}:
-                dependsOn:
-                - ${{ each dependency in deployment.dependsOn }}:
-                  - ${{ dependency }}
-              ${{ if not(deployment.dependsOn) }}:
-                dependsOn: []
-              strategy:
-                runOnce:
-                  deploy:
-                    steps:
-                      - template: ../steps/deploy/armTemplate.yaml
-                        parameters:
-                          ${{ if deployment.preSteps }}:
-                            preSteps: ${{ deployment.preSteps }}
-                          # Optionally enables replace tokens tasks. Requires replace tokens extension installed in Azure DevOps
-                          ${{ if parameters.armReplaceTokens }}:
-                            replaceTokens: true
-                          # Override parameters.deployCheckout with deployment.checkout item in armTemplates param
-                          ${{ if deployment.checkout }}:
-                            checkout: ${{ deployment.checkout }}
-                          ${{ if not(deployment.checkout) }}:
-                            checkout: ${{ parameters.deployCheckout }}
-                          templateFile: ${{ deployment.template }} # ARM template within templatePath
-                          # Ovverride parameters.armTemplatesDir with deployment.templatePath item in armTemplates param
-                          ${{ if deployment.templatePath }}:
-                            templatePath: '${{ deployment.templatePath }}' # root path where ARM templates are located
-                          ${{ if not(deployment.templatePath) }}:
-                            templatePath: '${{ parameters.templatePath }}'
-                          # Override parameters.armSubscription with deployment.subscription item in armTemplates param
-                          ${{ if deployment.subscription }}:
-                            azureSubscription: ${{ deployment.subscription }} # Service connection to subscription for the resource group
-                          ${{ if not(deployment.subscription) }}:
-                            azureSubscription: ${{ parameters.armSubscription }}
-                          # Override parameters.armResourceGroup with deployment.resourceGroup item in armTemplates param
-                          ${{ if deployment.resourceGroup }}:
-                            resourceGroupName: ${{ deployment.resourceGroup }} # RM Group name within subscription
-                          ${{ if not(deployment.resourceGroup) }}:
-                            resourceGroupName: ${{ parameters.armResourceGroup }}
-                          ${{ if deployment.parameters }}:
-                            parametersFile: ${{ deployment.parameters }} # Parameters file within templatePath 
-                          ${{ if deployment.override }}:
-                            overrideParameters: '${{ deployment.override }}' # Optionally add args to override values in parameters file
-                          ${{ if deployment.postSteps }}:
-                            postSteps: ${{ deployment.postSteps }}
-        # If manifests has value then insert single deployment job
-        - ${{ if and(parameters.manifests, or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
-          - deployment: kubeDeploy # job name unique to stage
-            displayName: 'Kube Deployment'
-            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-            dependsOn: []
-            ${{ if parameters.environment }}:
-              environment: ${{ parameters.environment }}
-            strategy:
-              # strategy: canary | runOnce
-              ${{ parameters.strategy }}:
-                # If strategy is canary, insert increments
-                ${{ if eq(parameters.strategy, 'canary') }}:
-                  increments: ${{ parameters.kubeCanaryIncrements }}
-                # Insert preDeploy lifecycle hook stepList
-                ${{ if gt(length(parameters.preDeploy), 0) }}:
-                  preDeploy:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.preDeploy }}
-                deploy:
-                  steps:
-                    - template: ../steps/deploy/kubeManifest.yaml
-                      parameters:
-                        kubectlVersion: ${{ parameters.kubectlVersion }}
-                        namespace: ${{ parameters.namespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
-                        manifests: ${{ parameters.manifests }}
-                        action: ${{ parameters.action }}
-                        strategy: canary
-                        percentage: $(strategy.increment)
-                        ${{ if and(parameters.containerRegistry, parameters.kubernetesServiceConnection) }}:
-                          imagePullSecret: ${{ parameters.imagePullSecret }}
-                          dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
-                # Insert routeTraffic lifecycle hook stepList
-                ${{ if gt(length(parameters.routeTraffic), 0) }}:
-                  routeTraffic:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.routeTraffic }}
-                # Insert postRouteTraffic lifecycle hook stepList
-                ${{ if gt(length(parameters.postRouteTraffic), 0) }}:
-                  postRouteTraffic:
-                    pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ parameters.postRouteTraffic }}
-                # Insert onFailure and onSuccess stepList
-                ${{ if or(gt(length(parameters.onFailure), 0), gt(length(parameters.onSuccess), 0)) }}:
-                  on:
-                    ${{ if gt(length(parameters.onFailure), 0) }}:
-                      failure:
-                        pool: ${{ parameters.deployPool }}
-                        steps:
-                          - ${{ parameters.onFailure }}
-                    ${{ if gt(length(parameters.onSuccess), 0) }}:
-                      success:
-                        pool: ${{ parameters.deployPool }}
-                        steps:
-                          - ${{ parameters.onSuccess }}
-
-        # For each deployment in kubeDeployments insert a deployment job
-        - ${{ each deployment in parameters.kubeDeployments }}:
-          # If item in kubeDeployments has deployment key and value, with manifests for that item, and a service connection or environment. 
-          - ${{ if and(deployment.deployment, deployment.manifests, or(deployment.serviceConnection, parameters.kubernetesServiceConnection, deployment.environment, parameters.environment)) }}:
-            - deployment: ${{ deployment.deployment }} # job name unique to stage
-              displayName: 'Kube Deployment'
-              ${{ if deployment.pool }}:
-                pool: ${{ deployment.pool }} # Override parameters.deployPool with deployment.pool
-              ${{ if not(deployment.pool) }}:
-                pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-              ${{ if deployment.condition }}:
-                condition: ${{ deployment.condition }}
-              ${{ if deployment.variables }}:
-                variables:
-                ${{ each variable in deployment.variables }}:
-                  ${{ variable.key }}: ${{ variable.value }} # pairs of variables scoped to this job
-              ${{ if deployment.dependsOn }}:
-                dependsOn:
-                - ${{ each dependency in deployment.dependsOn }}:
-                  - ${{ dependency }}
-              ${{ if not(deployment.dependsOn) }}:
-                dependsOn: []
-              ${{ if deployment.environment }}:
-                environment: ${{ deployment.environment }}
-              ${{ if and(not(deployment.environment), parameters.environment) }}:
-                environment: ${{ parameters.environment }}
-              strategy:
-                ${{ if deployment.strategy }}:
+        - ${{ if gt(length(parameters.armDeployments), 0) }}:
+          # For each deployment item in armDeployments parameter insert arm deployment jobs
+          - ${{ each deployment in parameters.armDeployments }}:
+            # If deployment key, strategy, template, subscription, and resource group have values; insert ARM template deployment job
+            - ${{ if and(deployment.deployment, deployment.strategy, deployment.template, deployment.subscription, deployment.resourceGroup) }}:
+              - deployment: ${{ deployment.deployment }} # deployment name unique to stage
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Deploy ARM Template ${{ deployment.template }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
                   ${{ deployment.strategy }}:
-                ${{ if not(deployment.strategy) }}:
-                  ${{ parameters.strategy }}:
-                ${{ if deployment.preDeploy }}:
-                  preDeploy:
-                    ${{ if deployment.pool }}:
-                      pool: ${{ deployment.pool }}
-                    ${{ if not(deployment.pool) }}:
-                      pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ deployment.preDeploy }}
-                deploy:
-                  steps:
-                    - template: ../steps/deploy/kubeManifest.yaml
-                      parameters:
-                        ${{ if deployment.preSteps }}:
-                          preSteps: ${{ deployment.preSteps }}
-                        kubectlVersion: ${{ parameters.kubectlVersion }}
-                        # Override parameters.namespace with deployment.namespace item in kubeDeployments param
-                        ${{ if deployment.namespace }}:
-                          namespace: ${{ deployment.namespace }} # pass in namespace item from kubeDeployments
-                        ${{ if not(deployment.namespace) }}:
-                          namespace: ${{ parameters.namespace }} # Default to parameters.namespace if deployment.namespace null
-                        # Override parameters.kubernetesServiceConnection with deployment.serviceConnection item in kubeDeployments param
-                        ${{ if deployment.serviceConnection }}:
-                          kubernetesServiceConnection: ${{ deployment.serviceConnection }} # pass in serviceConnection item from kubeDeployments
-                        ${{ if and(not(deployment.serviceConnection), parameters.kubernetesServiceConnection) }}:
-                          kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # Default to parameters.kubernetesServiceConnection if deployment.serviceConnection null
-                        manifests: ${{ deployment.manifests }}
-                        action: ${{ parameters.action }}
-                        ${{ if and(eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
-                          strategy: canary
-                        ${{ if and(parameters.containerRegistry, parameters.kubernetesServiceConnection) }}:
-                          imagePullSecret: ${{ parameters.imagePullSecret }}
-                          dockerRegistryEndpoint: ${{ parameters.containerRegistry }}
-                        ${{ if deployment.postSteps }}:
-                          postSteps: ${{ deployment.postSteps }}
-                # Insert routeTraffic lifecycle hook stepList
-                ${{ if deployment.routeTraffic }}:
-                  routeTraffic:
-                    ${{ if deployment.pool }}:
-                      pool: ${{ deployment.pool }}
-                    ${{ if not(deployment.pool) }}:
-                      pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ deployment.routeTraffic }}
-                # Insert postRouteTraffic lifecycle hook stepList
-                ${{ if deployment.postRouteTraffic }}:
-                  postRouteTraffic:
-                    ${{ if deployment.pool }}:
-                      pool: ${{ deployment.pool }}
-                    ${{ if not(deployment.pool) }}:
-                      pool: ${{ parameters.deployPool }}
-                    steps:
-                      - ${{ deployment.postRouteTraffic }}
-                # Insert onFailure and onSuccess stepList
-                ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
-                  on:
-                    ${{ if gt(length(deployment.onFailure), 0) }}:
-                      failure:
+                    # Insert preDeploy lifecycle hook stepList
+                    ${{ if gt(length(deployment.preDeploy), 0) }}:
+                      preDeploy:
                         ${{ if deployment.pool }}:
                           pool: ${{ deployment.pool }}
                         ${{ if not(deployment.pool) }}:
                           pool: ${{ parameters.deployPool }}
                         steps:
-                          - ${{ deployment.onFailure }}
-                    ${{ if gt(length(deployment.onSuccess), 0) }}:
-                      success:
+                          - ${{ deployment.preDeploy }}
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/armTemplate.yaml
+                          parameters:
+                            ${{ each parameter in deployment }}:
+                              ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if and(not(deployment.namespace), parameters.kubernetesNamespace) }}:
+                              namespace: ${{ parameters.kubernetesNamespace }}
+                    # Insert routeTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                      routeTraffic:
                         ${{ if deployment.pool }}:
                           pool: ${{ deployment.pool }}
                         ${{ if not(deployment.pool) }}:
                           pool: ${{ parameters.deployPool }}
                         steps:
-                          - ${{ deployment.onSuccess }}
+                          - ${{ deployment.routeTraffic }}
+                    # Insert postRouteTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                      postRouteTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.postRouteTraffic }}
+                    # Insert onFailure and onSuccess stepList
+                    ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                      on:
+                        ${{ if gt(length(deployment.onFailure), 0) }}:
+                          failure:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onFailure }}
+                        ${{ if gt(length(deployment.onSuccess), 0) }}:
+                          success:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onSuccess }}
 
-    # promote: deploymentList inserted into promote stage in stages param
-      promote:
-        - ${{ if and(parameters.manifests, eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
-          - deployment: kubePromote # job name unique to stage
-            displayName: 'Promote Canary Deployment'
-            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-            dependsOn: []
-            strategy:
-              runOnce:
-                deploy:
-                  steps:
-                    - template: ../steps/deploy/kubeManifest.yaml
-                      parameters:
-                        namespace: ${{ parameters.namespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
-                        action: promote
-                        strategy: canary
-                        manifests: ${{ parameters.manifests }}
+            # If deployment key, strategy, template, subscription, and resource group have values; insert ARM template deployment job
+            - ${{ if and(deployment.deployment, not(deployment.strategy), deployment.template, deployment.subscription, deployment.resourceGroup) }}:
+              - deployment: ${{ deployment.deployment }} # deployment name unique to stage
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Deploy ARM Template ${{ deployment.template }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
+                  runOnce:
+                    # Insert preDeploy lifecycle hook stepList
+                    ${{ if gt(length(deployment.preDeploy), 0) }}:
+                      preDeploy:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.preDeploy }}
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/armTemplate.yaml
+                          parameters:
+                            ${{ each parameter in deployment }}:
+                              ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                    # Insert routeTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                      routeTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.routeTraffic }}
+                    # Insert postRouteTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                      postRouteTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.postRouteTraffic }}
+                    # Insert onFailure and onSuccess stepList
+                    ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                      on:
+                        ${{ if gt(length(deployment.onFailure), 0) }}:
+                          failure:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onFailure }}
+                        ${{ if gt(length(deployment.onSuccess), 0) }}:
+                          success:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onSuccess }}
 
-    # reject: deploymentList inserted into reject stage in stages param
-      reject:
-        - ${{ if and(parameters.manifests, eq(parameters.action, 'deploy'), eq(parameters.strategy, 'canary')) }}:
-          - deployment: kubeReject # job name unique to stage
-            displayName: 'Reject Canary Deployment'
-            pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
-            dependsOn: []
-            strategy:
-              runOnce:
-                deploy:
-                  steps:
-                    - template: ../steps/deploy/kubeManifest.yaml
-                      parameters:
-                        namespace: ${{ parameters.namespace }} # pass in namespace param
-                        kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }} # pass param for kube manifest deployment service connection
-                        action: reject
-                        strategy: canary
-                        manifests: ${{ parameters.manifests }}
+        - ${{ if gt(length(parameters.kubernetesDeployments), 0) }}:
+          # For each deployment item in kubernetesDeployments parameter insert deployment jobs
+          - ${{ each deployment in parameters.kubernetesDeployments }}:
+            - ${{ if and(deployment.deployment, eq(deployment.strategy, 'canary'), or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
+              - deployment: ${{ deployment.deployment }}
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
+                  canary:
+                    ${{ if deployment.increments }}:
+                      increments: ${{ deployment.increments }}
+                    ${{ if and(not(deployment.increments), parameters.kubernetesCanaryIncrements) }}:
+                      increments: ${{ parameters.kubernetesCanaryIncrements }}
+                    # Insert preDeploy lifecycle hook stepList
+                    ${{ if gt(length(deployment.preDeploy), 0) }}:
+                      preDeploy:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.preDeploy }}
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/kubeManifest.yaml
+                          parameters:
+                            strategy: canary
+                            ${{ each parameter in deployment }}:
+                              ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'increments', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if not(deployment.action) }}:
+                              action: deploy
+                            ${{ if and(parameters.kubernetesServiceConnection, not(deployment.kubernetesServiceConnection)) }}:
+                              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+                    # Insert routeTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                      routeTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.routeTraffic }}
+                    # Insert postRouteTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                      postRouteTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.postRouteTraffic }}
+                    # Insert onFailure and onSuccess stepList
+                    ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                      on:
+                        ${{ if gt(length(deployment.onFailure), 0) }}:
+                          failure:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onFailure }}
+                        ${{ if gt(length(deployment.onSuccess), 0) }}:
+                          success:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onSuccess }}
+            # Insert non-canary deployment jobs
+            - ${{ if and(deployment.deployment, or(not(deployment.strategy), eq(deployment.strategy, 'runOnce')), deployment.manifests, or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
+              - deployment: ${{ deployment.deployment }}
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Deploy ARM Template ${{ deployment.template }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
+                  runOnce:
+                    # Insert preDeploy lifecycle hook stepList
+                    ${{ if gt(length(deployment.preDeploy), 0) }}:
+                      preDeploy:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.preDeploy }}
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/kubeManifest.yaml
+                          parameters:
+                            ${{ each parameter in deployment }}:
+                              ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if not(deployment.action) }}:
+                              action: deploy
+                            ${{ if and(parameters.kubernetesServiceConnection, not(deployment.kubernetesServiceConnection)) }}:
+                              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+                    # Insert routeTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                      routeTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.routeTraffic }}
+                    # Insert postRouteTraffic lifecycle hook stepList
+                    ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                      postRouteTraffic:
+                        ${{ if deployment.pool }}:
+                          pool: ${{ deployment.pool }}
+                        ${{ if not(deployment.pool) }}:
+                          pool: ${{ parameters.deployPool }}
+                        steps:
+                          - ${{ deployment.postRouteTraffic }}
+                    # Insert onFailure and onSuccess stepList
+                    ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                      on:
+                        ${{ if gt(length(deployment.onFailure), 0) }}:
+                          failure:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onFailure }}
+                        ${{ if gt(length(deployment.onSuccess), 0) }}:
+                          success:
+                            ${{ if deployment.pool }}:
+                              pool: ${{ deployment.pool }}
+                            ${{ if not(deployment.pool) }}:
+                              pool: ${{ parameters.deployPool }}
+                            steps:
+                              - ${{ deployment.onSuccess }}
 
     # test: jobList inserted into test stage in stages param
       test:
-        - ${{ each test in parameters.vsTests }}:
-        # This expression would require you provide a dotNet project to build and the test plan and suite ID 
-          - ${{ if and(test.job, test.projects, parameters.testPlan, parameters.testSuite) }}:
-          # - job: name must be unique within stage
-            - job: ${{ test.job }}
-            # for each job param of test item in vsTests, insert param
-              ${{ each parameter in test }}:
-                ${{ if in(parameter.key, 'displayName', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'services') }}:
-                  ${{ parameter.key }}: ${{ parameter.value }}
-              # If test job depends on other jobs in test stage insert dependencies
-              ${{ if test.dependsOn }}:
-                dependsOn:
-                - ${{ each dependency in test.dependsOn }}:
-                  - ${{ dependency }}
-              # If no test.dependsOn job does not depend on others
-              ${{ if not(test.dependsOn) }}:
-                dependsOn: []
-              # If variables defined add key value pairs
-              ${{ if test.variables }}:
-                variables:
-                ${{ each variable in test.variables }}:
-                  ${{ variable.key }}: ${{ variable.value }}
-              # If no test.displayName use default
-              ${{ if not(test.displayName) }}:
-                displayName: 'Visual Studio Test Job'
-              # If no test.pool use parameters.testPool value
-              ${{ if not(test.pool) }}:
-                pool: ${{ parameters.testPool }}
-              # If test.matrix or test.parallel strategy for Visual Studio Test jobs
-              ${{ if or(test.matrix, gt(test.parallel, 1)) }}:
-                strategy:
-                  ${{ if test.matrix }}:
-                    matrix: ${{ test.matrix }}
-                  ${{ if not(test.matrix) }}:
-                    parallel: ${{ test.parallel }}
-              # If the test has no test.matrix or test.parallel values then use parameters.matrix and parameters.parallel as default
-              ${{ if and(or(parameters.matrix, gt(parameters.parallel, 1)), or(not(test.matrix), le(test.parallel, 1), not(test.parallel))) }}:
-                strategy:
-                  ${{ if parameters.matrix }}:
-                    matrix: ${{ parameters.matrix }}
-                  ${{ if not(parameters.matrix) }}:
-                    parallel: ${{ parameters.parallel }}
-              steps:
-                - template: ../steps/test/visualStudioTest.yaml
-                # parameters within visualStudioTest.yaml template
-                  parameters:
-                  # preSteps: 
-                    # - task: add preSteps into job
-                  # for each parameter in test that is not a job parameter, these are the parameters for the steps
-                    ${{ each parameter in test }}:
-                      ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'steps', 'services') }}:
-                        ${{ parameter.key }}: ${{ parameter.value }}
-                    ${{ if not(test.testRunTitle) }}:
-                      testRunTitle: 'Visual Studio Test'
-                  # postSteps:
-                    # - task: add postSteps into job
+        - ${{ if gt(length(parameters.vsTests), 0) }}:
+          - ${{ each vsTest in parameters.vsTests }}:
+            - ${{ if and(vsTest.job, or(and(parameters.testPlan, parameters.testSuite), parameters.testAssemblies)) }}:
+              - job: ${{ vsTest.job }}
+                ${{ each parameter in vsTest }}:
+                  ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                # If no vsTest.dependsOn job does not depend on others
+                ${{ if not(vsTest.dependsOn) }}:
+                  dependsOn: []
+                ${{ if not(vsTest.pool) }}:
+                  pool: ${{ parameters.testPool }}
+                ${{ if and(not(vsTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                steps:
+                  - template: ../steps/test/visualStudioTest.yaml
+                    parameters:
+                      ${{ each parameter in vsTest }}:
+                        ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                          ${{ parameter.key }}: ${{ parameter.value }}
+                      ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
+                        dotNetVersion: ${{ parameters.dotNetVersion }}
 
-      # - job: insert additional jobs into the test stage
+    # promote: deploymentList inserted into promote stage in stages param
+      promote:
+        - ${{ if gt(length(parameters.kubernetesDeployments), 0) }}:
+          # For each deployment item in kubernetesDeployments parameter insert deployment jobs
+          - ${{ each deployment in parameters.kubernetesDeployments }}:
+            - ${{ if and(deployment.deployment, eq(deployment.strategy, 'canary'), or(eq(deployment.action, 'deploy'), not(deployment.action)), deployment.manifests, or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
+              - deployment: ${{ deployment.deployment }}
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Promote Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/kubeManifest.yaml
+                          parameters:
+                            strategy: canary
+                            action: promote
+                            ${{ each parameter in deployment }}:
+                              ${{ if in(parameter.key, 'kubernetesServiceConnection', 'manifests', 'namespace') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if and(parameters.kubernetesServiceConnection, not(deployment.kubernetesServiceConnection)) }}:
+                              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+                            ${{ if and(not(deployment.namespace), parameters.kubernetesNamespace) }}:
+                              namespace: ${{ parameters.kubernetesNamespace }}
+
+    # reject: deploymentList inserted into reject stage in stages param
+      reject:
+        - ${{ if gt(length(parameters.kubernetesDeployments), 0) }}:
+          # For each deployment item in kubernetesDeployments parameter insert deployment jobs
+          - ${{ each deployment in parameters.kubernetesDeployments }}:
+            - ${{ if and(deployment.deployment, eq(deployment.strategy, 'canary'), or(eq(deployment.action, 'deploy'), not(deployment.action)), deployment.manifests, or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
+              - deployment: ${{ deployment.deployment }}
+                ${{ each parameter in deployment }}:
+                  ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                    ${{ parameter.key }}: ${{ parameter.value }}
+                ${{ if not(deployment.displayName) }}:
+                  displayName: 'Reject Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
+                ${{ if not(deployment.pool) }}:
+                  pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                ${{ if not(deployment.dependsOn) }}:
+                  dependsOn: []
+                ${{ if and(not(deployment.environment), parameters.environment) }}:
+                  environment: ${{ parameters.environment }}
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - template: ../steps/deploy/deployment.yaml
+                          parameters:
+                            strategy: canary
+                            action: reject
+                            ${{ each parameter in deployment }}:
+                              ${{ if in(parameter.key, 'kubernetesServiceConnection', 'manifests', 'namespace') }}:
+                                ${{ parameter.key }}: ${{ parameter.value }}
+                            ${{ if and(parameters.kubernetesServiceConnection, not(deployment.kubernetesServiceConnection)) }}:
+                              kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+                            ${{ if and(not(deployment.namespace), parameters.kubernetesNamespace) }}:
+                              namespace: ${{ parameters.kubernetesNamespace }}

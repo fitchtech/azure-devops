@@ -242,6 +242,9 @@ parameters:
 - name: testMatrix
   type: object
   default: ''
+- name: testMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
 - name: testParallel
   type: number
   default: 1
@@ -398,7 +401,7 @@ stages:
       test:
         # for each test in tests, insert job with steps template into test stage 
         - ${{ each test in parameters.tests }}:
-          - ${{ if and(test.job, test.template) }}:
+          - ${{ if and(test.job, or(gt(length(test.steps), 0), and(test.template, test.parameters))) }}:
           # - job: name must be unique within stage
             - job: ${{ test.job }}
             # for each job param of test item in vsTests, insert param
@@ -424,37 +427,66 @@ stages:
                   ${{ variable.key }}: ${{ variable.value }}
               # If no test.displayName use default
               ${{ if not(test.displayName) }}:
-                displayName: '${{ test.job }}: ${{ test.template }}'
+                displayName: '${{ test.job }} ${{ test.template }}'
               # If no test.pool use parameters.testPool value
               ${{ if and(not(test.pool), parameters.testPool) }}:
                 pool: ${{ parameters.testPool }}
-              # If test.matrix or test.parallel strategy for Visual Studio Test jobs
-              ${{ if or(test.matrix, gt(test.parallel, 1)) }}:
+              # If the test has no test.matrix or test.parallel values then use parameters.testMatrix and parameters.testParallel as default
+              ${{ if or(parameters.testMatrix, gt(parameters.testParallel, 1), test.matrix, gt(test.parallel, 1)) }}:
                 strategy:
+                  ${{ if and(parameters.testMatrix, not(test.matrix)) }}:
+                    matrix: ${{ parameters.testMatrix }}
                   ${{ if test.matrix }}:
                     matrix: ${{ test.matrix }}
-                  ${{ if not(test.matrix) }}:
+                  ${{ if and(test.maxParallel, or(parameters.testMatrix, test.matrix)) }}:
+                    maxParallel: ${{ test.maxParallel }}
+                  ${{ if and(not(test.maxParallel), or(parameters.testMatrix, test.matrix)) }}:
+                    maxParallel: ${{ parameters.testMaxParallel }}
+                  ${{ if and(gt(parameters.testParallel, 1), not(test.parallel), not(parameters.testMatrix), not(test.matrix)) }}:
+                    parallel: ${{ parameters.testParallel }}
+                  ${{ if and(gt(test.parallel, 1), le(parameters.testParallel, 1), not(parameters.testMatrix), not(test.matrix)) }}:
                     parallel: ${{ test.parallel }}
-              # If the test has no test.matrix or test.parallel values then use parameters.matrix and parameters.parallel as default
-              ${{ if and(or(parameters.testMatrix, gt(parameters.testParallel, 1)), not(test.matrix), le(test.parallel, 1)) }}:
-                strategy:
-                  ${{ if parameters.matrix }}:
-                    matrix: ${{ parameters.matrix }}
-                  ${{ if not(parameters.matrix) }}:
-                    parallel: ${{ parameters.parallel }}
               steps:
-                - template: ${{ test.template }}
-                  parameters:
-                    ${{ if gt(length(test.preSteps), 0) }}:
-                      preSteps:
-                      - ${{ each step in test.preSteps }}
-                        - ${{ step }}
-                  # for each parameter in test that is not a job parameter, these are the parameters for the steps template
-                    ${{ each parameter in test }}:
-                      ${{ if notIn(parameter.key, 'job', 'template', 'displayName', 'dependsOn', 'condition', 'strategy', 'matrix', 'parallel', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'steps', 'services', 'preSteps', 'postSteps') }}:
-                        ${{ parameter.key }}: ${{ parameter.value }}
-                    ${{ if gt(length(test.postSteps), 0) }}:
-                      postSteps:
-                      - ${{ each step in test.postSteps }}
-                        - ${{ step }}
+                # Inserts preSteps, clean, checkout and download steps
+                - ${{ if or(gt(length(test.preSteps), 0), test.clean, test.checkout, test.submodules, test.download, test.downloadArtifact) }}:
+                  - template: steps/preSteps.yaml
+                    parameters:
+                      ${{ if test.clean }}:
+                        clean: ${{ test.clean }}
+                      ${{ if test.checkout }}:
+                        checkout: ${{ test.checkout }}
+                      ${{ if test.submodules }}:
+                        submodules: ${{ test.submodules }}
+                      ${{ if test.download }}:
+                        download: ${{ test.download }}
+                      ${{ if test.downloadArtifact }}:
+                        artifact: ${{ test.downloadArtifact }}
+                      ${{ if gt(length(test.preSteps), 0) }}:
+                        preSteps: ${{ test.preSteps }}
+                # Inserts custom step list if test.steps has items
+                - ${{ if gt(length(test.steps), 0) }}:
+                  - ${{ each step in test.steps }}:
+                    # Validate item type in test.steps for stepList
+                    - ${{ if in(step.key, 'script', 'bash', 'pwsh', 'powershell', 'checkout', 'task', 'template', 'download', 'publish') }}:
+                      - ${{ step }}
+                # Inserts steps template if test.template and test.parameters has values
+                - ${{ if and(test.template, test.parameters) }}:
+                  - template: ${{ test.template }}
+                    parameters:
+                    # for each parameter in test that is not a job parameter, these are the parameters for the steps template
+                      ${{ each parameter in test.parameters }}:
+                          ${{ parameter.key }}: ${{ parameter.value }}
+                # Inserts postSteps, publish, and clean steps
+                - ${{ if or(gt(length(test.postSteps), 0), test.publish, test.clean) }}:
+                  - template: steps/postSteps.yaml
+                    parameters:
+                      ${{ if gt(length(test.postSteps), 0) }}:
+                        postSteps: ${{ test.postSteps }}
+                      ${{ if test.publish }}:
+                        publish: '${{ test.publish }}'
+                        ${{ if test.publishArtifact }}:
+                          artifact: ${{ test.publishArtifact }}
+                      ${{ if test.clean }}:
+                        clean: ${{ test.clean }}
+
       # - job: insert additional jobs into the test stage

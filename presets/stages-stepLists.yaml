@@ -12,7 +12,7 @@ parameters:
 - name: codeParameters # If codeTemplate, codeParameters are the parameters for the codeTemplate
   type: object
   default: ''
-  # dotNetTests:
+  # tests:
     # - projects: $(projects)
     #   arguments: $(arguments)
 - name: codeMatrix # Generates copies of a job. Use variables of matrix per code job. Pass variables to inputs or parameters in each job
@@ -282,6 +282,11 @@ stages:
                         ${{ variable.key }}: ${{ variable.value }}
                       ${{ each variable in job.variables }}:
                         ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.codeMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.codeMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.codeMatrix }}
+                      maxParallel: ${{ parameters.codeMaxParallel }}
                   steps: 
                     - ${{ job.steps }}
       # if steps in buildSteps or template name in buildTemplate and parameters in buildParameters, then insert the build job
@@ -361,6 +366,11 @@ stages:
                         ${{ variable.key }}: ${{ variable.value }}
                       ${{ each variable in job.variables }}:
                         ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.buildMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.buildMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.buildMatrix }}
+                      maxParallel: ${{ parameters.buildMaxParallel }}
                   steps: 
                     - ${{ job.steps }}
       # if steps in deploySteps or template name in deployTemplate and parameters in deployParameters, then insert the deploy job
@@ -584,6 +594,11 @@ stages:
                         ${{ variable.key }}: ${{ variable.value }}
                       ${{ each variable in job.variables }}:
                         ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.testMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.testMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.testMatrix }}
+                      maxParallel: ${{ parameters.testMaxParallel }}
                   steps: 
                     - ${{ job.steps }}
       # if steps in promoteSteps or template name in promoteTemplate and parameters in promoteParameters, then insert the promote job
@@ -594,6 +609,13 @@ stages:
             - deployment: promoteSteps # job name must be unique within stage
               displayName: 'Deployment Job for promoteSteps' # job display name
               pool: ${{ parameters.deployPool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.promoteVariables, promote.variables) }}:
+                variables:
+                  ${{ each variable in parameters.promoteVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in promote.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
               ${{ if parameters.environment }}:
                 environment: ${{ parameters.environment }}
               # Insert timeout values for each job
@@ -613,6 +635,13 @@ stages:
             - deployment: promote # deployment name unique to stage
               displayName: 'Promote Deployment Job for ${{ parameters.promoteTemplate }}'
               pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.promoteVariables, promote.variables) }}:
+                variables:
+                  ${{ each variable in parameters.promoteVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in promote.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
               ${{ if parameters.environment }}:
                 environment: ${{ parameters.environment }}
               # Insert timeout values for each job
@@ -665,6 +694,13 @@ stages:
             - deployment: rejectSteps # job name must be unique within stage
               displayName: 'Deployment Job for rejectSteps' # job display name
               pool: ${{ parameters.deployPool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.rejectVariables, reject.variables) }}:
+                variables:
+                  ${{ each variable in parameters.rejectVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in reject.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
               ${{ if parameters.environment }}:
                 environment: ${{ parameters.environment }}
               # Insert timeout values for each job
@@ -684,6 +720,13 @@ stages:
             - deployment: reject # deployment name unique to stage
               displayName: 'Reject Deployment Job for ${{ parameters.rejectTemplate }}'
               pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.rejectVariables, reject.variables) }}:
+                variables:
+                  ${{ each variable in parameters.rejectVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in reject.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
               ${{ if parameters.environment }}:
                 environment: ${{ parameters.environment }}
               # Insert timeout values for each job

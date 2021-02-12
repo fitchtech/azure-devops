@@ -8,6 +8,7 @@
   - [Template Documentation](#template-documentation)
     - [Template Types](#template-types)
     - [Stages Template](#stages-template)
+    - [Preset Templates](#preset-templates)
     - [Code Stage](#code-stage)
     - [Build Stage](#build-stage)
     - [Deploy Stage](#deploy-stage)
@@ -103,6 +104,24 @@ extends:
 
 [Stages Template for Nesting Steps Templates](./docs/stages.md) into jobs of a stage. Provides expression driven stage creation for inserting steps templates into the jobs of a stage in stages. A stage is inserted into stages only when the stage has jobs and values for the minimum required parameters in the steps.
 
+### Preset Templates
+
+Preset templates abstract steps, stages, and/or pipeline templates in a prescribed pattern that makes them easier to use. They provide a pattern that works for its defined use case. However, that may limit or have assumptions that make it unsuitable for other cases. Preset templates use stages templates and/or steps templates in a prescribed pattern that provides parameters to give flexibility for a variety of use cases. However, those prescriptive patterns may inherently make it unsuitable for other cases.
+
+The key to pipeline templates is reusability.
+
+- **steps template**: is a collection of common steps that can be used in other templates or directly
+  - These are in the steps folder. Within subfolders, of the stage, they're intended for
+- **stages template**: is a collection of stages and jobs within each stage, it does not limit what stages and jobs can be inserted
+  - These are at the root of this repository
+- **preset template**: uses steps and/or stage templates for a given use case
+  - These are in the presets folder. Named in a way that represents their function and/or what templates they use
+
+These preset templates use the [stages](./docs/stages.md) template and provide parameters to insert jobs, step templates, and/or step lists conditionally on the value of the preset template parameters.
+
+- [Step Lists and Template in Stages](./docs/presets/stages-stepLists.md): Define Custom Steps or use Steps Templates in Stages easily
+- [Predefined Jobs in stages](./docs/presets/stages-jobTypes.md)
+
 ### Code Stage
 
 Steps templates to insert into jobs of the code stage in [stages](./docs/stages.md)
@@ -170,7 +189,7 @@ Additionally, these stages could use Infrastructure as Code (IaC) for blue/green
 - Parameters naming uses camelCase
 - Parameter naming consistent across templates
 - Parameter names in steps templates should be the same as the task input name
-  - Except when there is duplicates which should be prefixed with the task name
+  - Except when there are duplicates that should be prefixed with the task name
 - Limit nesting templates to two levels
 - Expressions no longer than ~100 char
 - Only use pipeline variables for the replace tokens task or env vars in scripts
