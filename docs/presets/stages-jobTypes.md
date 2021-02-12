@@ -2,7 +2,8 @@
 
 - [Azure Pipeline Templates](#azure-pipeline-templates)
   - [Preset Use Case](#preset-use-case)
-  - [Template Parameter Schema](#template-parameter-schema)
+  - [Template Resource](#template-resource)
+  - [dotNet Tests](#dotnet-tests)
 
 ## Preset Use Case
 
@@ -10,7 +11,7 @@ This preset uses parameters based on a job type that predefines jobs and what st
 
 This is a prescriptive and opinionated preset template. In that, it abstracts the stages, jobs, and steps templates using a predefined pattern that is common for building and deploying infrastructure and applications.
 
-## Template Parameter Schema
+## Template Resource
 
 To use the pipeline templates in this repository it must be listed as a resource in your pipeline YAML file. This allows you to reference paths in another repository by using the resource identifier.
 
@@ -32,7 +33,15 @@ trigger:
   tags:
     include:
       - v*.*.*-* # CI Trigger when tag matches format
+```
 
+## dotNet Tests
+
+The 'dotNetTests' parameter within this preset template provides a few patterns for defining tests. Depending on if you require a single job with a single test task and dotNet projects pattern, a single job with multiple test task run sequentially, or multiple jobs with one or more dotNet projects each.
+
+This example is of a single job with a single dotNet test task for projects pattern.
+
+```yaml
 extends:
   # file path to template at repo resource id to extend from
   template: presets/stages-jobTypes.yaml@templates
@@ -40,12 +49,56 @@ extends:
 # code: stage in stages
   # dotNetTests: list of projects for dotNet test task of each item
     dotNetTests:
+    - job: test1
+      displayName: 'dotNet Unit Tests'
+      version: '3.1.x' # Inserts use dotNet 3.1.x task
+      projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+      arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+```
+
+This example is of a single job with multiple test task run serially.
+
+```yaml
+extends:
+  # file path to template at repo resource id to extend from
+  template: presets/stages-jobTypes.yaml@templates
+  parameters:
+# code: stage in stages
+  # dotNetTests: list of projects for dotNet test task of each item
+    dotNetTests:
+    - job: test1
+      displayName: 'dotNet Test Job'
+      tests:
       - projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
         arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
-        displayName: 'dotNet Unit Tests'
+        displayName: 'dotNet Unit Tests Task'
       - projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
         arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
-        displayName: 'dotNet CLI Tests'
+        displayName: 'dotNet CLI Tests Task'
+```
+
+This example is of multiple jobs with a single test task.
+
+```yaml
+extends:
+  # file path to template at repo resource id to extend from
+  template: presets/stages-jobTypes.yaml@templates
+  parameters:
+# code: stage in stages
+  # dotNetTests: list of projects for dotNet test task of each item
+    dotNetTests:
+    - job: test1
+      displayName: 'dotNet Unit Tests'
+      projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+      arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    - job: test2
+      displayName: 'dotNet CLI Tests'
+      projects: '**[Cc][Ll][Ii].[Tt]est*/*[Cc][Ll][Ii].[Tt]est*.csproj' # Pattern search for cli test projects
+      arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+```
+
+
+```yaml
 # build: stage in stages
   # dockerFiles: list of docker build jobs. Job, dockerFile, containerRegistry, and containerRepository, required for each
     dockerFiles:
