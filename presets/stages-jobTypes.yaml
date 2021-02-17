@@ -37,6 +37,13 @@ parameters:
   #   arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
   #   displayName: 'dotNet CLI Tests'
 
+- name: dotNetTestProjects # Creates single dotNet test job and single dotNet test task for the projects file matching pattern. e.g. dotNetTestProjects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj'
+  type: string
+  default: ''
+- name: dotNetTestArguments # Default arguments for dotNet test tasks
+  type: string
+  default: '--collect "Code Coverage"'
+
 # Code: sonarQube analysis of dotNet projects or solutions
 - name: sonarQubeAnalysis # Nested into projects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
   type: object
@@ -57,22 +64,22 @@ parameters:
 
 
 # Build: Container Image Jobs
-- name: containerRegistry # Required ADO Service Connection name for all container image build jobs
+- name: containerRegistry # Default ADO Service Connection name for all container image build jobs docker build and push
   type: string
   default: '' 
-- name: containerRepository # Repository in registry for image
+- name: containerRepository # Default repository in containerRegistry for all container image build jobs docker build and push
   type: string
   default: '$(Build.DefinitionName)'
 - name: dockerTags # Default tags to set in addition to pipeline metadata tags
   type: object
   default: $(Build.BuildNumber)
-- name: dockerArgs # Optional param to pass build arguments to Docker
+- name: dockerArgs # Default arguments for docker build task in all container image build jobs
   type: string
   default: ''
 - name: dockerContext
   type: string
   default: '$(Build.Repository.LocalPath)'
-- name: dockerFile 
+- name: dockerFile # Use for single Docker build job. For multiple docker build jobs use the dockerBuilds parameter
   type: string
   default: ''
 
@@ -88,12 +95,12 @@ parameters:
   # - job: containerImage2
   #   dependsOn: containerImage1
   #   dockerFile: App2.Dockerfile
-  #   containerRegistry: 'Docker' # Optional override of containerRegistry parameter. Container registry service connection name
-  #   containerRepository: 'App2' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
-  #   dockerArgs: '--build-arg repository=baseimages/dotnet/core/aspnet'
-  #   dockerTags: '$(Build.BuildNumber)-dev' # Optional list of image tags. Default is $(Build.BuildNumber)
+  #   containerRegistry: 'Docker'
+  #   containerRepository: 'App2'
+  #   dockerArgs: '--build-arg repository=dotnet/aspnet' # Optional dockerArgs for docker build. This would override parameters.dockerArgs
+  #   dockerTags: '$(Build.BuildNumber)-dev' # Optional dockerTags for docker build. This would override parameters.dockerTags
   # - job: containerImage3
-  #   dockerFile: App2.Dockerfile
+  #   dockerFile: App3.Dockerfile
 
 # Build: dotNet build jobs
 - name: dotNetBuilds
@@ -101,8 +108,10 @@ parameters:
   default: ''
 # dotNetBuilds:
   # - job: dotNetPublish
-  #   projects: '**.csproj'
-  #   command: publish
+  #   projects: 'server.csproj'
+  #   command: publish # Overrides the default parameters.dotNetCommand
+  # - job: dotNetBuild
+  #   projects: 'client.csproj'
 - name: dotNetProjects # Pattern match for dotNet projects
   type: string
   default: ''
@@ -194,10 +203,26 @@ parameters:
   type: string
   default: self
 
-# Test: Visual Studio Tests
+# Test: Visual Studio Test Jobs
 - name: vsTests
   type: object
   default: ''
+# vsTests:
+  # - job: vsTest
+  #   testPlan: 123456
+  #   testSuite: 123456
+  #   testConfiguration: 523
+  #   strategy:
+  #     parallel: 10
+- name: testPlan # test plan ID number. Select a test plan number containing test suites with automated test cases.
+  type: number
+  default: 0
+- name: testSuite # test suite ID within the test plan. Select one or more test suites containing automated test cases. Test case work items must be associated with an automated test method.
+  type: number
+  default: 0
+- name: testConfiguration # test configuration number required if using testPlan and testSuite. Select Test Configuration.
+  type: number
+  default: 523
 # Test: Stage Params
 - name: testPool # Pool for jobs in test stage jobs
   type: object
@@ -246,9 +271,29 @@ stages:
       ${{ if parameters.stages }}:
       # If stages stageList param has value then override default stages value in stages.yaml template
         stages: ${{ parameters.stages }}
-      ${{ if or(gt(length(parameters.dotNetTests), 0), gt(length(parameters.sonarQubeAnalysis), 0)) }}:
+      ${{ if or(parameters.dotNetTestProjects, gt(length(parameters.dotNetTests), 0), gt(length(parameters.sonarQubeAnalysis), 0)) }}:
       # code: jobList inserted into code stage in stages
         code:
+          # If dotNetTestProjects param has value, insert a single job for dotNet test projects pattern
+          - ${{ if parameters.dotNetTestProjects }}:
+            - job: dotNetTestProjects
+              displayName: 'dotNet Test ${{ parameters.dotNetTestProjects }}'
+              pool: ${{ parameters.codePool }}
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              steps:
+                - template: ../steps/code/dotNetTests.yaml
+                  parameters:
+                    ${{ if parameters.dotNetVersion }}:
+                      version: ${{ parameters.dotNetVersion }}
+                    tests:
+                      - projects: ${{ parameters.dotNetTestProjects }}
+                        displayName: 'dotNet Test ${{ parameters.dotNetTestProjects }}'
+                        publishTestResults: true
+                        ${{ if parameters.dotNetTestArguments }}:
+                          arguments: ${{ parameters.dotNetTestArguments }}
           # If dotNetTests param has value, then insert dotNetTests job into stage
           - ${{ if gt(length(parameters.dotNetTests), 0) }}:
             - ${{ each dotNetTest in parameters.dotNetTests }}:
@@ -276,7 +321,12 @@ stages:
                           # If the job has tests then insert each test task
                           - ${{ each test in dotNetTest.tests }}:
                             - ${{ if test.projects }}:
-                              - ${{ test }}
+                              - projects: ${{ test.projects }}
+                                ${{ each parameter in dotNetTest }}:
+                                  ${{ if in(parameter.key, 'arguments', 'displayName', 'testRunTitle', 'publishTestResults') }}:
+                                    ${{ parameter.key }}: ${{ parameter.value }}
+                                ${{ if and(not(test.arguments), parameters.dotNetTestArguments) }}:
+                                  arguments: ${{ parameters.dotNetTestArguments }}
                           # If the job has projects insert test task
                           - ${{ if dotNetTest.projects }}:
                             - projects: ${{ dotNetTest.projects }}
@@ -285,8 +335,8 @@ stages:
                                   ${{ parameter.key }}: ${{ parameter.value }}
                               ${{ if and(dotNetTest.displayName, not(dotNetTest.testRunTitle)) }}:
                                 testRunTitle: ${{ dotNetTest.displayName }}
-                              ${{ if not(dotNetTest.arguments) }}:
-                                arguments: '--collect "Code Coverage"'
+                              ${{ if and(not(dotNetTest.arguments), parameters.dotNetTestArguments) }}:
+                                arguments: ${{ parameters.dotNetTestArguments }}
           # If sonarQube param has value, then insert sonarQube job into stage
           - ${{ if gt(length(parameters.sonarQubeAnalysis), 0) }}:
             - ${{ each sonarQube in parameters.sonarQubeAnalysis }}:
@@ -317,7 +367,7 @@ stages:
           - ${{ if gt(length(parameters.dockerBuilds), 0) }}:
             - ${{ each build in parameters.dockerBuilds }}:
               # parameters: job, dockerFile, containerRepository, and containerRegistry are the required minimum params
-              - ${{ if and(build.job, build.dockerFile, build.containerRepository, or(parameters.containerRegistry, build.containerRegistry)) }}:
+              - ${{ if and(build.job, build.dockerFile, or(build.containerRepository, parameters.containerRepository), or(parameters.containerRegistry, build.containerRegistry)) }}:
                 - job: ${{ build.job }} # job name must be unique within stage
                   ${{ each parameter in build }}:
                     ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -342,6 +392,8 @@ stages:
                             ${{ parameter.key }}: ${{ parameter.value }}
                         ${{ if and(not(build.containerRegistry), parameters.containerRegistry) }}:
                           containerRegistry: '${{ parameters.containerRegistry }}'
+                        ${{ if and(not(build.containerRepository), parameters.containerRepository) }}:
+                          containerRepository: '${{ parameters.containerRepository }}'
                         ${{ if and(not(build.dockerContext), parameters.dockerContext) }}:
                           dockerContext: '${{ parameters.dockerContext }}'
                         ${{ if and(not(build.dockerArgs), parameters.dockerArgs) }}:
@@ -353,14 +405,18 @@ stages:
 
           # If dockerFile, insert job for dockerFile
           - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
-            - job: containerImage
+            - job: dockerFile
               displayName: 'Build Container Image ${{ build.dockerFile }}'
               pool: ${{ parameters.buildPool }}
               ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                 timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
               ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
-              dependsOn: []
+              # If parameters.dotNetProjects, then dockerFile job depends on dotNetProjects. Downloads artifact from dotNetProjects job in dockerFile job
+              ${{ if not(parameters.dotNetProjects) }}:
+                dependsOn: []
+              ${{ if parameters.dotNetProjects }}:
+                dependsOn: dotNetProjects
               steps:
                 - template: ../steps/build/containerImage.yaml
                 # parameters within containerImage.yaml template
@@ -461,8 +517,6 @@ stages:
                               ${{ each parameter in deployment }}:
                                 ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
                                   ${{ parameter.key }}: ${{ parameter.value }}
-                              ${{ if and(not(deployment.namespace), parameters.kubernetesNamespace) }}:
-                                namespace: ${{ parameters.kubernetesNamespace }}
                               ${{ if not(deployment.checkout) }}:
                                 checkout: ${{ parameters.deployCheckout }}
                               ${{ if and(not(deployment.resourceGroup), parameters.armResourceGroup) }}:
@@ -674,7 +728,7 @@ stages:
                               steps:
                                 - ${{ deployment.onSuccess }}
               # Insert non-canary deployment jobs
-              - ${{ if and(deployment.deployment, or(not(deployment.strategy), eq(deployment.strategy, 'runOnce')), deployment.manifests, or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
+              - ${{ if and(deployment.deployment, or(not(deployment.strategy), eq(deployment.strategy, ''), eq(deployment.strategy, 'runOnce')), deployment.manifests, or(deployment.environment, deployment.kubernetesServiceConnection), or(parameters.environment, parameters.kubernetesServiceConnection)) }}:
                 - deployment: ${{ deployment.deployment }}
                   ${{ each parameter in deployment }}:
                     ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -713,6 +767,8 @@ stages:
                                 action: deploy
                               ${{ if and(parameters.kubernetesServiceConnection, not(deployment.kubernetesServiceConnection)) }}:
                                 kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
+                              ${{ if and(not(deployment.namespace), parameters.kubernetesNamespace) }}:
+                                namespace: ${{ parameters.kubernetesNamespace }}
                               ${{ if not(deployment.checkout) }}:
                                 checkout: ${{ parameters.deployCheckout }}
                       # Insert routeTraffic lifecycle hook stepList
@@ -753,11 +809,28 @@ stages:
                               steps:
                                 - ${{ deployment.onSuccess }}
 
-      ${{ if gt(length(parameters.vsTests), 0) }}:
+      ${{ if or(gt(length(parameters.vsTests), 0), and(parameters.testPlan, parameters.testSuite, parameters.testConfiguration)) }}:
       # test: jobList inserted into test stage in stages param
         test:
+          - ${{ if and(parameters.testPlan, parameters.testSuite, parameters.testConfiguration) }}:
+            - job: vsTest
+              pool: ${{ parameters.testPool }}
+              dependsOn: []
+              ${{ if and(not(vsTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              steps:
+                - template: ../steps/test/visualStudioTest.yaml
+                  parameters:
+                    testPlan: ${{ parameters.testPlan }}
+                    testSuite: ${{ parameters.testSuite }}
+                    testConfiguration: ${{ parameters.testConfiguration }}
+                    ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
+                      dotNetVersion: ${{ parameters.dotNetVersion }}
+
           - ${{ each vsTest in parameters.vsTests }}:
-            - ${{ if and(vsTest.job, or(and(parameters.testPlan, parameters.testSuite), parameters.testAssemblies)) }}:
+            - ${{ if and(vsTest.job, or(and(vsTest.testPlan, vsTest.testSuite), vsTest.testAssemblies)) }}:
               - job: ${{ vsTest.job }}
                 ${{ each parameter in vsTest }}:
                   ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -780,9 +853,8 @@ stages:
                       ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
                         dotNetVersion: ${{ parameters.dotNetVersion }}
 
-    # promote: deploymentList inserted into promote stage in stages param
-
       ${{ if and(parameters.kubernetesCanaryPromote, gt(length(parameters.kubernetesDeployments), 0), containsValue(parameters.kubernetesDeployments, 'canary')) }}:
+      # promote: deploymentList inserted into promote stage in stages param
         promote:
           # For each deployment item in kubernetesDeployments parameter insert deployment jobs
           - ${{ each deployment in parameters.kubernetesDeployments }}:
@@ -847,7 +919,7 @@ stages:
                   runOnce:
                     deploy:
                       steps:
-                        - template: ../steps/deploy/deployment.yaml
+                        - template: ../steps/deploy/kubeManifest.yaml
                           parameters:
                             strategy: canary
                             action: reject

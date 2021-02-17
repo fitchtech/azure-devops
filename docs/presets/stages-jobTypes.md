@@ -111,7 +111,7 @@ extends:
         dockerFile: App2.Dockerfile
         containerRegistry: 'Docker' # Optional override of dockerRegistry parameter. Container registry service connection name
         containerRepository: 'App2' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
-        dockerArgs: '--build-arg repository=baseimages/dotnet/core/aspnet'
+        dockerArgs: '--build-arg repository=dotnet/aspnet'
         dockerTags: '$(Build.BuildNumber)' # Optional list of image tags. Default is $(Build.BuildNumber)
 # deploy: stage in stages
     armTemplates:
