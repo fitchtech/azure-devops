@@ -376,7 +376,7 @@ stages:
                     displayName: 'Build Container Image ${{ build.dockerFile }}' # If no build.displayName, use this as default
                   ${{ if not(build.pool) }}:
                     pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(build.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
                   ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
@@ -408,9 +408,9 @@ stages:
             - job: dockerFile
               displayName: 'Build Container Image ${{ build.dockerFile }}'
               pool: ${{ parameters.buildPool }}
-              ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
                 timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-              ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               # If parameters.dotNetProjects, then dockerFile job depends on dotNetProjects. Downloads artifact from dotNetProjects job in dockerFile job
               ${{ if not(parameters.dotNetProjects) }}:
@@ -439,9 +439,9 @@ stages:
                     displayName: 'Build dotNet Projects ${{ build.projects }}' # If no build.displayName, use this as default
                   ${{ if not(build.pool) }}:
                     pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(build.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(build.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(build.dependsOn) }}:
                     dependsOn: [] # job does not depend on other jobs
@@ -462,9 +462,9 @@ stages:
             - job: dotNetProjects
               displayName: 'Build dotNet Projects ${{ parameters.dotNetProjects }}'
               pool: ${{ parameters.buildPool }}
-              ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
                 timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-              ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               dependsOn: []
               steps:
@@ -491,9 +491,9 @@ stages:
                     displayName: 'Deploy ${{ deployment.strategy }} ARM Template ${{ deployment.template }}'
                   ${{ if not(deployment.pool) }}:
                     pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(deployment.dependsOn) }}:
                     dependsOn: []
@@ -571,9 +571,9 @@ stages:
                     displayName: 'Deploy ARM Template ${{ deployment.template }}'
                   ${{ if not(deployment.pool) }}:
                     pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(deployment.dependsOn) }}:
                     dependsOn: []
@@ -653,9 +653,9 @@ stages:
                     displayName: 'Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
                   ${{ if not(deployment.pool) }}:
                     pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(deployment.dependsOn) }}:
                     dependsOn: []
@@ -737,9 +737,9 @@ stages:
                     displayName: 'Kubernetes Manifests RunOnce Deployment ${{ deployment.manifests }}'
                   ${{ if not(deployment.pool) }}:
                     pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                  ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(deployment.dependsOn) }}:
                     dependsOn: []
@@ -816,9 +816,9 @@ stages:
             - job: vsTest
               pool: ${{ parameters.testPool }}
               dependsOn: []
-              ${{ if and(not(vsTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
                 timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-              ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               steps:
                 - template: ../steps/test/visualStudioTest.yaml
@@ -867,9 +867,9 @@ stages:
                   displayName: 'Promote Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
                 ${{ if not(deployment.pool) }}:
                   pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                   timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                   cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                 ${{ if not(deployment.dependsOn) }}:
                   dependsOn: []
@@ -907,9 +907,9 @@ stages:
                   displayName: 'Reject Kubernetes Manifests Canary Deployment ${{ deployment.manifests }}'
                 ${{ if not(deployment.pool) }}:
                   pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
-                ${{ if and(not(dotNetTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                   timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                   cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                 ${{ if not(deployment.dependsOn) }}:
                   dependsOn: []
