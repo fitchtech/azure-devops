@@ -378,7 +378,7 @@ stages:
                     pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
                   ${{ if and(not(build.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
                     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                  ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                  ${{ if and(not(build.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   ${{ if not(build.dependsOn) }}:
                     dependsOn: [] # job does not depend on other jobs
