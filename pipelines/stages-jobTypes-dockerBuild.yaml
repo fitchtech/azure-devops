@@ -28,5 +28,5 @@ extends:
       - job: containerImage
         checkout: blazor
         dockerFile: BlazorServerApp/Dockerfile
-        dockerTags: ${{ lower(variables['Build.BuildNumber']) }}
+        dockerTags: test
         containerRepository: blazor
