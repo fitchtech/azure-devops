@@ -284,7 +284,7 @@ stages:
               ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               steps:
-                - template: ../steps/code/dotNetTests.yaml
+                - template: steps/code/dotNetTests.yaml
                   parameters:
                     ${{ if parameters.dotNetVersion }}:
                       version: ${{ parameters.dotNetVersion }}
@@ -310,7 +310,7 @@ stages:
                   ${{ if and(not(dotNetTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   steps:
-                    - template: ../steps/code/dotNetTests.yaml
+                    - template: steps/code/dotNetTests.yaml
                       parameters:
                         ${{ each parameter in dotNetTest }}:
                           ${{ if notIn(parameter.key, 'tests', 'projects', 'arguments', 'testRunTitle', 'publishTestResults', 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -352,7 +352,7 @@ stages:
                   ${{ if and(not(sonarQube.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                   steps:
-                    - template: ../steps/code/sonarQube.yaml
+                    - template: steps/code/sonarQube.yaml
                       parameters: 
                         ${{ each parameter in sonarQube }}:
                           ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -383,7 +383,7 @@ stages:
                   ${{ if not(build.dependsOn) }}:
                     dependsOn: [] # job does not depend on other jobs
                   steps:
-                    - template: ../steps/build/containerImage.yaml
+                    - template: steps/build/containerImage.yaml
                     # parameters within containerImage.yaml template
                       parameters:
                       # For each parameter in build, insert each item except job keys
@@ -418,7 +418,7 @@ stages:
               ${{ if parameters.dotNetProjects }}:
                 dependsOn: dotNetProjects
               steps:
-                - template: ../steps/build/containerImage.yaml
+                - template: steps/build/containerImage.yaml
                 # parameters within containerImage.yaml template
                   parameters:
                     dockerFile: ${{ parameters.dockerFile }}
@@ -446,7 +446,7 @@ stages:
                   ${{ if not(build.dependsOn) }}:
                     dependsOn: [] # job does not depend on other jobs
                   steps:
-                    - template: ../steps/build/dotNetCore.yaml
+                    - template: steps/build/dotNetCore.yaml
                     # parameters within dotNetCore.yaml template
                       parameters:
                       # For each parameter in build, insert each item except job keys
@@ -468,7 +468,7 @@ stages:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               dependsOn: []
               steps:
-                - template: ../steps/build/dotNetCore.yaml
+                - template: steps/build/dotNetCore.yaml
                   parameters:
                     projects: ${{ parameters.dotNetProjects }}
                     command: ${{ parameters.dotNetCommand }}
@@ -512,7 +512,7 @@ stages:
                             - ${{ deployment.preDeploy }}
                       deploy:
                         steps:
-                          - template: ../steps/deploy/armTemplate.yaml
+                          - template: steps/deploy/armTemplate.yaml
                             parameters:
                               ${{ each parameter in deployment }}:
                                 ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -592,7 +592,7 @@ stages:
                             - ${{ deployment.preDeploy }}
                       deploy:
                         steps:
-                          - template: ../steps/deploy/armTemplate.yaml
+                          - template: steps/deploy/armTemplate.yaml
                             parameters:
                               ${{ each parameter in deployment }}:
                                 ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -678,7 +678,7 @@ stages:
                             - ${{ deployment.preDeploy }}
                       deploy:
                         steps:
-                          - template: ../steps/deploy/kubeManifest.yaml
+                          - template: steps/deploy/kubeManifest.yaml
                             parameters:
                               strategy: canary
                               ${{ each parameter in deployment }}:
@@ -758,7 +758,7 @@ stages:
                             - ${{ deployment.preDeploy }}
                       deploy:
                         steps:
-                          - template: ../steps/deploy/kubeManifest.yaml
+                          - template: steps/deploy/kubeManifest.yaml
                             parameters:
                               ${{ each parameter in deployment }}:
                                 ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -821,7 +821,7 @@ stages:
               ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               steps:
-                - template: ../steps/test/visualStudioTest.yaml
+                - template: steps/test/visualStudioTest.yaml
                   parameters:
                     testPlan: ${{ parameters.testPlan }}
                     testSuite: ${{ parameters.testSuite }}
@@ -845,7 +845,7 @@ stages:
                 ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
                   cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
                 steps:
-                  - template: ../steps/test/visualStudioTest.yaml
+                  - template: steps/test/visualStudioTest.yaml
                     parameters:
                       ${{ each parameter in vsTest }}:
                         ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
@@ -879,7 +879,7 @@ stages:
                   runOnce:
                     deploy:
                       steps:
-                        - template: ../steps/deploy/kubeManifest.yaml
+                        - template: steps/deploy/kubeManifest.yaml
                           parameters:
                             strategy: canary
                             action: promote
@@ -919,7 +919,7 @@ stages:
                   runOnce:
                     deploy:
                       steps:
-                        - template: ../steps/deploy/kubeManifest.yaml
+                        - template: steps/deploy/kubeManifest.yaml
                           parameters:
                             strategy: canary
                             action: reject

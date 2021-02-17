@@ -6,7 +6,7 @@ parameters:
   type: stepList
   default: []
   # - script: echo insert steps into stepList
-- name: codeTemplate # dotNetTests | sonarQube | false (default) | ../steps/code/${{ parameters.codeTemplate }}.yaml
+- name: codeTemplate # dotNetTests | sonarQube | false (default) | steps/code/${{ parameters.codeTemplate }}.yaml
   type: string
   default: false
 - name: codeParameters # If codeTemplate, codeParameters are the parameters for the codeTemplate
@@ -41,7 +41,7 @@ parameters:
 - name: buildSteps # stepList inserted into build job
   type: stepList
   default: []
-- name: buildTemplate # containerImage | dotNetCore | helmTemplate | nugetPackage | false (default) | ../steps/build/${{ parameters.buildTemplate }}.yaml
+- name: buildTemplate # containerImage | dotNetCore | helmTemplate | nugetPackage | false (default) | steps/build/${{ parameters.buildTemplate }}.yaml
   type: string
   default: false
 - name: buildParameters # If buildTemplate, buildParameters are the parameters for the buildTemplate
@@ -82,7 +82,7 @@ parameters:
 - name: deploySteps # stepList inserted into deploy job
   type: stepList
   default: []
-- name: deployTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.deployTemplate }}.yaml
+- name: deployTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.deployTemplate }}.yaml
   type: string
   default: false
 - name: deployParameters # If deployTemplate, deployParameters are the parameters for the deployTemplate
@@ -147,7 +147,7 @@ parameters:
 - name: promoteSteps # stepList inserted into promote job
   type: stepList
   default: []
-- name: promoteTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.promoteTemplate }}.yaml
+- name: promoteTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.promoteTemplate }}.yaml
   type: string
   default: false
 - name: promoteParameters # If promoteTemplate, promoteParameters are the parameters for the promoteTemplate
@@ -163,7 +163,7 @@ parameters:
 - name: rejectSteps # stepList inserted into reject job
   type: stepList
   default: []
-- name: rejectTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | ../steps/deploy/${{ parameters.rejectTemplate }}.yaml
+- name: rejectTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.rejectTemplate }}.yaml
   type: string
   default: false
 - name: rejectParameters # If rejectTemplate, rejectParameters are the parameters for the rejectTemplate
@@ -252,7 +252,7 @@ stages:
               ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               steps:
-                - template: ../steps/code/${{ parameters.codeTemplate }}.yaml
+                - template: steps/code/${{ parameters.codeTemplate }}.yaml
                   parameters:
                     # Insert codeParameters as parameters for codeTemplate
                     ${{ each param in parameters.codeParameters }}:
@@ -336,7 +336,7 @@ stages:
               ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
                 cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
               steps:
-                - template: ../steps/build/${{ parameters.buildTemplate }}.yaml
+                - template: steps/build/${{ parameters.buildTemplate }}.yaml
                   parameters:
                     # Insert buildParameters as parameters for buildTemplate
                     ${{ each param in parameters.buildParameters }}:
@@ -462,7 +462,7 @@ stages:
                   # Insert deploySteps stepList
                   deploy:
                     steps:
-                      - template: ../steps/deploy/${{ parameters.deployTemplate }}.yaml
+                      - template: steps/deploy/${{ parameters.deployTemplate }}.yaml
                         parameters:
                           ${{ each param in parameters.deployParameters }}:
                             ${{ param.key }}: ${{ param.value }}
@@ -565,7 +565,7 @@ stages:
                   ${{ if not(test.matrix) }}:
                     parallel: ${{ test.parallel }}
               steps:
-                - template: ../steps/test/${{ parameters.testTemplate }}.yaml
+                - template: steps/test/${{ parameters.testTemplate }}.yaml
                   parameters:
                     ${{ each param in parameters.buildParameters }}:
                       ${{ param.key }}: ${{ param.value }}
@@ -653,7 +653,7 @@ stages:
                 runOnce:
                   deploy:
                     steps:
-                      - template: ../steps/deploy/${{ parameters.promoteTemplate }}.yaml
+                      - template: steps/deploy/${{ parameters.promoteTemplate }}.yaml
                         parameters:
                           ${{ each param in parameters.promoteParameters }}:
                             ${{ param.key }}: ${{ param.value }}
@@ -739,7 +739,7 @@ stages:
                 runOnce:
                   deploy:
                     steps:
-                      - template: ../steps/deploy/${{ parameters.rejectTemplate }}.yaml
+                      - template: steps/deploy/${{ parameters.rejectTemplate }}.yaml
                         parameters:
                           ${{ each param in parameters.rejectParameters }}:
                             ${{ param.key }}: ${{ param.value }}
