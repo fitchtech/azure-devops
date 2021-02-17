@@ -1,5 +1,5 @@
 # This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
-name: $[lower(blazor_$(Build.SourceVersion)_$(Build.SourceBranchName))] # name is the format for $(Build.BuildNumber)
+name: $[lower(variables['System.DefinitionId'])_lower(variables['Build.SourceVersion'])_lower(variables['Build.SourceBranchName'])] # name is the format for $(Build.BuildNumber)
 
 resources:
   repositories:
