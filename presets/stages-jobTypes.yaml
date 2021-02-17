@@ -386,6 +386,10 @@ stages:
                     - template: steps/build/containerImage.yaml
                     # parameters within containerImage.yaml template
                       parameters:
+                      # For each parameter in build, insert each item except job keys
+                        ${{ each parameter in build }}:
+                          ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                            ${{ parameter.key }}: ${{ parameter.value }}
                         ${{ if and(not(build.containerRegistry), parameters.containerRegistry) }}:
                           containerRegistry: '${{ parameters.containerRegistry }}'
                         ${{ if and(not(build.containerRepository), parameters.containerRepository) }}:
@@ -394,14 +398,10 @@ stages:
                           dockerContext: '${{ parameters.dockerContext }}'
                         ${{ if and(not(build.dockerArgs), parameters.dockerArgs) }}:
                           dockerArgs: '${{ parameters.dockerArgs }}'
-                        ${{ if and(not(build.dockerTags), parameters.dockerTags) }}:
+                        ${{ if and(not(eq(build.dockerTags, '')), parameters.dockerTags) }}:
                           dockerTags: ${{ parameters.dockerTags }}
                         ${{ if and(parameters.dotNetVersion, build.dotNetProjects, not(build.dotNetVersion)) }}:
                           dotNetVersion: ${{ parameters.dotNetVersion }}
-                      # For each parameter in build, insert each item except job keys
-                        ${{ each parameter in build }}:
-                          ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
-                            ${{ parameter.key }}: ${{ parameter.value }}
 
           # If dockerFile, insert job for dockerFile
           - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
