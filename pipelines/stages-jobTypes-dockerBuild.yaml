@@ -3,7 +3,7 @@ name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) 
 
 resources:
   repositories:
-    - repository: blazorServer
+    - repository: blazor
       type: github
       name: fitchtech/BlazorServerApp
       ref: refs/heads/master
@@ -26,6 +26,6 @@ extends:
     containerRegistry: DockerHub
     dockerBuilds:
       - job: containerImage
-        checkout: blazorServer
+        checkout: blazor
         dockerFile: BlazorServerApp/Dockerfile
-        containerRepository: BlazorServer
+        containerRepository: blazor
