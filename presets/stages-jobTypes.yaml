@@ -398,7 +398,7 @@ stages:
                           dockerContext: '${{ parameters.dockerContext }}'
                         ${{ if and(not(build.dockerArgs), parameters.dockerArgs) }}:
                           dockerArgs: '${{ parameters.dockerArgs }}'
-                        ${{ if and(eq(build.dockerTags, ''), parameters.dockerTags) }}:
+                        ${{ if and(eq(length(build.dockerTags), 0), parameters.dockerTags) }}:
                           dockerTags: ${{ parameters.dockerTags }}
                         ${{ if and(parameters.dotNetVersion, build.dotNetProjects, not(build.dotNetVersion)) }}:
                           dotNetVersion: ${{ parameters.dotNetVersion }}
