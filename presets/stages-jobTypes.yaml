@@ -268,7 +268,7 @@ stages:
       stagesPrefix: ${{ parameters.stagesPrefix }}
       stagesSuffix: ${{ parameters.stagesSuffix }}
       stagesCondition: ${{ parameters.stagesCondition }}
-      ${{ if parameters.stages }}:
+      ${{ if gt(length(parameters.stages), 0) }}:
       # If stages stageList param has value then override default stages value in stages.yaml template
         stages: ${{ parameters.stages }}
       ${{ if or(parameters.dotNetTestProjects, gt(length(parameters.dotNetTests), 0), gt(length(parameters.sonarQubeAnalysis), 0)) }}:
