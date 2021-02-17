@@ -232,7 +232,7 @@ parameters:
 # Globals: Optional Params
 - name: stages # Optional to override default value of stages stageList in the stages.yaml template
   type: stageList
-  default: ''
+  default: []
 - name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
   type: string
   default: ''
