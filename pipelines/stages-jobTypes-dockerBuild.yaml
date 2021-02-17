@@ -1,0 +1,31 @@
+# This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
+name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
+
+resources:
+  repositories:
+    - repository: blazorServer
+      type: github
+      name: fitchtech/BlazorServerApp
+      ref: refs/heads/master
+      endpoint: GitHub
+      trigger: none
+
+trigger:
+  branches:
+    include:
+      - master
+  tags:
+    include:
+      - v1*
+
+extends:
+  template: ../presets/stages-jobTypes.yaml
+  parameters:
+    timeoutInMinutes: 1
+    cancelTimeoutInMinutes: 1
+    containerRegistry: DockerHub
+    dockerBuilds:
+      - job: containerImage
+        checkout: blazorServer
+        dockerFile: BlazorServerApp/Dockerfile
+        containerRepository: BlazorServer
