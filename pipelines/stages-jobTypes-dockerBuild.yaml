@@ -1,5 +1,5 @@
 # This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
-name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
+name: $(System.DefinitionId)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 resources:
   repositories:
