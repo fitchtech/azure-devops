@@ -32,4 +32,4 @@ extends:
         checkout: blazor
         dockerFile: BlazorServerApp/Dockerfile
         dockerTags: $(dockerTag)
-        containerRepository: blazor
+        containerRepository: fitchtech/blazor
