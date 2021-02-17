@@ -18,6 +18,9 @@ trigger:
     include:
       - v1*
 
+variables:
+  dockerTag: $[lower(variables['Build.BuildNumber'])]
+
 extends:
   template: ../presets/stages-jobTypes.yaml
   parameters:
@@ -28,5 +31,5 @@ extends:
       - job: containerImage
         checkout: blazor
         dockerFile: BlazorServerApp/Dockerfile
-        dockerTags: test
+        dockerTags: $(dockerTag)
         containerRepository: blazor
