@@ -411,7 +411,7 @@ stages:
           # If dockerFile, insert job for dockerFile
           - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
             - job: dockerFile
-              displayName: 'Build Container Image ${{ build.dockerFile }}'
+              displayName: 'Build Container Image ${{ parameters.dockerFile }}'
               pool: ${{ parameters.buildPool }}
               ${{ if gt(parameters.timeoutInMinutes, 0) }}:
                 timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
