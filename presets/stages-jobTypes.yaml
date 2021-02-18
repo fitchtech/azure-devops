@@ -127,6 +127,9 @@ parameters:
   type: object
   default: 
     vmImage: 'Ubuntu-16.04'
+- name: buildCheckout # Default checkout step in all build jobs
+  type: string
+  default: self
 
 # Deploy: ARM Templates
 - name: armSubscription # Azure subscription service connection name for ARM template deployments
@@ -402,6 +405,8 @@ stages:
                           dockerTags: ${{ parameters.dockerTags }}
                         ${{ if and(parameters.dotNetVersion, build.dotNetProjects, not(build.dotNetVersion)) }}:
                           dotNetVersion: ${{ parameters.dotNetVersion }}
+                        ${{ if not(build.checkout) }}:
+                          checkout: ${{ parameters.buildCheckout }}
 
           # If dockerFile, insert job for dockerFile
           - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
@@ -427,6 +432,7 @@ stages:
                     dockerTags: ${{ parameters.dockerTags }}
                     containerRegistry: ${{ parameters.containerRegistry }}
                     containerRepository: ${{ parameters.containerRepository }}
+                    checkout: ${{ parameters.buildCheckout }}
 
           - ${{ if gt(length(parameters.dotNetBuilds), 0) }}:
             - ${{ each build in parameters.dotNetBuilds }}:
@@ -457,6 +463,8 @@ stages:
                           version: ${{ parameters.dotNetVersion }}
                         ${{ if not(build.command) }}:
                           command: ${{ parameters.dotNetCommand }}
+                        ${{ if not(build.checkout) }}:
+                          checkout: ${{ parameters.buildCheckout }}
 
           - ${{ if parameters.dotNetProjects }}:
             - job: dotNetProjects
@@ -474,6 +482,7 @@ stages:
                     command: ${{ parameters.dotNetCommand }}
                     ${{ if parameters.dotNetVersion }}:
                       dotNetVersion: ${{ parameters.dotNetVersion }}
+                    checkout: ${{ parameters.buildCheckout }}
 
       ${{ if or(gt(length(parameters.armDeployments), 0), gt(length(parameters.kubernetesDeployments), 0)) }}:
       # deploy: deploymentList inserted into deploy stage in stages param
