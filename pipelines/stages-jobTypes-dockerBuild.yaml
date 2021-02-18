@@ -1,6 +1,29 @@
 # This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
 name: $(Build.DefinitionName)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
+parameters:
+- name: dockerFile # Path to Dockerfile
+  type: string
+  default: 'BlazorServerApp/Dockerfile'
+- name: dockerTags # Default tags to set in addition to pipeline metadata tags
+  type: object
+  default: $(dockerTag)
+- name: containerRegistry # Docker registry service connection name
+  type: string
+  default: DockerHub
+- name: containerRepository # docker.io/accountName/repositoryName
+  type: string
+  default: fitchtech/blazor
+- name: timeoutInMinutes # in each job, how long to run the job before automatically cancelling
+  type: number
+  default: 5
+- name: cancelTimeoutInMinutes # in each job, how much time to give 'run always even if cancelled tasks' before killing them
+  type: number
+  default: 1
+- name: checkout
+  type: string
+  default: blazor
+
 resources:
   repositories:
     - repository: blazor
@@ -24,12 +47,17 @@ variables:
 extends:
   template: ../presets/stages-jobTypes.yaml
   parameters:
-    timeoutInMinutes: 5
-    cancelTimeoutInMinutes: 1
-    containerRegistry: DockerHub
-    dockerBuilds:
-      - job: containerImage
-        checkout: blazor
-        dockerFile: BlazorServerApp/Dockerfile
-        dockerTags: $(dockerTag)
-        containerRepository: fitchtech/blazor
+    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+    buildCheckout: ${{ parameters.checkout }}
+    dockerFile: ${{ parameters.dockerFile }}
+    dockerTags: ${{ parameters.dockerTags }}
+    containerRegistry: ${{ parameters.containerRegistry }}
+    containerRepository: ${{ parameters.containerRepository }}
+
+#   dockerBuilds:
+#     - job: containerImage
+#       checkout: blazor
+#       dockerFile: BlazorServerApp/Dockerfile
+#       dockerTags: $(dockerTag)
+#       containerRepository: fitchtech/blazor
