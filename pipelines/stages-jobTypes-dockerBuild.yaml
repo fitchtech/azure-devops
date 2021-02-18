@@ -1,4 +1,4 @@
-# This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
+# This pipeline is to test the syntax of the stages.yaml and presets/stages-jobTypes.yaml templates
 name: $(Build.DefinitionName)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
@@ -7,7 +7,9 @@ parameters:
   default: 'BlazorServerApp/Dockerfile'
 - name: dockerTags # Default tags to set in addition to pipeline metadata tags
   type: object
-  default: $(dockerTag)
+  default: |
+    $(dockerTag)
+    $(buildVersion)
 - name: containerRegistry # Docker registry service connection name
   type: string
   default: DockerHub
@@ -43,6 +45,7 @@ trigger:
 
 variables:
   dockerTag: $[lower(variables['Build.BuildNumber'])]
+  buildVersion: $[counter(variables['Build.SourceVersion'], 1)]
 
 extends:
   template: ../presets/stages-jobTypes.yaml
