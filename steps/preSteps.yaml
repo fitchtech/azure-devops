@@ -23,7 +23,7 @@ parameters:
   default: ''
 
 steps:
-- ${{ if ne(parameters.checkout, 'false') }}:
+- ${{ if and(ne(parameters.checkout, 'false'), ne(parameters.checkout, '')) }}:
   - checkout: ${{ parameters.checkout }}
     clean: ${{ parameters.clean }}
     ${{ if or(eq(parameters.submodules, 'true'), eq(parameters.submodules, 'recursive')) }}:
