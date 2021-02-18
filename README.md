@@ -119,8 +119,12 @@ The key to pipeline templates is reusability.
 
 These preset templates use the [stages](./docs/stages.md) template and provide parameters to insert jobs, step templates, and/or step lists conditionally on the value of the preset template parameters.
 
-- [Step Lists and Template in Stages](./docs/presets/stages-stepLists.md): Define Custom Steps or use Steps Templates in Stages easily
-- [Predefined Jobs in stages](./docs/presets/stages-jobTypes.md)
+- [Step Lists and Templates in Stages](./docs/presets/stepLists.md): Define Custom Steps or use a Steps Templates for a single job for each stage
+  - Advantage: flexible custom step lists or use any single steps template per stage
+  - Disadvantage: limited to a single job type or step list per stage but can use parallel strategies for that type of job
+- [Predefined Template Jobs in Stages](./docs/presets/jobTypes.md): Parameters for inserting a list of jobs with predefined steps templates
+  - Advantage: multiple jobs and multiple job types per stage. Predefined jobs with steps templates that are fully customizable
+  - Disadvantage: limited to templates that have parameters to insert those jobs. e.g. parameters.dockerBuilds, dotNetBuilds, armDeployments, kubernetesDeployments, etc
 
 ### Code Stage
 
