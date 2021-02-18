@@ -28,7 +28,7 @@ trigger:
 
 extends:
   # file path to template at repo resource id to extend from
-  template: presets/stages-stepLists.yaml@templates
+  template: presets/stepLists.yaml@templates
   parameters:
 # code: stage in stages
 # job: codeSteps

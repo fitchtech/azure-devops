@@ -1,4 +1,4 @@
-# This pipeline is to test the syntax of the stages.yaml and stages-stepLists.yaml templates
+# This pipeline is to test the syntax of the stages.yaml and stepLists.yaml templates
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 trigger:
@@ -10,7 +10,7 @@ trigger:
       - v1*
 
 extends:
-  template: ../presets/stages-stepLists.yaml
+  template: ../presets/stepLists.yaml
   parameters:
     timeoutInMinutes: 1
     cancelTimeoutInMinutes: 1

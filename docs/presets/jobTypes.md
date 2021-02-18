@@ -44,7 +44,7 @@ This example is of a single job with a single dotNet test task for projects patt
 ```yaml
 extends:
   # file path to template at repo resource id to extend from
-  template: presets/stages-jobTypes.yaml@templates
+  template: presets/jobTypes.yaml@templates
   parameters:
 # code: stage in stages
   # dotNetTests: list of projects for dotNet test task of each item
@@ -61,7 +61,7 @@ This example is of a single job with multiple test task run serially.
 ```yaml
 extends:
   # file path to template at repo resource id to extend from
-  template: presets/stages-jobTypes.yaml@templates
+  template: presets/jobTypes.yaml@templates
   parameters:
 # code: stage in stages
   # dotNetTests: list of projects for dotNet test task of each item
@@ -82,7 +82,7 @@ This example is of multiple jobs with a single test task.
 ```yaml
 extends:
   # file path to template at repo resource id to extend from
-  template: presets/stages-jobTypes.yaml@templates
+  template: presets/jobTypes.yaml@templates
   parameters:
 # code: stage in stages
   # dotNetTests: list of projects for dotNet test task of each item

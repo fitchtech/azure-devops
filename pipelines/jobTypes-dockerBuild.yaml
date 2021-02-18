@@ -1,4 +1,4 @@
-# This pipeline is to test the syntax of the stages.yaml and presets/stages-jobTypes.yaml templates
+# This pipeline is to test the syntax of the stages.yaml and presets/jobTypes.yaml templates
 name: $(Build.DefinitionName)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
 
 parameters:
@@ -48,7 +48,7 @@ variables:
   buildVersion: $[counter(variables['Build.SourceVersion'], 1)]
 
 extends:
-  template: ../presets/stages-jobTypes.yaml
+  template: ../presets/jobTypes.yaml
   parameters:
     timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
     cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
