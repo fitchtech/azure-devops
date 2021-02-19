@@ -36,6 +36,12 @@ parameters:
   values:
   - sdk
   - runtime
+- name: dotNetCommand
+  type: string
+  default: publish
+  values:
+  - publish
+  - build
 - name: dotNetVersion # Optional param to enable use dotNet task 
   type: string
   default: ''
@@ -161,7 +167,7 @@ steps:
       clean: false
       checkout: false
       download: false
-      command: publish
+      command: ${{ parameters.dotNetCommand }}
       packageType: ${{ parameters.dotNetType }}
       version: ${{ parameters.dotNetVersion }}
       projects: ${{ parameters.dotNetProjects }}
