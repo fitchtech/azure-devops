@@ -45,10 +45,10 @@ parameters:
   default: '--collect "Code Coverage"'
 
 # Code: sonarQube analysis of dotNet projects or solutions
-- name: sonarQubeAnalysis # Nested into projects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
+- name: sonarQubeAnalyses # Nested into projects param of code analysis steps. This can be a Visual Studio solution (*.sln) or dotNet project (*.csproj) to build for SonarQube analysis
   type: object
   default: ''
-# sonarQubeAnalysis:
+# sonarQubeAnalyses:
   # - job: sonarQube
   #   sonarQube: 'serviceConnectionName'
   #   dotNetProjects: '**.csproj'
@@ -274,7 +274,7 @@ stages:
       ${{ if gt(length(parameters.stages), 0) }}:
       # If stages stageList param has value then override default stages value in stages.yaml template
         stages: ${{ parameters.stages }}
-      ${{ if or(parameters.dotNetTestProjects, gt(length(parameters.dotNetTests), 0), gt(length(parameters.sonarQubeAnalysis), 0)) }}:
+      ${{ if or(parameters.dotNetTestProjects, gt(length(parameters.dotNetTests), 0), gt(length(parameters.sonarQubeAnalyses), 0)) }}:
       # code: jobList inserted into code stage in stages
         code:
           # If dotNetTestProjects param has value, insert a single job for dotNet test projects pattern
@@ -341,8 +341,8 @@ stages:
                               ${{ if and(not(dotNetTest.arguments), parameters.dotNetTestArguments) }}:
                                 arguments: ${{ parameters.dotNetTestArguments }}
           # If sonarQube param has value, then insert sonarQube job into stage
-          - ${{ if gt(length(parameters.sonarQubeAnalysis), 0) }}:
-            - ${{ each sonarQube in parameters.sonarQubeAnalysis }}:
+          - ${{ if gt(length(parameters.sonarQubeAnalyses), 0) }}:
+            - ${{ each sonarQube in parameters.sonarQubeAnalyses }}:
               - ${{ if and(sonarQube.job, sonarQube.dotNetProjects, or(sonarQube.sonarCloud, sonarQube.sonarQube)) }}:
                 - job: ${{ sonarQube.job }}
                   ${{ each item in sonarQube }}:
@@ -436,7 +436,7 @@ stages:
 
           - ${{ if gt(length(parameters.dotNetBuilds), 0) }}:
             - ${{ each build in parameters.dotNetBuilds }}:
-              - ${{ if and(build.job, build.projects) }}:
+              - ${{ if and(build.job, or(build.projects, build.searchPatternPack)) }}:
                 - job: ${{ build.job }} # job name must be unique within stage
                   ${{ each parameter in build }}:
                     ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
