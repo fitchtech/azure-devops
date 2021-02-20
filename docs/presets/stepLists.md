@@ -27,7 +27,7 @@ trigger:
       - v*.*.*-* # CI Trigger when tag matches format
 
 extends:
-  # file path to template at repo resource id to extend from
+  # file path to the template at repo resource id to extend from
   template: presets/stepLists.yaml@templates
   parameters:
 # code: stage in stages

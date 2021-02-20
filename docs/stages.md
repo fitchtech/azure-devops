@@ -10,11 +10,11 @@
 The [stages](../stages.yaml) template encapsulates stages for a multistage pipeline that uses expressions to conditionally insert each stage and dependency if the stage has jobs listed. This template abstracts the stages and jobs within each stage.
 
 - Validates the syntax of jobs and deployments in each stage
-- Inserts each stage in the stages parameters into the stages: section only if the stage has jobs
+- Inserts each stage defined in the 'stages' parameters into the stages: section only if the stage has jobs
 - Dependencies for each stage in stages are only inserted when the dependent stage has jobs
-- Predefines all the common stages, their dependencies and conditions, in a multistage pipeline
+- Predefines all the common stages, their dependencies, and conditions, in a multistage pipeline
 - Allows you to insert steps template into the job of a stage
-- Orderes the stages section according to how they are listed in the stages parameter
+- Orders the stages section according to how they are listed in the stages parameter
 
 ## Stages Template Parameters
 
