@@ -91,7 +91,7 @@ parameters:
   # - job: containerImage1
   #   dockerFile: App1.Dockerfile
   #   containerRegistry: 'Docker' # Optional override of containerRegistry parameter. Container registry service connection name
-  #   containerRepository: 'App1' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
+  #   containerRepository: 'App1' # Optional path within registry that overrides containerRepository param. registry/repository/name:tag
   # - job: containerImage2
   #   dependsOn: containerImage1
   #   dockerFile: App2.Dockerfile
@@ -225,7 +225,7 @@ parameters:
   default: 0
 - name: testConfiguration # test configuration number required if using testPlan and testSuite. Select Test Configuration.
   type: number
-  default: 523
+  default: 0
 # Test: Stage Params
 - name: testPool # Pool for jobs in test stage jobs
   type: object
@@ -278,7 +278,7 @@ stages:
       # code: jobList inserted into code stage in stages
         code:
           # If dotNetTestProjects param has value, insert a single job for dotNet test projects pattern
-          - ${{ if parameters.dotNetTestProjects }}:
+          - ${{ if and(parameters.dotNetTestProjects, eq(length(parameters.dotNetTests), 0)) }}:
             - job: dotNetTestProjects
               displayName: 'dotNet Test ${{ parameters.dotNetTestProjects }}'
               pool: ${{ parameters.codePool }}
@@ -409,7 +409,7 @@ stages:
                           checkout: ${{ parameters.buildCheckout }}
 
           # If dockerFile, insert job for dockerFile
-          - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
+          - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository, eq(length(parameters.dockerBuilds), 0)) }}:
             - job: dockerFile
               displayName: 'Build Container Image ${{ parameters.dockerFile }}'
               pool: ${{ parameters.buildPool }}
@@ -466,7 +466,7 @@ stages:
                         ${{ if not(build.checkout) }}:
                           checkout: ${{ parameters.buildCheckout }}
 
-          - ${{ if parameters.dotNetProjects }}:
+          - ${{ if and(parameters.dotNetProjects, eq(length(parameters.dotNetBuilds), 0)) }}:
             - job: dotNetProjects
               displayName: 'Build dotNet Projects ${{ parameters.dotNetProjects }}'
               pool: ${{ parameters.buildPool }}
@@ -818,10 +818,10 @@ stages:
                               steps:
                                 - ${{ deployment.onSuccess }}
 
-      ${{ if or(gt(length(parameters.vsTests), 0), and(parameters.testPlan, parameters.testSuite, parameters.testConfiguration)) }}:
+      ${{ if or(gt(length(parameters.vsTests), 0), and(gt(parameters.testPlan, 0), gt(parameters.testSuite, 0))) }}:
       # test: jobList inserted into test stage in stages param
         test:
-          - ${{ if and(parameters.testPlan, parameters.testSuite, parameters.testConfiguration) }}:
+          - ${{ if and(gt(parameters.testPlan, 0), gt(parameters.testSuite, 0), eq(length(parameters.vsTests), 0)) }}:
             - job: vsTest
               pool: ${{ parameters.testPool }}
               dependsOn: []
@@ -838,29 +838,36 @@ stages:
                     ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
                       dotNetVersion: ${{ parameters.dotNetVersion }}
 
-          - ${{ each vsTest in parameters.vsTests }}:
-            - ${{ if and(vsTest.job, or(and(vsTest.testPlan, vsTest.testSuite), vsTest.testAssemblies)) }}:
-              - job: ${{ vsTest.job }}
-                ${{ each parameter in vsTest }}:
-                  ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
-                    ${{ parameter.key }}: ${{ parameter.value }}
-                # If no vsTest.dependsOn job does not depend on others
-                ${{ if not(vsTest.dependsOn) }}:
-                  dependsOn: []
-                ${{ if not(vsTest.pool) }}:
-                  pool: ${{ parameters.testPool }}
-                ${{ if and(not(vsTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
-                  timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
-                ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
-                  cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
-                steps:
-                  - template: steps/test/visualStudioTest.yaml
-                    parameters:
-                      ${{ each parameter in vsTest }}:
-                        ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
-                          ${{ parameter.key }}: ${{ parameter.value }}
-                      ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
-                        dotNetVersion: ${{ parameters.dotNetVersion }}
+          - ${{ if gt(length(parameters.vsTests), 0) }}:
+            - ${{ each vsTest in parameters.vsTests }}:
+              - ${{ if and(vsTest.job, or(and(gt(vsTest.testPlan, 0), gt(vsTest.testSuite, 0)), and(gt(parameters.testPlan, 0), gt(parameters.testSuite, 0)), vsTest.testAssemblies)) }}:
+                - job: ${{ vsTest.job }}
+                  ${{ each parameter in vsTest }}:
+                    ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # If no vsTest.dependsOn job does not depend on others
+                  ${{ if not(vsTest.dependsOn) }}:
+                    dependsOn: []
+                  ${{ if not(vsTest.pool) }}:
+                    pool: ${{ parameters.testPool }}
+                  ${{ if and(not(vsTest.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(vsTest.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  steps:
+                    - template: steps/test/visualStudioTest.yaml
+                      parameters:
+                        ${{ each parameter in vsTest }}:
+                          ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                            ${{ parameter.key }}: ${{ parameter.value }}
+                        ${{ if and(parameters.dotNetVersion, not(vsTest.dotNetVersion)) }}:
+                          dotNetVersion: ${{ parameters.dotNetVersion }}
+                        ${{ if and(not(vsTest.testPlan), gt(parameters.testPlan, 0)) }}:
+                          testPlan: ${{ parameters.testPlan }}
+                        ${{ if and(not(vsTest.testSuite), gt(parameters.testSuite, 0)) }}:
+                          testSuite: ${{ parameters.testSuite }}
+                        ${{ if and(not(vsTest.testConfiguration), gt(parameters.testConfiguration, 0)) }}:
+                          testConfiguration: ${{ parameters.testConfiguration }}
 
       ${{ if and(parameters.kubernetesCanaryPromote, gt(length(parameters.kubernetesDeployments), 0), containsValue(parameters.kubernetesDeployments, 'canary')) }}:
       # promote: deploymentList inserted into promote stage in stages param
