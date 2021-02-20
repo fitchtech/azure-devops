@@ -28,6 +28,13 @@
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
     - [Multistage Pipelines](#multistage-pipelines)
+  - [Contributions](#contributions)
+    - [Branch Naming](#branch-naming)
+    - [Commit Naming](#commit-naming)
+    - [Existing Templates](#existing-templates)
+    - [Steps Template Creation](#steps-template-creation)
+    - [Preset Template Creation](#preset-template-creation)
+    - [Test Pipelines](#test-pipelines)
   - [Microsoft Docs](#microsoft-docs)
 
 ## Introduction
@@ -77,9 +84,9 @@ extends:
     test: [] # jobList inserted into test stage in stages param
     promote: [] # deploymentList inserted into promote stage in stages param
     reject: [] # deploymentList inserted into reject stage in stages param
-  # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name
+    # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name
 
-  # stages: [] # Optional to override default of stages stageList.
+    # stages: [] # Optional to override default of stages stageList.
     stagesPrefix: '' # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
     stagesSuffix: '' # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
     stagesCondition: '' # Optional param to override the condition of all stages
@@ -89,7 +96,7 @@ extends:
 
 - **Major version**: breaking change to prior major version. Breaks when existing pipelines cannot update to the new version without implementing changes in existing pipelines.
 - **Minor version**: no breaking changes to the major version. Incremental updates, including bug fixes and new features. Changes are additive and do not remove functionality.
-- **Bug fix**: the latest release version tag of this repository may be deleted and recreated to fix an issue. So long as that does not break or change functionality. This is so that pipelines referencing this tag inherit that fix automatically without needing to change the tag reference in their code.  
+- **Bug fix**: the latest release version tag of this repository may be deleted and recreated to fix an issue. So long as that does not break or change functionality. This is so that pipelines referencing this tag inherit that fix automatically without needing to change the tag reference in their code.
 
 ## Template Documentation
 
@@ -102,7 +109,7 @@ extends:
 
 ### Stages Template
 
-[Stages Template for Nesting Steps Templates](./docs/stages.md) into jobs of a stage. Provides expression driven stage creation for inserting steps templates into the jobs of a stage in stages. A stage is inserted into stages only when the stage has jobs and values for the minimum required parameters in the steps.
+[Stages Template for Nesting Steps Templates](./docs/stages.md) into jobs of a stage. Provides an expression-driven stage creation for inserting steps templates into the jobs of a stage in stages. A stage is inserted into stages only when the stage has jobs and values for the minimum required parameters in the steps.
 
 ### Preset Templates
 
@@ -119,8 +126,8 @@ The key to pipeline templates is reusability.
 
 These preset templates use the [stages](./docs/stages.md) template and provide parameters to insert jobs, step templates, and/or step lists conditionally on the value of the preset template parameters.
 
-- [Step Lists and Templates in Stages](./docs/presets/stepLists.md): Define Custom Steps or use a Steps Templates for a single job for each stage
-  - Advantage: flexible custom step lists or use any single steps template per stage
+- [Step Lists and Templates in Stages](./docs/presets/stepLists.md): Define Custom Steps or use Steps Templates for a single job in each stage
+  - Advantage: flexible custom step lists and any single steps template per stage
   - Disadvantage: limited to a single job type or step list per stage but can use parallel strategies for that type of job
 - [Predefined Template Jobs in Stages](./docs/presets/jobTypes.md): Parameters for inserting a list of jobs with predefined steps templates
   - Advantage: multiple jobs and multiple job types per stage. Predefined jobs with steps templates that are fully customizable
@@ -128,14 +135,14 @@ These preset templates use the [stages](./docs/stages.md) template and provide p
 
 ### Code Stage
 
-Steps templates to insert into jobs of the code stage in [stages](./docs/stages.md)
+Steps templates to use within jobs in the code stage of the [stages](./docs/stages.md)
 
 - [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md): Run SonarQube for dotNet and run dotNet test for unit and cli tests
 - [SonarQube Static Code Analysis](./docs/steps/code/sonarQube.md): Run SonarQube for dotNet projects or solutions
 
 ### Build Stage
 
-Steps templates to insert into jobs of the build stage in [stages](./docs/stages.md)
+Steps templates to use within jobs in the build stage of the [stages](./docs/stages.md)
 
 - [Build and Push Container Image](./docs/steps/build/containerImage.md): Build and push a docker image using an optional dotNet solution and dockerfile
 - [Build and Publish Manifests Artifact from Helm Charts](./docs/steps/build/helmTemplate.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
@@ -144,7 +151,7 @@ Steps templates to insert into jobs of the build stage in [stages](./docs/stages
 
 ### Deploy Stage
 
-Steps templates to insert into jobs of the deploy stage in [stages](./docs/stages.md)
+Steps templates to use within jobs in the deploy stage of the [stages](./docs/stages.md)
 
 - [Deploy ARM Templates](./docs/steps/deploy/armTemplate.md): Deploy an ARM template(s)
 - [Deploy Helm Charts](./docs/steps/deploy/helmChart.md): Use Helm charts to deploy components to Kubernetes
@@ -153,7 +160,7 @@ Steps templates to insert into jobs of the deploy stage in [stages](./docs/stage
 
 ### Test Stage
 
-Steps templates to insert into jobs of the test stage in [stages](./docs/stages.md)
+Steps templates to use within jobs in the test stage of the [stages](./docs/stages.md)
 
 - [Visual Studio Tests](./docs/steps/test/visualStudioTest.md): Run VS Test suites in a dotNet project
 
@@ -161,7 +168,7 @@ Steps templates to insert into jobs of the test stage in [stages](./docs/stages.
 
 With several deployment strategies in the deploy stage, deployments can be promoted on success or rejected on failure. For example, when using a canary deployment strategy for Kubernetes manifests. It can conditionally promote the canary pods on the success of test jobs and the ready state of canary pods. If the test jobs have failures then deployment jobs in the reject stage automatically delete the deployments that are not functioning.
 
-Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage, the green environment is deployed. Test the deployment and if they succeed swap the environments during the promote stage. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
+Additionally, these stages could use Infrastructure as Code (IaC) for blue/green deployments. For example, in the deploy stage, the green environment is deployed. Test the deployment and if they succeed swap the environments in the 'promote' stage. Promoting the green environment to blue and demoting the previous stack. Using the reject stage if the green stack fails.
 
 #### Kubernetes Canary Strategy
 
@@ -200,9 +207,9 @@ Additionally, these stages could use Infrastructure as Code (IaC) for blue/green
 
 ### Development Motivations
 
-Azure Pipelines multistage YAML became generally available in April 2020. With this change in Azure build and release pipelines, now known as classic build and release pipelines, came a major shift in the design patterns for creating Azure Pipelines with YAML. Implementing YAML pipelines can be simple for smaller projects or when you have a single repository. However, when implementing pipeline YAML across multiple projects or repositories it can become extremely difficult to manage without a well thought out design strategy.
+Azure Pipelines multistage YAML became generally available in April 2020. With this change in Azure build and release pipelines, now known as classic build and release pipelines, came a major shift in the design patterns for creating Azure Pipelines with YAML. Implementing YAML pipelines can be simple for smaller projects or when you have a single repository. However, when implementing pipeline YAML across multiple projects or repositories it can become extremely difficult to manage without a well-thought-out design strategy.
 
-Developing Azure Pipeline YAML can be very time consuming and costly without a good strategy. The motivation for this project and repository is to reduce the time and effort in implementing Azure Pipelines. By creating a centralized repository of pipeline templates that have been tried and tested functionality. With design patterns and anti-patterns that evolved from the development of pipeline templates across multiple projects, teams, and environments through to production.
+Developing Azure Pipeline YAML can be very time-consuming and costly without a good strategy. The motivation for this project and repository is to reduce the time and effort in implementing Azure Pipelines. By creating a centralized repository of pipeline templates that have been tried and tested functionality. With design patterns and anti-patterns that evolved from the development of pipeline templates across multiple projects, teams, and environments through to production.
 
 ### Strategic Design
 
@@ -212,7 +219,7 @@ It is important to use a strategy for developing that use a centralized pipeline
 
 One limitation of Azure Pipelines YAML, in general, is that the only way to validate the functionality of your pipeline is to run it. Linting of pipeline YAML is limited and does not cover templates and nesting. Additionally, the only way to generate the runtime YAML which compiles multiple templates and generates variables is to run it in Azure Pipelines.
 
-There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the iterative development of these templates, there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
+There is not currently any way to validate Azure Pipelines YAML locally. This makes developing pipeline templates time-consuming and costly as you make a commit, run to validate, fail, commit, run again, and again. In the iterative development of these templates, there were often hundreds of commits and many, many, pipeline executions to validate. Even then it can be challenging to verify impacts to a change across templates that consume it. By utilizing this project you can greatly reduce the difficulty in adopting Azure Pipelines.
 
 ### Immutable Pipelines
 
@@ -242,7 +249,7 @@ This could also be referred to as Configuration Management or Resource Managemen
 
 ### Build Verification Pipeline
 
-A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). The code stage is for static code analysis jobs including dotNet tests and SonarQube analysis. The build stage can run jobs to dotNet build or publish artifacts. This could be a single pipeline for multiple repositories by adding repository resource triggers for each repository the pipeline needs to run for. By using a file naming convention you could use a file matching pattern in the dotNet project parameters to create a build job for each repository.
+A Build Verification Pipeline (BVP) is for Pull Requests (PR trigger). The code stage contains jobs for running static code analysis tasks including dotNet tests and SonarQube analysis. This stage is first and the build stage depends on it. The build stage contains jobs with tasks to dotNet build or publish artifacts. This could be a single pipeline for multiple repositories by adding repository resource triggers for each repository the pipeline needs to run for. By using a file naming convention you could use a file matching pattern in the dotNet project parameters to simplify the creation of a job for each repository you need to build project artifacts for.
 
 ### Continuous Integration Pipeline
 
@@ -266,6 +273,69 @@ Multistage pipeline templates can include stages for BVP, CIP, and CDP, into one
 Typically, when deploying to one environment there would be one CICD pipeline. Whereas if you have multiple environments, it's best to create one pipeline for build and another for deployment to each environment. If you're using a deployment strategy such as canary or blue/green then this would be a single pipeline. Even though blue/green deployments are to multiple environments this is deployed with the lifecycle hooks in a single CDP.
 
 When you have multiple environments for different projects, teams, or phases within a project then decouple your CI and CD pipelines. For example, a project where you deploy to a development environment, then integration testing environment, then finally to the production environment. With multiple CD pipelines, you could trigger them on completion of the CIP serially or in parallel depending on your needs.
+
+## Contributions
+
+In working with pipelines there may be common steps that are not currently within this solution. While you can insert your own custom steps into templates if you need those for multiple pipelines it can be very beneficial to create templates that are reusable. The following sections cover general guidelines for contributing to this project.
+
+### Branch Naming
+
+Create a branch name based on what you'll be working on using the following naming convention
+
+[ feat, fix ] / [ steps, presets, pipelines, docs, or assets ] / path / file
+
+These are some example patterns for branch naming
+
+- Feature in existing or new steps template
+  - feat/steps/code/templateName
+  - feat/steps/build/templateName
+  - feat/steps/deploy/templateName
+  - feat/steps/test/templateName
+- Fix bugs in the existing steps template
+  - fix/steps/path/templateName
+- Fix errors in existing documentation
+  - fix/docs/path/fileName
+- Add content to existing documentation
+  - feat/docs/path/fileName
+
+### Commit Naming
+
+Similarly commits should use the following naming convention
+
+[ feat, fix ] ( steps, presets, docs, assets, ci, cd, cicd ) : description
+
+- feat(steps): new template for tasks
+- feat(steps): added steps and params
+- fix(steps): syntax error in expression
+- fix(steps): updated parameter default
+- feat(preset): added parameters and jobs for templates
+- feat(preset): created new template for stages and jobs
+- fix(preset): corrected syntax error for expression
+- feat(assets): new dockerfile for docker build tasks
+- feat(assets): new kubernetes manifests for deployment jobs
+- fix(assets): updated docker build arguments
+- feat(docs): instructions for new template
+- feat(docs): added section to readme
+- fix(docs): corrected typos and grammar
+- feat(ci): pipeline to test code and build steps
+- feat(cd): pipeline to test deploy and test steps
+- feat(cicd): multistage pipeline to test jobs and steps
+
+### Existing Templates
+
+When working with existing templates it's important to maintain backward compatibility. For example, changing the name of an existing parameter would break functionality without needing to update the parameter name in other files. Steps and parameters should not be removed whenever possible. Instead, it may be acceptable to use parameters to conditionally insert those steps to provide an override.
+
+### Steps Template Creation
+
+When creating new steps templates it should be added to the appropriate folder of the stage the steps are typically used in. File names in camelCase that best represent the function of the steps. Follow the [design principles and patterns](#design-principals-and-patterns) discussed above.
+
+### Preset Template Creation
+
+Preset templates use other templates to create multistage pipelines utilizing parameters and conditional expressions.
+
+### Test Pipelines
+
+When implimenting features or fixes for existing templates or creating new ones, a pipeline should be created to validate the syntax and functionality of the templates. These go in the pipelines folder of this repository.
 
 ## Microsoft Docs
 
