@@ -4,6 +4,7 @@
   - [Preset Use Case](#preset-use-case)
   - [Template Resource](#template-resource)
   - [Stages Template](#stages-template)
+  - [Template Schema](#template-schema)
   - [Job Type Parameters](#job-type-parameters)
     - [Code: dotNetTests](#code-dotnettests)
     - [Code: sonarQubeAnalyses](#code-sonarqubeanalyses)
@@ -95,6 +96,103 @@ extends:
     stagesPrefix: ${{ parameters.stagesPrefix }}
     stagesSuffix: ${{ parameters.stagesSuffix }}
     stagesCondition: ${{ parameters.stagesCondition }}
+```
+
+## Template Schema
+
+The parameters [dotNetTests](#code-dotnettests), [sonarQubeAnalyses](#code-sonarqubeanalyses), [dockerBuilds](#build-dockerbuilds), [dotNetBuilds](#build-dotnetbuilds), [armDeployments](#deploy-armdeployments), and [kubernetesDeployments](#deploy-kubedeployments) are list objects that allows you to set all the job properties and all the parameters for the steps template it uses. Not all the parameters for each job type are shown below. Reference the parameters listed in the corresponding steps template file for a complete list.
+
+```yaml
+extends:
+  template: presets/jobTypes.yaml@templates # file path to the template at repo resource id to extend from
+  parameters:
+    stages: '' # stageList | optional override default stages
+    stagesPrefix: '' # string | optionally add prefix to stage names
+    stagesSuffix: '' # string | optionally add suffix to stage names
+    stagesCondition: true # string | optional override condition of all stages
+  # dotNetTests: list of jobs for steps/code/dotNetTests.yaml with all params for each job
+    dotNetTests:
+      - job: test1
+        projects: '**[Uu]nit.[Tt]est*/*[Uu]nit.[Tt]est*.csproj' # file match pattern
+        arguments: '--collect "Code Coverage"'
+    dotNetTestProjects: '' # string | alternative to parameters.dotNetTests when you have a single test job
+    dotNetTestArguments: '' # string | default dotNet test arguments for all jobs
+  # sonarQubeAnalyses: list of jobs for steps/code/sonarQube.yaml with all params for each job
+    sonarQubeAnalyses:
+      - job: sonarQube1 # Job name must be unique in code stage
+        sonarQube: serviceConnectionName # Use either sonarQube or sonarCloud parameter, not both.
+      # sonarCloud: serviceConnectionName
+        projectKey: projectKey # The SonarQube project unique key, i.e. 'sonar.projectKey'
+        projectName: projectName # The SonarQube project name, i.e. 'sonar.projectName'
+        projectVersion: $(Build.BuildNumber)
+        dotNetProjects: '$(Build.Repository.LocalPath)/project1.csproj'
+    codePool:
+      vmImage: 'windows-latest' # This is the default pool for all code stage jobs. Use param to override default
+    containerRegistry: '' # string | default registry service connection for all docker build jobs
+    containerRepository: '' # string | default repository within registry for all docker build jobs
+    dockerTags: $(Build.SourceBranchName) # list object of docker tags for image
+    dockerArgs: '' # string | default docker build arguments for all docker build jobs
+    dockerContext: $(Build.Repository.LocalPath) # this is the default context. Use param to override
+    dockerFile: '' # string | Use when you have a single docker file and single build job.
+  # dockerBuilds: list of jobs for steps/build/containerImage.yaml with all params for each job
+    dockerBuilds:
+      - job: containerImage
+        dependsOn: dotNetPublish # add dependsOn for other jobs in deploy stage
+        dockerFile: Dockerfile
+        containerRegistry: DockerHub # Optional override of containerRegistry parameter. Container registry service connection name
+        containerRepository: repoName # Optional path within registry that overrides containerRepository param. registry/repository/name:tag
+        dockerArgs: '--build-arg repository=dotnet/aspnet' # Optional docker build arguments
+        dockerTags: '$(Build.DefinitionName)' # Optional list of image tags
+  # dotNetBuilds: list of jobs for steps/build/dotNetCore.yaml with all params for each job
+    dotNetBuilds:
+      - job: nuGetPackage
+        searchPatternPack: '$(Build.Repository.LocalPath)/client.csproj'
+        includeSymbols: true # Enable dotNet pack includeSymbols
+        publishSymbols: true # Enable Publish Symbols task after dotNet pack
+        feedPublish: feedName # dotNet push feed to publish of dotNet pack output NuGet package
+      - job: dotNetPublish
+        dependsOn: nuGetPackage
+        projects: '$(Build.Repository.LocalPath)/server.csproj'
+        command: publish # Overrides the default parameters.dotNetCommand: build
+    dotNetProjects: '' # string | Use when you have a single dotNet projects file pattern and single build job.
+    dotNetCommand: publish # build (default) or publish | default command for all dotNet build jobs 
+    buildPool:
+      vmImage: 'Ubuntu-16.04' # This is the default pool for all build stage jobs. Use param to override default
+    buildCheckout: self # default repository resource to checkout for all build jobs
+    armSubscription: serviceConnectionName # Default service connection for all ARM template deployment jobs
+    armResourceGroup: 'resourceGroupName' # string | default resource group for all ARM deployment jobs
+  # armDeployments: list of jobs for steps/deploy/armTemplate.yaml with all params for each job
+    armDeployments:
+      - deployment: armTemplate1 # Required: deployment name must be unique
+        template: 'deployment1.json' # Required: ARM template file name
+        parameters: 'parameters1.json' # Optional: ARM parameters file name
+    kubernetesServiceConnection: serviceConnectionName # Default service connection for all kubernetes deployment jobs
+  # kubernetesDeployments: list of jobs for steps/deploy/kubeManifest.yaml with all params for each job
+    kubernetesDeployments:
+      - deployment: kubeDeploy
+        kubeServiceConnection: 'serviceConnectionName'
+        manifests: '$(Build.Repository.LocalPath)/deployment.yaml'
+        action: deploy
+        strategy: canary
+    kubernetesCanaryIncrements: 10 # default increments when using strategy: canary
+    kubernetesNamespace: namespace # default kubernetes namespace for all kubernetes deployments
+    kubernetesCanaryPromote: true # default when using kubernetes canary deployment strategy inserts promote job. Set false to disable job
+    kubernetesCanaryReject: true # default when using kubernetes canary deployment strategy inserts reject job. Set false to disable job
+    deployPool:
+      vmImage: 'ubuntu-18.04' # This is the default pool for all deploy, promote, and reject stage jobs. Use param to override default
+    deployCheckout: self # default repository resource to checkout for all deployment jobs
+    vsTests:
+      - job: vsTest
+        testPlan: 123456
+        testSuite: 123456
+        testConfiguration: 523
+        strategy:
+          parallel: 10
+    testPlan:
+    testSuite:
+    testConfiguration:
+    testPool:
+
 ```
 
 ## Job Type Parameters
@@ -201,12 +299,12 @@ extends:
     dockerBuilds:
       - job: containerImage1
         dockerFile: App1.Dockerfile
-        containerRepository: 'App1' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
+        containerRepository: 'App1' # Optional path within registry that overrides containerRepository param. registry/repository/name:tag
       - job: containerImage2
         dependsOn: containerImage1 # Omit dependsOn to run jobs in parallel
         dockerFile: App2.Dockerfile
         containerRegistry: 'ACR' # Optional override of containerRegistry parameter. Container registry service connection name
-        containerRepository: 'App2' # Optional path within registry that overrides dockerRepository param. registry/repository/name:tag
+        containerRepository: 'App2' # Optional path within registry that overrides containerRepository param. registry/repository/name:tag
         dockerArgs: '--build-arg repository=dotnet/aspnet' # Optional docker build arguments
         dockerTags: '$(buildVersion)' # Optional list of image tags. Default is $(Build.BuildNumber)
 ```
@@ -232,11 +330,11 @@ extends:
   # dotNetBuilds: list of dotNet build/publish jobs. Job and projects are required per item
     dotNetBuilds:
       - job: dotNetPublish
-        projects: 'server.csproj'
+        projects: '$(Build.Repository.LocalPath)/server.csproj'
         command: publish # Overrides the default parameters.dotNetCommand: build
         version: '3.1.x' # Optional, inserts use dotNet task for version
       - job: nuGetPackage
-        searchPatternPack: 'client.csproj'
+        searchPatternPack: '$(Build.Repository.LocalPath)/client.csproj'
         includeSymbols: true # Enable dotNet pack includeSymbols
         publishSymbols: true # Enable Publish Symbols task after dotNet pack
         feedPublish: feedName # dotNet push feed to publish of dotNet pack output NuGet package
@@ -254,17 +352,17 @@ extends:
   parameters:
 # deploy: these parameters insert jobs into this stage in the stages.yaml template
     armDeployments:
-      - deployment: 'armTemplate1' # Required: deployment name must be unique
+      - deployment: armTemplate1 # Required: deployment name must be unique
         template: 'deployment1.json' # Required: ARM template file name
         parameters: 'parameters1.json' # Optional: ARM parameters file name
-      - deployment: 'armTemplate2'
+      - deployment: armTemplate2
         template: 'deployment2.json'
         parameters: 'parameters2.json'
-      - deployment: 'armTemplate3' # Required: deployment name must be unique
+      - deployment: armTemplate3 # Required: deployment name must be unique
         template: 'deployment3.json'
         parameters: 'parameters3.json'
-        subscription: 'subscriptionServiceConnectionName'
-        resourceGroup: 'resourceGroupName'
+        subscription: subscriptionServiceConnectionName
+        resourceGroup: resourceGroupName
       # dependsOn: Optional list of dependencies. Example of armTemplate3 depending on armTemplate1 and armTemplate2 succeeding
         dependsOn:
           - armTemplate1
@@ -292,7 +390,7 @@ extends:
     kubeDeployments:
       - deployment: kubeDeploy
         kubeServiceConnection: 'serviceConnectionName'
-        manifests: 'deployment.yaml'
+        manifests: '$(Build.Repository.LocalPath)/deployment.yaml'
         action: deploy
         strategy: canary
       # Insert steps for deployment strategy lifecycle hooks of the deployment
