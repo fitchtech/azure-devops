@@ -163,6 +163,9 @@ parameters:
 - name: kubernetesServiceConnection # Kubernetes Service Connection Name
   type: string
   default: ''
+- name: kubernetesNamespace # Use to specify the namespace for all kubernetesDeployment jobs
+  type: string
+  default: default
 - name: kubernetesDeployments
   type: object
   default: ''
@@ -187,9 +190,6 @@ parameters:
 - name: kubernetesCanaryIncrements # When using strategy: canary this is the default increments unless increments: string is set
   type: string
   default: '10'
-- name: kubernetesNamespace # Use to specify the namespace for all kubernetesDeployment jobs
-  type: string
-  default: ''
 - name: kubernetesCanaryPromote # When kubernetersDeployments.strategy: canary a promote job is inserted into the promote stage
   type: boolean
   default: true
@@ -869,7 +869,7 @@ stages:
                         ${{ if and(not(vsTest.testConfiguration), gt(parameters.testConfiguration, 0)) }}:
                           testConfiguration: ${{ parameters.testConfiguration }}
 
-      ${{ if and(parameters.kubernetesCanaryPromote, gt(length(parameters.kubernetesDeployments), 0), containsValue(parameters.kubernetesDeployments, 'canary')) }}:
+      ${{ if and(parameters.kubernetesCanaryPromote, gt(length(parameters.kubernetesDeployments), 0), contains(join(',', parameters.kubernetesDeployments), 'canary')) }}:
       # promote: deploymentList inserted into promote stage in stages param
         promote:
           # For each deployment item in kubernetesDeployments parameter insert deployment jobs
@@ -909,7 +909,7 @@ stages:
                             ${{ if not(deployment.checkout) }}:
                               checkout: ${{ parameters.deployCheckout }}
 
-      ${{ if and(parameters.kubernetesCanaryReject, gt(length(parameters.kubernetesDeployments), 0), containsValue(parameters.kubernetesDeployments, 'canary')) }}:
+      ${{ if and(parameters.kubernetesCanaryReject, gt(length(parameters.kubernetesDeployments), 0), contains(join(',', parameters.kubernetesDeployments), 'canary')) }}:
       # reject: deploymentList inserted into reject stage in stages param
         reject:
           # For each deployment item in kubernetesDeployments parameter insert deployment jobs
