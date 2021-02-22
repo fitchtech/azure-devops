@@ -59,6 +59,25 @@ parameters:
 - name: deploymentCleanupSkip # Azure by default limits to 800 deployments to a group. This will remove the last one so that the deployment is not blocked
   type: number
   default: 799
+- name: deploymentMode # Incremental mode handles deployments as incremental updates to the resource group. It leaves unchanged resources that exist in the resource group but are not specified in the template. Complete mode deletes resources that are not in your template. Validate mode enables you to find problems with the template before creating actual resources.
+  type: string
+  default: Incremental
+  values:
+    - Incremental
+    - Complete
+    - Validation
+- name: action # Action to be performed on the Azure resources or resource group.
+  type: string
+  default: Create Or Update Resource Group
+  values:
+    - Create Or Update Resource Group
+    - Select Resource Group
+    - Start
+    - Stop
+    - StopWithDeallocate
+    - Restart
+    - Delete
+    - DeleteRG
 
 steps:
 - template: ../preSteps.yaml
@@ -79,24 +98,27 @@ steps:
         pwsh: true
         Inline: Get-AzResourceGroupDeployment -ResourceGroupName ${{ parameters.resourceGroupName }} | Select-Object -Skip ${{ parameters.deploymentCleanupSkip }} | foreach-object { Start-Job -InputObject $_ -ScriptBlock { $input | Remove-AzResourceGroupDeployment } }
         azurePowerShellVersion: latestVersion
-  - ${{ if parameters.templateFile }}:
-    - ${{ if parameters.replaceTokens }}:
-      - task: replacetokens@3
-        displayName: 'Replace Tokens in ${{ parameters.templatePath }}'
-        inputs:
-          rootDirectory: '${{ parameters.templatePath }}'
-          targetFiles: '*.json'
-    - task: AzureResourceGroupDeployment@2
-      displayName: 'Deploy AzureRM Template ${{ parameters.templateFile }}'
+  - ${{ if parameters.replaceTokens }}:
+    - task: replacetokens@3
+      displayName: 'Replace Tokens in ${{ parameters.templatePath }}'
       inputs:
-        azureSubscription: '${{ parameters.azureSubscription }}'
-        resourceGroupName: '${{ parameters.resourceGroupName }}'
+        rootDirectory: '${{ parameters.templatePath }}'
+        targetFiles: '*.json'
+  - task: AzureResourceGroupDeployment@2
+    displayName: 'Deploy AzureRM Template ${{ parameters.templateFile }}'
+    inputs:
+      azureSubscription: '${{ parameters.azureSubscription }}'
+      resourceGroupName: '${{ parameters.resourceGroupName }}'
+      deploymentMode: '${{ parameters.deploymentMode }}'
+      action: '${{ parameters.action }}'
+      ${{ if and(eq(parameters.action, 'Create Or Update Resource Group'), parameters.azureLocation) }}:
         location: '${{ parameters.azureLocation }}'
+      ${{ if parameters.templateFile }}:
         csmFile: '${{ parameters.templatePath }}/${{ parameters.templateFile }}'
-        ${{ if parameters.parametersFile }}:
-          csmParametersFile: '${{ parameters.templatePath }}/${{ parameters.parametersFile }}'
-        ${{ if parameters.overrideParameters }}:
-          overrideParameters: '${{ parameters.overrideParameters }}'
+      ${{ if parameters.parametersFile }}:
+        csmParametersFile: '${{ parameters.templatePath }}/${{ parameters.parametersFile }}'
+      ${{ if parameters.overrideParameters }}:
+        overrideParameters: '${{ parameters.overrideParameters }}'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
