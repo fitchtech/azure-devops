@@ -111,11 +111,22 @@ steps:
       targetFiles: '${{ parameters.replaceTokensTargets }}'
 - ${{ if parameters.terraformVersion }}:
   - task: TerraformInstaller@0
+    displayName: 'Terraform Install ${{ parameters.terraformVersion }}'
     inputs:
       terraformVersion: ${{ parameters.terraformVersion }}
 - ${{ each command in parameters.commands }}:
   - ${{ if in(command.key, 'init', 'plan', 'validate', 'apply', 'destroy') }}:
     - task: TerraformTaskV1@0
+      ${{ if not(command.displayName) }}:
+        displayName: 'Terraform ${{ command.key }} ${{ command.value }}'
+      ${{ if command.displayName }}:
+        displayName: ${{ command.displayName }}
+      ${{ if command.condition }}:
+        condition: ${{ command.condition }}
+      ${{ if command.continueOnError }}:
+        continueOnError: ${{ command.continueOnError }}
+      ${{ if command.timeoutInMinutes }}:
+        timeoutInMinutes: ${{ command.timeoutInMinutes }}
       inputs:
         command: ${{ command.key }}
       # command: init
@@ -176,7 +187,5 @@ steps:
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
-    ${{ if parameters.publish }}:
-      publish: false
-      artifact: '${{ parameters.publishArtifact }}'
+    publish: false
     clean: ${{ parameters.clean }}
