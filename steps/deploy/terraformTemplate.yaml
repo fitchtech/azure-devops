@@ -1,0 +1,249 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+- name: replaceTokens # Enable replace tokens task
+  type: boolean
+  default: false
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishPlan
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)_OutputPlan'
+- name: publishVariables
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)_OutputVariables'
+- name: publishEnabled
+  type: string
+  default: true
+# Terraform Tasks
+- name: terraformVersion
+  type: string
+  default: ''
+- name: provider
+  type: string
+  default: azurerm
+  values:
+    - azurerm
+    - aws
+    - gcp
+- name: command
+  type: string
+  default: init-plan-apply
+  values:
+    - init
+    - plan
+    - validate
+    - apply
+    - destroy
+    - init-plan
+    - init-plan-apply
+    - init-plan-apply-destroy
+    - init-plan-validate-apply
+    - init-plan-validate-apply-destroy
+    - init-plan-destroy
+- name: initOptions
+  type: string
+  default: ''
+- name: planOptions
+  type: string
+  default: ''
+- name: validateOptions
+  type: string
+  default: ''
+- name: applyOptions
+  type: string
+  default: ''
+- name: destroyOptions
+  type: string
+  default: ''
+- name: workingDirectory
+  type: string
+  default: $(Build.Repository.LocalPath)
+# Backend
+- name: backendKey
+  type: string
+  default: terraform.tfstate
+- name: serviceConnection # Service connection for backend
+  type: string
+  default: ''
+# Backend: Azure
+- name: resourceGroupName
+  type: string
+  default: ''
+- name: storageAccountName
+  type: string
+  default: ''
+- name: containerName # The name of the Azure Blob container in which to store the Terraform remote state file.
+  type: string
+  default: ''
+# Backend: AWS
+- name: awsBucketName
+  type: string
+  default: ''
+# Backend: GCP
+- name: gcpBucketName
+  type: string
+  default: ''
+- name: gcpPrefix
+  type: string
+  default: terraform
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.terraformVersion }}:
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: ${{ parameters.terraformVersion }}
+- ${{ if startsWith(parameters.command, 'init') }}:
+  - task: TerraformTaskV1@0
+    inputs:
+      provider: ${{ parameters.provider }}
+      command: init
+      workingDirectory: ${{ parameters.workingDirectory }}
+      ${{ if parameters.initOptions }}:
+        commandOptions: ${{ parameters.initOptions }}
+      ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+        backendServiceArm: ${{ parameters.serviceConnection }}
+        backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+        backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+        backendAzureRmContainerName: ${{ parameters.containerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendAWSBucketName: ${{ parameters.awsBucketName }}
+        backendAWSKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendGCPBucketName: ${{ parameters.gcpBucketName }}
+        backendGCPPrefix: ${{ parameters.gcpPrefix }}
+- ${{ if contains(parameters.command, 'plan') }}:
+  - task: TerraformTaskV1@0
+    inputs:
+      provider: ${{ parameters.provider }}
+      command: plan
+      workingDirectory: ${{ parameters.workingDirectory }}
+      ${{ if and(parameters.planOptions, not(contains(parameters.command, 'destroy'))) }}:
+        commandOptions: ${{ parameters.planOptions }}
+      ${{ if and(not(parameters.planOptions), contains(parameters.command, 'destroy')) }}:
+        commandOptions: '-destroy'
+      ${{ if and(parameters.planOptions, contains(parameters.command, 'destroy')) }}:
+        commandOptions: '-destroy ${{ parameters.planOptions }}'
+      ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+        backendServiceArm: ${{ parameters.serviceConnection }}
+        backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+        backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+        backendAzureRmContainerName: ${{ parameters.containerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendAWSBucketName: ${{ parameters.awsBucketName }}
+        backendAWSKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendGCPBucketName: ${{ parameters.gcpBucketName }}
+        backendGCPPrefix: ${{ parameters.gcpPrefix }}
+- ${{ if contains(parameters.command, 'validate') }}:
+  - task: TerraformTaskV1@0
+    inputs:
+      provider: ${{ parameters.provider }}
+      command: validate
+      workingDirectory: ${{ parameters.workingDirectory }}
+      ${{ if parameters.validateOptions }}:
+        commandOptions: ${{ parameters.validateOptions }}
+      ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+        backendServiceArm: ${{ parameters.serviceConnection }}
+        backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+        backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+        backendAzureRmContainerName: ${{ parameters.containerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendAWSBucketName: ${{ parameters.awsBucketName }}
+        backendAWSKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendGCPBucketName: ${{ parameters.gcpBucketName }}
+        backendGCPPrefix: ${{ parameters.gcpPrefix }}
+- ${{ if contains(parameters.command, 'apply') }}:
+  - task: TerraformTaskV1@0
+    inputs:
+      provider: ${{ parameters.provider }}
+      command: apply
+      workingDirectory: ${{ parameters.workingDirectory }}
+      ${{ if parameters.applyOptions }}:
+        commandOptions: ${{ parameters.applyOptions }}
+      ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+        backendServiceArm: ${{ parameters.serviceConnection }}
+        backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+        backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+        backendAzureRmContainerName: ${{ parameters.containerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendAWSBucketName: ${{ parameters.awsBucketName }}
+        backendAWSKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendGCPBucketName: ${{ parameters.gcpBucketName }}
+        backendGCPPrefix: ${{ parameters.gcpPrefix }}
+- ${{ if contains(parameters.command, 'destroy') }}:
+  - task: TerraformTaskV1@0
+    inputs:
+      provider: ${{ parameters.provider }}
+      command: destroy
+      workingDirectory: ${{ parameters.workingDirectory }}
+      ${{ if parameters.destroyOptions }}:
+        commandOptions: ${{ parameters.destroyOptions }}
+      ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+        backendServiceArm: ${{ parameters.serviceConnection }}
+        backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+        backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+        backendAzureRmContainerName: ${{ parameters.containerName }}
+        backendAzureRmKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendAWSBucketName: ${{ parameters.awsBucketName }}
+        backendAWSKey: ${{ parameters.backendKey }}
+      ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        backendServiceAWS: ${{ parameters.serviceConnection }}
+        backendGCPBucketName: ${{ parameters.gcpBucketName }}
+        backendGCPPrefix: ${{ parameters.gcpPrefix }}
+- ${{ if and(parameters.publishPlan, parameters.publishEnabled) }}:
+  - publish: $(jsonPlanFilePath)
+    artifact: ${{ if parameters.publishPlan }}
+- ${{ if and(parameters.publishVariables, parameters.publishEnabled) }}:
+  - publish: $(jsonOutputVariablesPath)
+    artifact: ${{ if parameters.publishVariables }}
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if parameters.publish }}:
+      publish: false
+      artifact: '${{ parameters.publishArtifact }}'
+    clean: ${{ parameters.clean }}
