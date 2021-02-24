@@ -59,7 +59,7 @@ parameters:
   type: string
   default: $(Build.Repository.LocalPath)
 # Backend
-- name: backendKey # The path to the Terraform remote state file inside the container.
+- name: backendKey # The path to the Terraform remote state file inside the AzureRM storage container or AWS S3 Bucket. For GCP the backendkey is mapped to the gcpPrefix. The relative path to the state file inside the GCP bucket.
   type: string
   default: terraform.tfstate
 - name: serviceConnection # Required service connection name for provider
@@ -75,17 +75,10 @@ parameters:
 - name: containerName # Required for AzurRM provider, the name of the Azure Blob container in which to store the Terraform remote state file.
   type: string
   default: ''
-# Backend: AWS
-- name: awsBucketName # Required for AWS provider, the name of the Amazon Simple Storage Service(S3) bucket for storing the Terraform remote state file.
+# Backend: AWS or GCP
+- name: bucketName # Required for AWS or GCP provider, the name of the Amazon Simple Storage Service(S3) bucket or GCP storage bucket for storing the Terraform remote state file.
   type: string
   default: ''
-# Backend: GCP
-- name: gcpBucketName # Required for GCP provider, The name of the GCP storage bucket for storing the Terraform remote state file.
-  type: string
-  default: ''
-- name: gcpPrefix # The relative path to the state file inside the GCP bucket. For example, if you give the input as 'terraform', then the state file, named default.tfstate, will be stored inside an object called terraform.
-  type: string
-  default: terraform
 # Replace Tokens Task
 - name: replaceTokens # Enable replace tokens task
   type: boolean
@@ -168,14 +161,14 @@ steps:
           backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
           backendAzureRmContainerName: ${{ parameters.containerName }}
           backendAzureRmKey: ${{ parameters.backendKey }}
-        ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.awsBucketName) }}:
+        ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.bucketName) }}:
           backendServiceAWS: ${{ parameters.serviceConnection }}
-          backendAWSBucketName: ${{ parameters.awsBucketName }}
+          backendAWSBucketName: ${{ parameters.bucketName }}
           backendAWSKey: ${{ parameters.backendKey }}
-        ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.gcpBucketName) }}:
+        ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.bucketName) }}:
           backendServiceAWS: ${{ parameters.serviceConnection }}
-          backendGCPBucketName: ${{ parameters.gcpBucketName }}
-          backendGCPPrefix: ${{ parameters.gcpPrefix }}
+          backendGCPBucketName: ${{ parameters.bucketName }}
+          backendGCPPrefix: ${{ parameters.backendKey }}
 - ${{ if and(parameters.publishPlan, parameters.publishEnabled) }}:
   - publish: $(jsonPlanFilePath)
     artifact: ${{ if parameters.publishPlan }}
