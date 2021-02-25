@@ -46,11 +46,11 @@ parameters:
 - name: twistlockEnabled # enable twistlock scan task
   type: boolean
   default: false
-- name: twistlockContinue # twistlock vulnerabilities register as warning instead of error in build stage
+- name: twistlockContinue # twistlock vulnerabilities register as a warning instead of an error in the build stage
   type: boolean
   default: false
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
@@ -76,7 +76,7 @@ extends:
   # code: jobList inserted into code stage in stages param
   # build: jobList inserted into build stage in stages param
     build:
-    # - if dockerfile, containerRegistry, containerRepository params are not null insert containerImage job into build stage
+    # - if dockerfile, containerRegistry, containerRepository params are not null insert containerImage job into the build stage
       - ${{ if and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository) }}:
         - job: containerImage # job name must be unique within stage
           displayName: 'Build Container Image' # job display name
@@ -136,7 +136,7 @@ parameters:
 - name: dockerArgs # Nested into dockerArgs of build jobs
   type: string
   default: '' # optional to add --build-arg in docker build task
-- name: containerRegistry # Nested into containerRegistry params in build job
+- name: containerRegistry # Nested into containerRegistry params in the build job
   type: string
   default: 'ACR' # ADO Service Connection name
 - name: containerRepository # repo path in registry
@@ -144,7 +144,7 @@ parameters:
   default: ''
 - name: imageName # containerRepository/imageName nested into containerRepository of containerImage jobs
   type: string
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:

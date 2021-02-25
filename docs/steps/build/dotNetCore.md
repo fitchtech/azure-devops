@@ -8,7 +8,7 @@
 
 ## dotNetCore Template Nested
 
-Like all steps templates, the dotNetCore steps template can be nested in the [stages](../../stages.md) template or directly in steps lists. However, the intent of this template is that it's nested into other steps templates. To provide dotNetCore tasks in other steps templates this template is nested within them. This is so that the common list of steps is not copied from one template to another.
+Like all steps templates, the dotNetCore steps template can be nested in the [stages](../../stages.md) template or directly in steps lists. However, this template is primarily intended to be nested into other steps templates. To provide dotNetCore tasks in other steps templates this template is nested within them. This is so that the common list of steps is not copied from one template to another.
 
 - The [dotNetTests](./../code/dotNetTests.md) steps template nests the dotNetCore template for dotNet restore tasks
 - The [sonarQube](./../code/sonarQube.md) steps template nests the dotNetCore template for dotNet restore and build tasks

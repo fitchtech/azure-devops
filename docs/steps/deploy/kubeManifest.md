@@ -47,7 +47,7 @@ parameters:
   - canary
   - runOnce
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
