@@ -145,7 +145,7 @@ parameters:
   type: stepList
   default: []
 # overrides
-- name: stages # Optional to override default value of stages stageList in the stages.yaml template
+- name: stages # Optional to override the default value of stages stageList in the stages.yaml template
   type: stageList
   default: ''
 - name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.

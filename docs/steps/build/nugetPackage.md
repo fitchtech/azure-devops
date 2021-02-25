@@ -9,7 +9,7 @@
 command options are build, publish, and pack:
 
 - Pack project and push Nuget package artifact and symbols to feed
-- Optionally dotNet build or publish a project prior to dotNet pack and push
+- Optionally dotNet build or publish a project before dotNet pack and push
 
 ## Insert Steps Template into Stages Template
 
@@ -31,7 +31,7 @@ parameters:
   default:
     vmImage: 'ubuntu-18.04'
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
@@ -71,7 +71,7 @@ extends:
             # preSteps: 
               # - task: add preSteps into job
               dotNetPackages: ${{ parameters.dotNetPackages }} # Required pattern to pack and push projects for NuGet Packages
-              projects: ${{ parameters.projects }} # Optional pattern to restore and build a project prior to dotNet pack and push 
+              projects: ${{ parameters.projects }} # Optional pattern to restore and build a project before dotNet pack and push 
               feedRestore: 'projectName/feedName' # for project-scoped feed. FeedName only for organization-scoped feed
               feedPublish: 'projectName/feedName' # Push NuGet package to a select feed hosted in your organization. You must have Package Management installed and licensed to select a feed
             # command: build # build (default) or publish. This is the command used for projects 

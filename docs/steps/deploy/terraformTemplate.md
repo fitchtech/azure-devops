@@ -8,7 +8,7 @@
 ## Steps Template Usage
 
 - Inserts Terraform command tasks for each listed in commands parameter. e.g. - init, - plan, - validate, - apply, - destroy
-- Terraform commands run in the order listed in commands parameter
+- Terraform commands run in the order listed in the commands parameter
 - Commands parameter is a list object where each item key is the command and value is commandOptions. e.g. commands: - apply: '-var="foo=bar"'
 - Set task options and command flags for each Terraform command
 - Optionally insert Terraform install task
