@@ -138,7 +138,7 @@ These preset templates use the [stages](./docs/stages.md) template and provide p
 
 Steps templates to use within jobs in the code stage of the [stages](./docs/stages.md)
 
-- [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md): Run SonarQube for dotNet and run dotNet test for unit and cli tests
+- [dotNet Test Static Code Analysis](./docs/steps/code/dotNetTests.md): Run dotNet test projects sequentially with tests parameter
 - [SonarQube Static Code Analysis](./docs/steps/code/sonarQube.md): Run SonarQube for dotNet projects or solutions
 
 ### Build Stage
@@ -148,7 +148,7 @@ Steps templates to use within jobs in the build stage of the [stages](./docs/sta
 - [Build and Push Container Image](./docs/steps/build/containerImage.md): Build and push a docker image using an optional dotNet solution and dockerfile
 - [Build and Publish Manifests Artifact from Helm Charts](./docs/steps/build/helmTemplate.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
 - [Build, Publish, or Pack dotNet Projects and Publish Artifact](./docs/steps/build/dotNetCore.md): Build and publish a dotNet project without any tests
-- [Pack and Push Nuget Artifacts](./docs/steps/build/nugetPackage): Build and pack a dotNet project to publish Nuget packages to an artifact feed
+- [Pack and Push Nuget Artifacts](./docs/steps/build/nugetPackage.md): Build and pack a dotNet project to publish Nuget packages to an artifact feed
 
 ### Deploy Stage
 
@@ -156,7 +156,7 @@ Steps templates to use within jobs in the deploy stage of the [stages](./docs/st
 
 - [Deploy ARM Templates](./docs/steps/deploy/armTemplate.md): Deploy an ARM template(s)
 - [Deploy Helm Charts](./docs/steps/deploy/helmChart.md): Use Helm charts to deploy components to Kubernetes
-- [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
+- [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md): Render Helm Charts with Helm Template command and deploy manifests to Kubernetes
 - [Deploy Kubernetes Manifests](./docs/steps/deploy/kubeManifest.md): Deploy Kubernetes manifests and secrets
 - [Deploy Terraform Templates](docs/steps/deploy/terraformTemplate.md): run terraform steps -init, -plan, -validate, -apply, and -destroy with optional command options
 
@@ -278,11 +278,11 @@ When you have multiple environments for different projects, teams, or phases wit
 
 ### Automations Pipeline
 
-Interestingly, Azure Pipelines can be used for more than just DevOps CICD needs. Essentially Azure Pipeline YAML defines event triggered or scheduled jobs, the applications, and scripts, to run on agents in a pool of Virtual Machines or containers in a particular order and with runtime conditions, etc, etc. Therefore it could be leveraged for a variety of use cases. Such as an Extract Transform Load (ETL) jobs that are a scheduled executions of an Azure Pipeline that runs jobs to extract data from a source, perform transformations on the data, and load it into a destination data lake or warehouse.
+Interestingly, Azure Pipelines can be used for more than just DevOps CICD needs. Essentially Azure Pipeline YAML defines event-triggered or scheduled jobs, the applications, and scripts, to run on agents in a pool of Virtual Machines or containers in a particular order and with runtime conditions, etc, etc. Therefore it could be leveraged for a variety of use cases. Such as Extract Transform Load (ETL) jobs that are a scheduled execution of an Azure Pipeline that runs jobs to extract data from a source, perform transformations on the data, and load it into a destination data lake or warehouse.
 
 ## Contributions
 
-In working with pipelines there may be common steps that are not currently within this solution. While you can insert your own custom steps into templates if you need those for multiple pipelines it can be very beneficial to create templates that are reusable. The following sections cover general guidelines for contributing to this project.
+In working with pipelines there may be common steps that are not currently within this solution. While you can insert custom steps into jobs if they are needed for multiple pipelines it can be very beneficial to create reusable steps templates in this repository. The following sections cover general guidelines for contributing to this project.
 
 ### Branch Naming
 
@@ -310,12 +310,12 @@ Similarly commits should use the following naming convention
 
 [ feat, fix ] ( steps, presets, docs, assets, ci, cd, cicd ) : description
 
-- feat(steps): new template for tasks
+- feat(steps): a new template for tasks
 - feat(steps): added steps and params
 - fix(steps): syntax error in expression
 - fix(steps): updated parameter default
 - feat(preset): added parameters and jobs for templates
-- feat(preset): created new template for stages and jobs
+- feat(preset): created a new template for stages and jobs
 - fix(preset): corrected syntax error for expression
 - feat(assets): new dockerfile for docker build tasks
 - feat(assets): new kubernetes manifests for deployment jobs
@@ -323,9 +323,9 @@ Similarly commits should use the following naming convention
 - feat(docs): instructions for new template
 - feat(docs): added section to readme
 - fix(docs): corrected typos and grammar
-- feat(ci): pipeline to test code and build steps
-- feat(cd): pipeline to test deploy and test steps
-- feat(cicd): multistage pipeline to test jobs and steps
+- feat(ci): a pipeline to test code and build steps
+- feat(cd): a pipeline to test deploy and test steps
+- feat(cicd): a multistage pipeline to test jobs and steps
 
 ### Existing Templates
 
@@ -341,7 +341,7 @@ Preset templates use other templates to create multistage pipelines utilizing pa
 
 ### Test Pipelines
 
-When implimenting features or fixes for existing templates or creating new ones, a pipeline should be created to validate the syntax and functionality of the templates. These go in the pipelines folder of this repository.
+When implementing features or fixes for existing templates or creating new ones, a pipeline should be created to validate the syntax and functionality of the templates. These go in the pipelines folder of this repository.
 
 ## Microsoft Docs
 
