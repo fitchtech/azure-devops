@@ -7,8 +7,8 @@
 
 ## Steps Template Usage
 
-- Azure Resource Manager templates (ARM templates) provides Infrastructure as Code (IaC) for Azure. The armTemplate steps template deploys the provided ARM template
-- Azure limits ARM deployments to 800 per resource group. This steps template includes an optional cleanup script to remove the oldest deployment so that the limit is not reach which would prevent deployments
+- Azure Resource Manager templates (ARM templates) provide Infrastructure as Code (IaC) for Azure. The armTemplate steps template deploys the provided ARM template
+- Azure limits ARM deployments to 800 per resource group. This steps template includes an optional cleanup script to remove the oldest deployment so that the limit is not reached which would prevent deployments
 
 ## Serial Deployment of ARM Templates
 
@@ -46,7 +46,7 @@ parameters:
   type: string
   default: '$(Build.Repository.LocalPath)'
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:
@@ -116,7 +116,7 @@ extends:
 
 ## Parallel Deployment of ARM Templates
 
-This pattern would deploy each of the templates in the armTemplates list parallelly with multiple job.
+This pattern would deploy each of the templates in the armTemplates list parallelly with multiple jobs.
 
 ```yml
 name: $(Build.Repository.Name)_$(Build.SourceVersion)_$(Build.SourceBranchName) # name is the format for $(Build.BuildNumber)
@@ -157,7 +157,7 @@ parameters:
   type: string
   default: '$(Build.Repository.LocalPath)'
 
-# parameter defaults in the above section can be set on manual run of a pipeline to override
+# parameter defaults in the above section can be set on the manual run of a pipeline to override
 
 resources:
   repositories:

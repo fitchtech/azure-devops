@@ -28,6 +28,7 @@
     - [Continuous Integration Pipeline](#continuous-integration-pipeline)
     - [Continuous Deployment Pipeline](#continuous-deployment-pipeline)
     - [Multistage Pipelines](#multistage-pipelines)
+    - [Automations Pipeline](#automations-pipeline)
   - [Contributions](#contributions)
     - [Branch Naming](#branch-naming)
     - [Commit Naming](#commit-naming)
@@ -157,6 +158,7 @@ Steps templates to use within jobs in the deploy stage of the [stages](./docs/st
 - [Deploy Helm Charts](./docs/steps/deploy/helmChart.md): Use Helm charts to deploy components to Kubernetes
 - [Render Helm Charts and Deploy Manifests](./docs/steps/deploy/helmManifest.md): Render Helm Charts with Helm Template cmd and deploy manifests to Kubernetes
 - [Deploy Kubernetes Manifests](./docs/steps/deploy/kubeManifest.md): Deploy Kubernetes manifests and secrets
+- [Deploy Terraform Templates](docs/steps/deploy/terraformTemplate.md): run terraform steps -init, -plan, -validate, -apply, and -destroy with optional command options
 
 ### Test Stage
 
@@ -273,6 +275,10 @@ Multistage pipeline templates can include stages for BVP, CIP, and CDP, into one
 Typically, when deploying to one environment there would be one CICD pipeline. Whereas if you have multiple environments, it's best to create one pipeline for build and another for deployment to each environment. If you're using a deployment strategy such as canary or blue/green then this would be a single pipeline. Even though blue/green deployments are to multiple environments this is deployed with the lifecycle hooks in a single CDP.
 
 When you have multiple environments for different projects, teams, or phases within a project then decouple your CI and CD pipelines. For example, a project where you deploy to a development environment, then integration testing environment, then finally to the production environment. With multiple CD pipelines, you could trigger them on completion of the CIP serially or in parallel depending on your needs.
+
+### Automations Pipeline
+
+Interestingly, Azure Pipelines can be used for more than just DevOps CICD needs. Essentially Azure Pipeline YAML defines event triggered or scheduled jobs, the applications, and scripts, to run on agents in a pool of Virtual Machines or containers in a particular order and with runtime conditions, etc, etc. Therefore it could be leveraged for a variety of use cases. Such as an Extract Transform Load (ETL) jobs that are a scheduled executions of an Azure Pipeline that runs jobs to extract data from a source, perform transformations on the data, and load it into a destination data lake or warehouse.
 
 ## Contributions
 
