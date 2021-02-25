@@ -10,7 +10,9 @@
     - [Code: sonarQubeAnalyses](#code-sonarqubeanalyses)
     - [Build: dockerBuilds](#build-dockerbuilds)
     - [Build: dotNetBuilds](#build-dotnetbuilds)
+    - [Build: terraformTemplates](#build-terraformtemplates)
     - [Deploy: armDeployments](#deploy-armdeployments)
+    - [Deploy: terraformDeployments](#deploy-terraformdeployments)
     - [Deploy: kubernetesDeployments](#deploy-kubernetesdeployments)
     - [Test: vsTests](#test-vstests)
 
@@ -382,6 +384,30 @@ extends:
       # versionEnvVar: NugetVersion # The default is NugetVersion. Use this param to set other variable name for version
 ```
 
+### Build: terraformTemplates
+
+```yaml
+variables:
+  buildVersion: $[counter(variables['Build.SourceVersion'], 1)] # Example variable used for a docker tag of image
+
+extends:
+  template: presets/jobTypes.yaml@templates # file path to the template at repo resource id to extend from
+  parameters:
+  # terraformTemplates: [] | list of jobs for Terraform -init, -plan, and -validate using steps/deploy/terraformTemplates.yaml with all params for each job. Commands can not contain terraform apply or destroy
+    terraformTemplates:
+      - job: 'terraformTemplate1' # job name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template1'
+      - job: 'terraformTemplate2' # job name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template2'
+        # Example where terraformTemplate2 dependsOn terraformTemplate1 succeeded
+        dependsOn: terraformTemplate1
+        commands:
+      # - command: commandOptions
+        - init: ''
+        - plan: '-var "foo=bar"'
+        - validate: ''
+```
+
 ### Deploy: armDeployments
 
 ```yaml
@@ -416,6 +442,34 @@ extends:
           - script: echo add stepList of tasks into on failure steps lifecycle hook
         onSuccess:
           - script: echo add stepList of tasks into on failure steps lifecycle hook
+```
+
+### Deploy: terraformDeployments
+
+```yaml
+extends:
+  template: presets/jobTypes.yaml@templates # file path to the template at repo resource id to extend from
+  parameters:
+# deploy: these parameters insert jobs into this stage in the stages.yaml template
+  # terraformDeployments: [] | list of jobs for steps/deploy/terraformTemplates.yaml with all params for each job. Run terraform -init, -plan, -validate, -apply, and -destroy | commands: -command: commandOptions
+    terraformDeployments:
+      - deployment: 'terraformDeploy1' # deployment name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template1'
+      # commands: init | plan | validate | apply | destroy | can be list of items, e.g. -command OR list of -command: commandOptions -key: value list map
+        commands:
+      # - command
+        - init
+        - apply
+      - deployment: 'terraformDeploy2' # deployment name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template2'
+        # Example where terraformDeploy2 dependsOn terraformDeploy1 succeeded
+        dependsOn: terraformDeploy1
+        commands:
+      # - command: commandOptions
+        - init: ''
+        - apply: '-var "foo=bar"'
+        - destroy: ''
+          condition: failed()
 ```
 
 ### Deploy: kubernetesDeployments
