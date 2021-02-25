@@ -84,12 +84,11 @@ parameters:
     dependsOn:
       - terraformTemplate1
       - terraformTemplate2
-- name: commands # The terraform command to execute in this order. Set value for command for commandOptions, - command: commandOptions | e.g. - apply: '-var "foo=bar"'  
+- name: terraformCommands # Default Terraform commands to execute in this order. Set value for command for commandOptions, - command: commandOptions | e.g. - apply: '-var "foo=bar"'  
   type: object
   default:
     - init
     - plan
-    - validate
     - apply
 - name: azureSubscription # Default Azure Subscription service connection name for all jobs
   type: string
@@ -165,15 +164,17 @@ extends:
                         ${{ each param in deployment }}:
                           ${{ if in(param.key, 'azureSubscription', 'resourceGroupName', 'storageAccountName', 'containerName', 'workingDirectory', 'commands') }}:
                             ${{ param.key }}: ${{ param.value }}
-                        ${{ if and(not(param.azureSubscription), parameters.azureSubscription) }}:
+                        ${{ if not(deployment.commands) }}:
+                          commands: ${{ parameters.terraformCommands }}
+                        ${{ if and(not(deployment.azureSubscription), parameters.azureSubscription) }}:
                           azureSubscription: ${{ parameters.azureSubscription }} # Service connection to subscription for the resource group
-                        ${{ if and(not(param.resourceGroupName), parameters.resourceGroupName) }}:
+                        ${{ if and(not(deployment.resourceGroupName), parameters.resourceGroupName) }}:
                           resourceGroupName: ${{ parameters.resourceGroupName }} # RM Group name within subscription
-                        ${{ if and(not(param.storageAccountName), parameters.storageAccountName) }}:
+                        ${{ if and(not(deployment.storageAccountName), parameters.storageAccountName) }}:
                           storageAccountName: '${{ parameters.storageAccountName }}' # root path where Terraform templates are located
-                        ${{ if and(not(param.containerName), parameters.containerName) }}:
+                        ${{ if and(not(deployment.containerName), parameters.containerName) }}:
                           containerName: '${{ parameters.containerName }}' # root path where Terraform templates are located
-                        ${{ if and(not(param.workingDirectory), parameters.workingDirectory) }}:
+                        ${{ if and(not(deployment.workingDirectory), parameters.workingDirectory) }}:
                           workingDirectory: '${{ parameters.workingDirectory }}' # root path where Terraform templates are located
                         ${{ if parameters.terraformVersion }}:
                           terraformVersion: ${{ parameters.terraformVersion }}

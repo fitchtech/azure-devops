@@ -87,7 +87,7 @@ extends:
     reject: [] # deploymentList inserted into reject stage in stages param
     # The jobList and deploymentList above are inserted into the stage in stages matching the parameter name
 
-    # stages: [] # Optional to override default of stages stageList.
+  # stages: [] # Optional to override default of stages stageList
     stagesPrefix: '' # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
     stagesSuffix: '' # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
     stagesCondition: '' # Optional param to override the condition of all stages
@@ -114,7 +114,7 @@ extends:
 
 ### Preset Templates
 
-Preset templates abstract steps, stages, and/or pipeline templates in a prescribed pattern that makes them easier to use. They provide a pattern that works for its defined use case. However, that may limit or have assumptions that make it unsuitable for other cases. Preset templates use stages templates and/or steps templates in a prescribed pattern that provides parameters to give flexibility for a variety of use cases. However, those prescriptive patterns may inherently make it unsuitable for other cases.
+Preset templates abstract steps, jobs, and stages in a prescribed pattern that makes them easier to use. They provide parameters for flexiblity in variety of use cases as defined in it's description. Preset templates use the [stages](docs/stages.md) template combined with steps templates, listed in the stage sections below, in a prescribed pattern. However, those prescriptive patterns inherently limit flexibility to a degree which may make it unsuitable for some cases.
 
 The key to pipeline templates is reusability.
 
