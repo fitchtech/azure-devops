@@ -1,0 +1,103 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publish
+  type: string
+  default: '$(Agent.TempDirectory)'
+- name: publishArtifact
+  type: string
+  default: '$(Build.DefinitionName)_$(System.JobName)'
+# Use dotNet
+- name: packageType
+  type: string
+  default: sdk
+  values:
+  - sdk
+  - runtime
+- name: version # Optional dotNet version string to enable use dotNet task
+  type: string
+  default: ''
+- name: feedRestore # dotNet restore using NuGet feed to restore
+  type: string
+  default: ''
+# dotNet Test Tasks for each test in tests
+- name: tests # Inserts dotnet test for each item in list, project key required
+  type: object
+  default:
+  - projects: '***[Uu]nit.[Tt]est*.csproj' # Pattern search for unit test projects
+    arguments: '--collect "Code Coverage" /p:CollectCoverage=true  /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Common.TestResultsDirectory)\Coverage\'
+    displayName: 'dotNet Unit Tests'
+    testRunTitle: 'Unit Tests' # Optional, if task displayName is different than testRunTitle
+- name: publishTestResults #Enabling this option will generate a test results TRX file in $(Agent.TempDirectory) and results will be published to the server. This option appends --logger trx --results-directory $(Agent.TempDirectory) to the command line arguments.
+  type: boolean
+  default: true
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if gt(length(parameters.tests), 0) }}:
+  - ${{ each test in parameters.tests }}:
+    - ${{ if test.projects }}:
+      - template: ../build/dotNetCore.yaml
+        parameters:
+          clean: false
+          checkout: false
+          download: false
+          command: restore
+          packageType: ${{ parameters.packageType }}
+          version: ${{ parameters.version }}
+          projects: ${{ parameters.projects }}
+          feedRestore: ${{ parameters.feedRestore }}
+      - task: DotNetCoreCLI@2
+        ${{ if test.displayName }}:
+          displayName: ${{ test.displayName }}
+        ${{ if not(test.displayName) }}:
+          displayName: 'dotNet Test ${{ test.projects }}'
+        inputs:
+          command: test
+          projects: '${{ test.projects }}'
+          ${{ if test.arguments }}:
+            arguments: '${{ test.arguments }}'
+          ${{ if not(test.arguments) }}:
+            arguments: '--collect "Code Coverage"'
+          ${{ if test.publishTestResults }}:
+            publishTestResults: true
+          ${{ if and(eq(test.publishTestResults, ''), parameters.publishTestResults) }}:
+            publishTestResults: true
+          ${{ if test.testRunTitle }}:
+            testRunTitle: ${{ test.testRunTitle }}
+          ${{ if and(not(test.testRunTitle), test.displayName) }}:
+            testRunTitle: ${{ test.displayName }}
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    publish: ${{ parameters.publish }}
+    artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

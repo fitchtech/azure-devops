@@ -21,17 +21,22 @@ parameters:
 - name: artifact # Optional param to specify an artifact name to download. Default downloads all artifacts for current pipeline run
   type: string
   default: ''
+- name: patterns # File matching patterns should assume the first segment of the pattern is (or matches) an artifact name. For example, WebApp/** matches all files from the WebApp artifact. The pattern */*.dll matches all files with a .dll extension at the root of each artifact.
+  type: string
+  default: ''
 
 steps:
-- ${{ if ne(parameters.checkout, 'false') }}:
+- ${{ if and(ne(parameters.checkout, 'false'), ne(parameters.checkout, '')) }}:
   - checkout: ${{ parameters.checkout }}
     clean: ${{ parameters.clean }}
     ${{ if or(eq(parameters.submodules, 'true'), eq(parameters.submodules, 'recursive')) }}:
       submodules: ${{ parameters.submodules }}
 - ${{ if ne(parameters.download, 'false') }}:
   - download: ${{ parameters.download }}
-    displayName: Download Pipeline Artifact ${{ parameters.artifact }}
+    displayName: 'Download Pipeline Artifact ${{ parameters.artifact }} ${{ parameters.patterns }}'
     ${{ if parameters.artifact }}:
       artifact: ${{ parameters.artifact }}
+    ${{ if parameters.patterns }}:
+      patterns: ${{ parameters.patterns }}
 - ${{ if gt(length(parameters.preSteps), 0) }}:
   - ${{ parameters.preSteps }}

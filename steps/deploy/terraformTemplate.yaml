@@ -1,0 +1,184 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+- name: replaceTokens # Enable replace tokens task
+  type: boolean
+  default: false
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishPlan # Publish artifact for $(jsonPlanFilePath)
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)_OutputPlan'
+- name: publishVariables # Publish artifact for $(jsonOutputVariablesPath)
+  type: string
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)_OutputVariables'
+- name: publishEnabled
+  type: string
+  default: true
+# Terraform Tasks
+- name: terraformVersion # The version of Terraform which should be installed on the agent if not already present
+  type: string
+  default: ''
+- name: provider # The name of the provider used in the terraform configuration files. Only one provider must be specified in the terraform configuration files in the below specified configuration directory.
+  type: string
+  default: azurerm
+  values:
+    - azurerm
+    - aws
+    - gcp
+- name: commands # The terraform command to execute in this order. Set value for command for commandOptions, - command: commandOptions | e.g. - apply: '-var "foo=bar"'  
+  type: object
+  default:
+    - init
+    - plan
+    - validate
+    - apply
+- name: autoApprove # Skip interactive approval of plan before applying
+  type: boolean
+  default: true
+- name: workingDirectory # Directory containing the Terraform configuration files.
+  type: string
+  default: $(Build.Repository.LocalPath)
+# Backend
+- name: backendKey # The path to the Terraform remote state file inside the AzureRM storage container or AWS S3 Bucket. For GCP the backendkey is mapped to the gcpPrefix. The relative path to the state file inside the GCP bucket.
+  type: string
+  default: terraform.tfstate
+- name: serviceConnection # Required service connection name for provider
+  type: string
+  default: ''
+# Backend: Azure
+- name: resourceGroupName # Required for AzurRM provider, the name of the resource group which contains the storage account selected below.
+  type: string
+  default: ''
+- name: storageAccountName # Required for AzurRM provider, the name of the storage account which contains the Azure Blob container selected below.
+  type: string
+  default: ''
+- name: containerName # Required for AzurRM provider, the name of the Azure Blob container in which to store the Terraform remote state file.
+  type: string
+  default: ''
+# Backend: AWS or GCP
+- name: bucketName # Required for AWS or GCP provider, the name of the Amazon Simple Storage Service(S3) bucket or GCP storage bucket for storing the Terraform remote state file.
+  type: string
+  default: ''
+# Replace Tokens Task
+- name: replaceTokens # Enable replace tokens task
+  type: boolean
+  default: false
+- name: replaceTokensTargets
+  type: string
+  default: '**.tf*'
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.replaceTokens }}:
+  - task: replacetokens@3
+    displayName: 'Replace Tokens in ${{ parameters.workingDirectory }}'
+    inputs:
+      rootDirectory: '${{ parameters.workingDirectory }}'
+      targetFiles: '${{ parameters.replaceTokensTargets }}'
+- ${{ if parameters.terraformVersion }}:
+  - task: TerraformInstaller@0
+    displayName: 'Terraform Install ${{ parameters.terraformVersion }}'
+    inputs:
+      terraformVersion: ${{ parameters.terraformVersion }}
+- ${{ each command in parameters.commands }}:
+  - ${{ if in(command.key, 'init', 'plan', 'validate', 'apply', 'destroy') }}:
+    - task: TerraformTaskV1@0
+      ${{ if not(command.displayName) }}:
+        displayName: 'Terraform ${{ command.key }} ${{ command.value }}'
+      ${{ if command.displayName }}:
+        displayName: ${{ command.displayName }}
+      ${{ if command.condition }}:
+        condition: ${{ command.condition }}
+      ${{ if command.continueOnError }}:
+        continueOnError: ${{ command.continueOnError }}
+      ${{ if command.timeoutInMinutes }}:
+        timeoutInMinutes: ${{ command.timeoutInMinutes }}
+      inputs:
+        command: ${{ command.key }}
+      # command: init
+        ${{ if and(eq(command.key, 'init'), command.value) }}:
+          commandOptions: '${{ command.value }}'
+      # command: plan
+        ${{ if eq(command.key, 'plan') }}:
+          # If commands contains plan and destroy
+          ${{ if and(contains(join('-', parameters.commands), 'destroy')) }}:
+            # and if command has value, insert -destroy flag and additional commandOptions
+            ${{ if command.value }}:
+              commandOptions: '-destroy ${{ command.value }}'
+            # and if no additional commandOptions, insert -destroy flag for commandOptions
+            ${{ if not(command.value) }}:
+              commandOptions: '-destroy'
+          # If command is plan and commands does not contain destroy
+          ${{ if not(contains(join('-', parameters.commands), 'destroy')) }}:
+            commandOptions: '${{ command.value }}'
+      # command: validate
+        ${{ if and(eq(command.key, 'validate'), command.value) }}:
+          commandOptions: '${{ command.value }}'
+      # command: apply
+        ${{ if eq(command.key, 'apply') }}:
+          # If autoApprove is true insert -auto-approve flag
+          ${{ if parameters.autoApprove }}:
+            # If additional commandOptions insert -auto-approve and commandOptions
+            ${{ if command.value }}:
+              commandOptions: '-auto-approve ${{ command.value }}'
+            ${{ if not(command.value) }}:
+              commandOptions: '-auto-approve'
+      # command: destroy
+        ${{ if and(eq(command.key, 'destroy'), command.value) }}:
+          commandOptions: '${{ command.value }}'
+        provider: ${{ parameters.provider }}
+        workingDirectory: ${{ parameters.workingDirectory }}
+        ${{ if and(eq(parameters.provider, 'azurerm'), parameters.serviceConnection, parameters.resourceGroupName, parameters.storageAccountName, parameters.containerName) }}:
+          backendServiceArm: ${{ parameters.serviceConnection }}
+          backendAzureRmResourceGroupName: ${{ parameters.resourceGroupName }}
+          backendAzureRmStorageAccountName: ${{ parameters.storageAccountName }}
+          backendAzureRmContainerName: ${{ parameters.containerName }}
+          backendAzureRmKey: ${{ parameters.backendKey }}
+        ${{ and(eq(parameters.provider, 'aws'), parameters.serviceConnection, parameters.bucketName) }}:
+          backendServiceAWS: ${{ parameters.serviceConnection }}
+          backendAWSBucketName: ${{ parameters.bucketName }}
+          backendAWSKey: ${{ parameters.backendKey }}
+        ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.bucketName) }}:
+          backendServiceAWS: ${{ parameters.serviceConnection }}
+          backendGCPBucketName: ${{ parameters.bucketName }}
+          backendGCPPrefix: ${{ parameters.backendKey }}
+- ${{ if and(parameters.publishPlan, parameters.publishEnabled) }}:
+  - publish: $(jsonPlanFilePath)
+    artifact: ${{ if parameters.publishPlan }}
+    condition: gt(length(variables['jsonPlanFilePath']), 0)
+- ${{ if and(parameters.publishVariables, parameters.publishEnabled) }}:
+  - publish: $(jsonOutputVariablesPath)
+    artifact: ${{ if parameters.publishVariables }}
+    condition: gt(length(variables['jsonOutputVariablesPath']), 0)
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    publish: false
+    clean: ${{ parameters.clean }}

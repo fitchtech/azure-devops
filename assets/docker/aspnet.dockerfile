@@ -1,13 +1,13 @@
-ARG registry=harbor.pks.tm.dev1.premera.cloud
-ARG repository=baseimages/dotnet/core/aspnet
-ARG tag=3.1-bionic
-ARG componentName=default
+ARG registry=mcr.microsoft.com
+ARG repository=dotnet/aspnet
+ARG tag=3.1-focal
+ARG copy=.
+ARG entrypoint=app.dll
 FROM ${registry}/${repository}:${tag}
-ENV copyPath=/Publish/$componentName
-ENV entrypointPath=$componentName.dll
+ENV entrypoint=${entrypoint}
 EXPOSE 80
 EXPOSE 443
 USER 9000
 WORKDIR /app
-COPY $copyPath .
-ENTRYPOINT ["dotnet", $entrypointPath]
+COPY ${copy} .
+ENTRYPOINT ["dotnet", "${entrypoint}"]

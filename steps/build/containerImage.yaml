@@ -28,41 +28,58 @@ parameters:
 - name: publishArtifact
   type: string
   default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
-# dotNet Publish project to copy output to Docker image
+
+# dotNet Publish project to copy output into Docker image
 - name: dotNetType
   type: string
   default: runtime
   values:
   - sdk
   - runtime
+- name: dotNetCommand
+  type: string
+  default: publish
+  values:
+  - publish
+  - build
 - name: dotNetVersion # Optional param to enable use dotNet task 
   type: string
-  default: '3.1.x'
-- name: dotNetProject # Required param to restore and publish a dotNet project
+  default: ''
+- name: dotNetProjects # Required param to restore and publish a dotNet project
   type: string
   default: ''
-- name: dotNetProjectArguments
+- name: dotNetArguments
   type: string
   default: ''
-- name: dotNetFeed
+- name: dotNetFeedRestore
   type: string
   default: ''
 - name: dotNetPublishWebProjects
   type: boolean
   default: false
-# Docker Tasks
-- name: dockerInstall # Optional task to install Docker on agent
+
+# Docker Instal Task (Optional)
+- name: dockerInstall # Optional to enable docker install on agent
   type: boolean
   default: false
-- name: dockerVersion # Default version for docker install task
+- name: dockerVersion # Optional to set specific docker version to install
   type: string
-  default: '17.09.0-ce'
+  default: ''
+- name: dockerReleaseType # Default docker release channel to install
+  type: string
+  default: stable
+  values:
+    - stable
+    - edge
+    - test
+    - nightly
+# Docker Build and Push
 - name: dockerFile # Path to Dockerfile
   type: string
   default: '**.dockerfile'
 - name: dockerContext
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: dockerArgs # Optional param to pass build arguments to Docker
   type: string
   default: ''
@@ -84,9 +101,13 @@ parameters:
 - name: containerRepository # Container repo path in registry for Docker push
   type: string
   default: ''
-- name: loginRegistry # Service connection name. Login to a private registry that the Docker image is built FROM
-  type: string
+- name: containerRegistries # List of container registries to login to. Useful when building images FROM multiple private registries.
+  type: object
   default: ''
+# containerRegistries:
+  # - registry1
+  # - registry2
+
 # Twistlock Scan of Docker Image on ADO agent
 - name: twistlockService # Azure Service Connection name for Twistlock
   type: string
@@ -100,6 +121,7 @@ parameters:
 - name: twistlockEnabled # true inserts twistlock task
   type: boolean
   default: false
+
 # Task to Archive and Pipeline Publish Artifact of dotNet project
 - name: deleteRoot
   type: string
@@ -139,33 +161,35 @@ steps:
     inputs:
       artifact: ${{ parameters.downloadArtifact }}
       path: ${{ parameters.downloadPath }}
-- ${{ if parameters.dotNetProject }}:
+- ${{ if parameters.dotNetProjects }}:
   - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: publish
-      dotNetType: ${{ parameters.dotNetType }}
-      dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.dotNetProject }}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetProjectArguments}}
-      dotNetPublishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
-- ${{ if and(parameters.dockerInstall, parameters.dockerVersion) }}:
+      command: ${{ parameters.dotNetCommand }}
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments}}
+      publishWebProjects: ${{ parameters.dotNetPublishWebProjects }}
+- ${{ if parameters.dockerInstall }}:
   - task: DockerInstaller@0
     displayName: 'Install Docker'
     target: host
     inputs:
-      dockerVersion: '${{ parameters.dockerVersion }}'
-      releaseType: stable
-- ${{ if and(parameters.containerRegistry, parameters.containerRepository) }}:
-  - ${{ if parameters.loginRegistry }}:
+      releaseType: ${{ parameters.dockerReleaseType }}
+      ${{ if parameters.dockerVersion }}:
+        dockerVersion: '${{ parameters.dockerVersion }}'
+- ${{ if parameters.containerRegistries }}:
+  - ${{ each registry in parameters.containerRegistries }}:
     - task: Docker@2
-      displayName: 'Login to ${{ parameters.loginRegistry }}'
+      displayName: 'Login to ${{ registry }}'
       inputs:
         command: login
-        containerRegistry: '${{ parameters.loginRegistry }}'
+        containerRegistry: '${{ registry }}'
+- ${{ if and(parameters.containerRegistry, parameters.containerRepository) }}:
   - task: Docker@2
     displayName: 'Login to ${{ parameters.containerRegistry }}'
     inputs:
@@ -204,7 +228,7 @@ steps:
   - script: |
       docker save ${{ parameters.containerRegistryUrl }}/${{ parameters.containerRepository }}:latest -o ${{ parameters.archiveRoot }}/${{ parameters.archiveFile }}.${{ parameters.archiveType }}
     displayName: 'Docker Save ${{ parameters.containerRepository }}'
-- ${{ if and(parameters.dotNetProject, parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
+- ${{ if and(parameters.archiveArtifacts, not(parameters.dockerSave)) }}:
   - ${{ if parameters.deleteContents }}:
     - task: DeleteFiles@1
       displayName: 'Delete Unwanted Files'

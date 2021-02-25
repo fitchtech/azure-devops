@@ -18,6 +18,13 @@ parameters:
 - name: downloadArtifact
   type: string
   default: ''
+- name: replaceTokens # Enable replace tokens task
+  type: boolean
+  default: false
+- name: replaceTokensTargets # Replace tokens in chart and values file
+  type: object
+  default: |
+    **/*.yaml
 # postSteps
 - name: postSteps
   type: stepList
@@ -35,10 +42,6 @@ parameters:
 - name: keyVaultSecretFilter
   type: string
   default: '*'
-- name: replaceTokensTargets # Replace tokens in chart and values file
-  type: object
-  default: |
-    **/*.yaml
 # Helm Installer
 - name: helmVersion
   type: string
@@ -67,7 +70,7 @@ parameters:
   default: 'upgrade'
 - name: helmChartPath # Root path of helm charts
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: helmReleaseName
   type: string
   default: '$(Build.DefinitionName)'
@@ -76,7 +79,7 @@ parameters:
   default: ''
 - name: helmValueFile # File path to values
   type: string
-  default: '$(Pipeline.Workspace)/values.yaml'
+  default: '$(Build.Repository.LocalPath)/values.yaml'
 - name: helmInstall # When command is upgrade install if not already done
   type: boolean
   default: true
@@ -122,19 +125,20 @@ steps:
       azureSubscription: '${{ parameters.keyVaultSubscription }}'
       KeyVaultName: '${{ parameters.keyVaultName }}'
       SecretsFilter: '${{ parameters.keyVaultSecretFilter }}'
-- task: replacetokens@3
-  displayName: 'Replace tokens in Helm Charts'
-  inputs:
-    rootDirectory: '${{ parameters.helmChartPath }}'
-    targetFiles: ${{ parameters.replaceTokensTargets }}
-    encoding: 'auto'
-    writeBOM: true
-    actionOnMissing: 'warn'
-    keepToken: false
-    tokenPrefix: '#{'
-    tokenSuffix: '}#'
-    useLegacyPattern: false
-    enableTelemetry: false
+- ${{ if parameters.replaceTokens }}:
+  - task: replacetokens@3
+    displayName: 'Replace tokens in Helm Charts'
+    inputs:
+      rootDirectory: '${{ parameters.helmChartPath }}'
+      targetFiles: ${{ parameters.replaceTokensTargets }}
+      encoding: 'auto'
+      writeBOM: true
+      actionOnMissing: 'warn'
+      keepToken: false
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      useLegacyPattern: false
+      enableTelemetry: false
 - ${{ if and(parameters.kubernetesServiceConnection, parameters.dockerRegistryEndpoint, parameters.imagePullSecret) }}:
   - task: KubernetesManifest@0
     displayName: 'Create imagePullSecret ${{ parameters.imagePullSecret }} in ${{ parameters.namespace }} namespace'

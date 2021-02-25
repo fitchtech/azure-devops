@@ -40,6 +40,9 @@ parameters:
   type: string
   default: ''
 # Render Helm Chart params
+- name: replaceTokens # Enable replace tokens task for targets
+  type: boolean
+  default: false
 - name: replaceTokensTargets # Replace tokens in chart and values file
   type: object
   default: |
@@ -51,10 +54,10 @@ parameters:
   default: '$(Build.DefinitionName)'
 - name: helmChartPath # Root path of helm charts
   type: string
-  default: '$(Pipeline.Workspace)'
+  default: '$(Build.Repository.LocalPath)'
 - name: helmValueFile # File path to values
   type: string
-  default: '$(Pipeline.Workspace)/values.yaml'
+  default: '$(Build.Repository.LocalPath)/values.yaml'
 - name: helmChartVersion
   type: string
   default: '$(Build.BuildNumber)'
@@ -91,7 +94,9 @@ steps:
     kubectlVersion: ${{ parameters.kubectlVersion }}
     repoName: ${{ parameters.repoName }}
     repoURL: ${{ parameters.repoURL }}
-    replaceTokensTargets: ${{ parameters.replaceTokensTargets }}
+    ${{ if parameters.replaceTokens }}:
+      replaceTokens: true
+      replaceTokensTargets: ${{ parameters.replaceTokensTargets }}
     namespace: ${{ parameters.namespace }}
     helmReleaseName: ${{ parameters.helmReleaseName }}
     helmChartPath: ${{ parameters.helmChartPath }}
@@ -106,9 +111,9 @@ steps:
       checkout: false
       download: false
       kubernetesServiceConnection: ${{ parameters.kubernetesServiceConnection }}
-      kubeAction: deploy
-      kubeStrategy: ''
-      kubeManifests: '${{ parameters.outputDir }}/*'
+      action: deploy
+      strategy: ''
+      manifests: '${{ parameters.outputDir }}/*'
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}

@@ -1,0 +1,774 @@
+# This pipeline template provides a single job for code, build, deploy, test, promote, and reject stages. 
+# Parameters used to insert steps into a job of a stage or steps template and steps parameters. Required to enable the stage/job. 
+parameters:
+# code: stage
+- name: codeSteps # stepList inserted into code stage in stages
+  type: stepList
+  default: []
+  # - script: echo insert steps into stepList
+- name: codeTemplate # dotNetTests | sonarQube | false (default) | steps/code/${{ parameters.codeTemplate }}.yaml
+  type: string
+  default: false
+- name: codeParameters # If codeTemplate, codeParameters are the parameters for the codeTemplate
+  type: object
+  default: ''
+  # tests:
+    # - projects: $(projects)
+    #   arguments: $(arguments)
+- name: codeMatrix # Generates copies of a job. Use variables of matrix per code job. Pass variables to inputs or parameters in each job
+  type: object
+  default: ''
+  # dotNetTest1:
+    # projects: 'test1.csproj'
+    # arguments: '--collect "Code Coverage"'
+  # dotNetTest2:
+    # projects: 'test2.csproj'
+    # arguments: '--collect "Code Coverage"
+- name: codeMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: codeVariables # Insert variables into all code stage jobs
+  type: object
+  default: ''
+- name: codeJobs # jobsList inserted into code stage in stages
+  type: jobList
+  default: []
+- name: codePool # Nested into pool param of code jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
+# build: stage
+- name: buildSteps # stepList inserted into build job
+  type: stepList
+  default: []
+- name: buildTemplate # containerImage | dotNetCore | helmTemplate | nugetPackage | false (default) | steps/build/${{ parameters.buildTemplate }}.yaml
+  type: string
+  default: false
+- name: buildParameters # If buildTemplate, buildParameters are the parameters for the buildTemplate
+  type: object
+  default: ''
+  # dockerFile: $(dockerfile)
+  # containerRepository: $(repository)
+  # containerRegistry: 'serviceConnectionName'
+- name: buildMatrix # Generates copies of a job. Use variables of matrix per build job. For Docker use build arguments with the matrix variable. Or to define multiple dockerfiles and arguments
+  type: object
+  default: ''
+  # containerImage1:
+    # dockerfile: 'app1.dockerfile'
+    # repository: 'app1'
+  # containerImage2:
+    # dockerfile: 'app2.dockerfile'
+    # repository: 'app2'
+- name: buildMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: buildVariables # Insert variables into all build stage jobs
+  type: object
+  default: ''
+- name: buildJobs # jobsList inserted into build stage in stages
+  type: jobList
+  default: []
+- name: buildPool # Nested into pool param of build jobs
+  type: object
+  default: 
+    vmImage: 'ubuntu-18.04'
+# deploy: stage
+- name: environment # Environment name and optionally a resource name to record the deployment history. <environment-name>.<resource-name>
+  type: object
+  default: ''
+- name: preDeploySteps # Deployment job preDeploy lifecycle hook
+  type: stepList
+  default: []
+- name: deploySteps # stepList inserted into deploy job
+  type: stepList
+  default: []
+- name: deployTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.deployTemplate }}.yaml
+  type: string
+  default: false
+- name: deployParameters # If deployTemplate, deployParameters are the parameters for the deployTemplate
+  type: object
+  default: ''
+- name: routeTrafficSteps # Deployment job routeTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: postRouteTrafficSteps # Deployment job postRouteTraffic lifecycle hook
+  type: stepList
+  default: []
+- name: onFailureSteps # Deployment job on: failure: lifecycle hook
+  type: stepList
+  default: []
+- name: onSuccessSteps # Deployment job on: success: lifecycle hook
+  type: stepList
+  default: []
+- name: strategy
+  type: string
+  default: runOnce
+  values:
+  - runOnce
+  - canary
+  - rolling
+- name: deployVariables # Insert variables into all deploy stage jobs
+  type: object
+  default: ''
+- name: deployJobs # deploymentList inserted into deploy stage in stages
+  type: deploymentList
+  default: []
+- name: deployPool # Nested into pool param of deploy, promote, and reject jobs
+  type: object
+  default:
+    vmImage: 'ubuntu-18.04'
+# test: stage
+- name: testSteps # stepList inserted into test job
+  type: stepList
+  default: []
+- name: testTemplate
+  type: string
+  default: false
+- name: testParameters # If testTemplate, testParameters are the parameters for the testTemplate
+  type: object
+  default: ''
+- name: testParallel # This strategy specifies how many duplicates of a job should run. It's useful for slicing up a large test matrix. The Visual Studio Test task understands how to divide the test load across the number of scheduled jobs.
+  type: number
+  default: 1
+- name: testMatrix
+  type: object
+  default: ''
+- name: testMaxParallel # Max number of matrix jobs to run in parallel
+  type: number
+  default: 0
+- name: testJobs # jobList inserted into test stage in stages
+  type: jobList
+  default: []
+- name: testPool # Nested into pool param of test jobs
+  type: object
+  default:
+    vmImage: 'windows-latest'
+# promote: stage
+- name: promoteSteps # stepList inserted into promote job
+  type: stepList
+  default: []
+- name: promoteTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.promoteTemplate }}.yaml
+  type: string
+  default: false
+- name: promoteParameters # If promoteTemplate, promoteParameters are the parameters for the promoteTemplate
+  type: object
+  default: ''
+- name: promoteVariables # Insert variables into all promote stage jobs
+  type: object
+  default: ''
+- name: promoteJobs # deploymentList inserted into promote stage in stages
+  type: deploymentList
+  default: []
+# reject: stage
+- name: rejectSteps # stepList inserted into reject job
+  type: stepList
+  default: []
+- name: rejectTemplate # armTemplate | helmChart | helmManifest | kubeManifest | false (default) | steps/deploy/${{ parameters.rejectTemplate }}.yaml
+  type: string
+  default: false
+- name: rejectParameters # If rejectTemplate, rejectParameters are the parameters for the rejectTemplate
+  type: object
+  default: ''
+- name: rejectVariables # Insert variables into all reject stage jobs
+  type: object
+  default: ''
+- name: rejectJobs # deploymentList inserted into reject stage in stages
+  type: deploymentList
+  default: []
+# overrides
+- name: stages # Optional to override default value of stages stageList in the stages.yaml template
+  type: stageList
+  default: ''
+- name: stagesSuffix # Optional stage name suffix. e.g. Dev would make buildDev, deployDev, etc.
+  type: string
+  default: ''
+- name: stagesPrefix # Optional stage name prefix. e.g. dev- would make dev-build, dev-deploy, etc.
+  type: string
+  default: ''
+- name: stagesCondition # Optional param to override the condition of all stages
+  type: string
+  default: ''
+- name: timeoutInMinutes # in each job, how long to run the job before automatically cancelling
+  type: number
+  default: 0
+- name: cancelTimeoutInMinutes # in each job, how much time to give 'run always even if cancelled tasks' before killing them
+  type: number
+  default: 0
+
+stages:
+  - template: ../stages.yaml
+    parameters:
+      # If stages stageList param has value then override default stages value in stages.yaml template
+      ${{ if gt(length(parameters.stages), 0) }}:
+        stages: ${{ parameters.stages }}
+      # These parameters are nested from the parameters section above
+      stagesSuffix: ${{ parameters.stagesSuffix }}
+      stagesPrefix: ${{ parameters.stagesPrefix }}
+      stagesCondition: ${{ parameters.stagesCondition }}
+      # if steps in codeSteps or template name in codeTemplate and parameters in codeParameters, then insert the code job
+      ${{ if or(gt(length(parameters.codeSteps), 0), and(parameters.codeTemplate, parameters.codeParameters), gt(length(parameters.codeJobs), 0)) }}:
+        code:
+          # If codeSteps, insert job and stepList
+          - ${{ if gt(length(parameters.codeSteps), 0) }}:
+            - job: codeSteps # job name must be unique within stage
+              displayName: 'Code Job for codeSteps' # job display name
+              pool: ${{ parameters.codePool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if parameters.codeVariables }}:
+                variables:
+                  ${{ each variable in parameters.codeVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # Insert code matrix for each job
+              ${{ if parameters.codeMatrix }}:
+                strategy:
+                  matrix: ${{ parameters.codeMatrix }}
+                  maxParallel: ${{ parameters.codeMaxParallel }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into codeSteps job
+              steps:
+                - ${{ parameters.codeSteps }}
+          # If codeTemplate and codeParameters, insert job and steps template
+          - ${{ if and(parameters.codeTemplate, parameters.codeParameters) }}:
+            - job: codeTemplate # job name must be unique within stage
+              displayName: 'Code Job for ${{ parameters.codeTemplate }}' # job display name
+              pool: ${{ parameters.codePool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if parameters.codeVariables }}:
+                variables:
+                  ${{ each variable in parameters.codeVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # Insert code matrix for each job
+              ${{ if parameters.codeMatrix }}:
+                strategy:
+                  matrix: ${{ parameters.codeMatrix }}
+                  maxParallel: ${{ parameters.codeMaxParallel }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              steps:
+                - template: steps/code/${{ parameters.codeTemplate }}.yaml
+                  parameters:
+                    # Insert codeParameters as parameters for codeTemplate
+                    ${{ each param in parameters.codeParameters }}:
+                      ${{ param.key }}: ${{ param.value }}
+          # If jobs in codeJobs
+          - ${{ if gt(length(parameters.codeJobs), 0) }}:
+            - ${{ each job in parameters.codeJobs }}:
+              # Insert each job, if job has steps
+              - ${{ if gt(length(job.steps), 0) }}:
+                - job: ${{ job.job }}
+                  # Insert job parameters
+                  ${{ each parameter in job }}:
+                    ${{ if notIn(parameter.key, 'job', 'steps', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each job
+                  ${{ if and(not(job.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(job.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If job does not have pool, then use codePool as default
+                  ${{ if not(job.pool) }}:
+                    pool: ${{ parameters.codePool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.codeVariables, job.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.codeVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in job.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.codeMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.codeMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.codeMatrix }}
+                      maxParallel: ${{ parameters.codeMaxParallel }}
+                  steps: 
+                    - ${{ job.steps }}
+      # if steps in buildSteps or template name in buildTemplate and parameters in buildParameters, then insert the build job
+      ${{ if or(gt(length(parameters.buildSteps), 0), and(parameters.buildTemplate, parameters.buildParameters), gt(length(parameters.buildJobs), 0)) }}:
+        build:
+          # If buildSteps, insert job and stepList
+          - ${{ if gt(length(parameters.buildSteps), 0) }}:
+            - job: buildSteps # job name must be unique within stage
+              displayName: 'Build Job for buildSteps' # job display name
+              pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
+              # Inserts variables into jobs
+              ${{ if parameters.buildVariables }}:
+                variables:
+                  ${{ each variable in parameters.buildVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # Insert build matrix for each job
+              ${{ if parameters.buildMatrix }}:
+                strategy:
+                  matrix: ${{ parameters.buildMatrix }}
+                  maxParallel: ${{ parameters.buildMaxParallel }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into buildSteps job
+              steps:
+                - ${{ parameters.buildSteps }}
+          # If buildTemplate and buildParameters, insert job and steps template
+          - ${{ if and(parameters.buildTemplate, parameters.buildParameters) }}:
+            - job: buildTemplate # job name must be unique within stage
+              displayName: 'Build Job' # job display name
+              pool: ${{ parameters.buildPool }} # param passed to pool of build jobs
+              # Inserts variables into jobs
+              ${{ if parameters.buildVariables }}:
+                variables:
+                  ${{ each variable in parameters.buildVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # Insert build matrix for each job
+              ${{ if parameters.buildMatrix }}:
+                strategy:
+                  matrix: ${{ parameters.buildMatrix }}
+                  maxParallel: ${{ parameters.buildMaxParallel }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              steps:
+                - template: steps/build/${{ parameters.buildTemplate }}.yaml
+                  parameters:
+                    # Insert buildParameters as parameters for buildTemplate
+                    ${{ each param in parameters.buildParameters }}:
+                      ${{ param.key }}: ${{ param.value }}
+          # If jobs in buildJobs
+          - ${{ if gt(length(parameters.buildJobs), 0) }}:
+            - ${{ each job in parameters.buildJobs }}:
+              # Insert each job, if job has steps
+              - ${{ if gt(length(job.steps), 0) }}:
+                - job: ${{ job.job }}
+                  # Insert job parameters
+                  ${{ each parameter in job }}:
+                    ${{ if notIn(parameter.key, 'job', 'steps', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each job
+                  ${{ if and(not(job.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(job.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If job does not have pool, then use buildPool as default
+                  ${{ if not(job.pool) }}:
+                    pool: ${{ parameters.buildPool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.buildVariables, job.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.buildVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in job.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.buildMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.buildMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.buildMatrix }}
+                      maxParallel: ${{ parameters.buildMaxParallel }}
+                  steps: 
+                    - ${{ job.steps }}
+      # if steps in deploySteps or template name in deployTemplate and parameters in deployParameters, then insert the deploy job
+      ${{ if or(gt(length(parameters.deploySteps), 0), and(parameters.deployTemplate, parameters.deployParameters)) }}:
+        deploy:
+          # If deploySteps, insert job and stepList
+          - ${{ if gt(length(parameters.deploySteps), 0) }}:
+            - deployment: deploySteps # job name must be unique within stage
+              displayName: 'Deployment Job for deploySteps' # job display name
+              pool: ${{ parameters.deployPool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if parameters.deployVariables }}:
+                variables:
+                  ${{ each variable in parameters.deployVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into deploySteps job
+              strategy:
+                ${{ parameters.strategy }}:
+                  # Insert preDeploy lifecycle hook stepList
+                  ${{ if gt(length(parameters.preDeploy), 0) }}:
+                    preDeploy:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.preDeploy }}
+                  # Insert deploySteps stepList
+                  deploy:
+                    steps:
+                      - ${{ parameters.deploySteps }}
+                  # routeTraffic lifecycle hook
+                  ${{ if gt(length(parameters.routeTrafficSteps), 0) }}:
+                    routeTraffic:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.routeTrafficSteps }}
+                  # postRouteTraffic lifecycle hook
+                  ${{ if gt(length(parameters.postRouteTrafficSteps), 0) }}:
+                    postRouteTraffic:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.postRouteTraffic }}
+                  # on: failure: and success: lifecycle hooks
+                  ${{ if or(gt(length(parameters.onFailureSteps), 0), gt(length(parameters.onSuccessSteps), 0)) }}:
+                    on:
+                      ${{ if gt(length(parameters.onSuccessSteps), 0) }}:
+                      # Insert onSuccess stepList
+                        success:
+                          pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ parameters.parameters.onSuccessSteps }}
+                      # Insert onFailure stepList
+                      ${{ if gt(length(parameters.onFailureSteps), 0) }}:
+                        failure:
+                          pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ parameters.onFailureSteps }}
+          # If deployTemplate and deployParameters, insert job and steps template
+          - ${{ if and(parameters.deployTemplate, parameters.deployParameters) }}:
+            - deployment: deployTemplate # deployment name unique to stage
+              displayName: 'Deployment Job for ${{ parameters.deployTemplate }}'
+              pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+              # Inserts variables into jobs
+              ${{ if parameters.deployVariables }}:
+                variables:
+                  ${{ each variable in parameters.deployVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into deploySteps job
+              strategy:
+                ${{ parameters.strategy }}:
+                  # Insert preDeploy lifecycle hook stepList
+                  ${{ if gt(length(parameters.preDeploy), 0) }}:
+                    preDeploy:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.preDeploy }}
+                  # Insert deploySteps stepList
+                  deploy:
+                    steps:
+                      - template: steps/deploy/${{ parameters.deployTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.deployParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+                  # routeTraffic lifecycle hook
+                  ${{ if gt(length(parameters.routeTrafficSteps), 0) }}:
+                    routeTraffic:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.routeTrafficSteps }}
+                  # postRouteTraffic lifecycle hook
+                  ${{ if gt(length(parameters.postRouteTrafficSteps), 0) }}:
+                    postRouteTraffic:
+                      pool: ${{ parameters.deployPool }}
+                      steps:
+                        - ${{ parameters.postRouteTraffic }}
+                  # on: failure: and success: lifecycle hooks
+                  ${{ if or(gt(length(parameters.onFailureSteps), 0), gt(length(parameters.onSuccessSteps), 0)) }}:
+                    on:
+                      ${{ if gt(length(parameters.onSuccessSteps), 0) }}:
+                      # Insert onSuccess stepList
+                        success:
+                          pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ parameters.parameters.onSuccessSteps }}
+                      # Insert onFailure stepList
+                      ${{ if gt(length(parameters.onFailureSteps), 0) }}:
+                        failure:
+                          pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ parameters.onFailureSteps }}
+          # If deployments in deployJobs
+          - ${{ if gt(length(parameters.deployJobs), 0) }}:
+            - ${{ each deploy in parameters.deployJobs }}:
+              # Insert each deploy, if deploy has strategy
+              - ${{ if gt(length(deploy.strategy), 0) }}:
+                - deployment: ${{ deploy.deployment }}
+                  # Insert deploy parameters
+                  ${{ each parameter in deploy }}:
+                    ${{ if notIn(parameter.key, 'deployment', 'strategy', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each deploy
+                  ${{ if and(not(deploy.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(deploy.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If deploy does not have pool, then use buildPool as default
+                  ${{ if not(deploy.pool) }}:
+                    pool: ${{ parameters.deployPool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.deployVariables, deploy.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.deployVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in deploy.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  ${{ if and(parameters.environment, not(deploy.environment)) }}:
+                    environment: ${{ parameters.environment }}
+                  strategy:
+                    ${{ deploy.strategy }}
+      # if steps in testSteps or template name in testTemplate and parameters in testParameters, then insert the test job
+      ${{ if or(gt(length(parameters.testSteps), 0), and(parameters.testTemplate, parameters.testParameters), gt(length(parameters.testJobs), 0)) }}:
+        test:
+          # If testSteps, insert job and stepList
+          - ${{ if gt(length(parameters.testSteps), 0) }}:
+            - job: testSteps # job name must be unique within stage
+              displayName: 'Test Job for testSteps' # job display name
+              pool: ${{ parameters.testPool }} # param passed to pool of test jobs
+              # Inserts variables into jobs
+              ${{ if parameters.testVariables }}:
+                variables:
+                  ${{ each variable in parameters.testVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # Insert test matrix for each job
+              ${{ if parameters.testMatrix }}:
+                strategy:
+                  matrix: ${{ parameters.testMatrix }}
+                  maxParallel: ${{ parameters.testMaxParallel }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into testSteps job
+              steps:
+                - ${{ parameters.testSteps }}
+          - ${{ if and(parameters.testTemplate, parameters.testParameters) }}:
+            - job: test # job name must be unique within stage
+              displayName: 'Test Job' # job display name
+              pool: ${{ parameters.testPool }} # param passed to pool of test jobs
+              # Inserts variables into jobs
+              ${{ if parameters.testVariables }}:
+                variables:
+                  ${{ each variable in parameters.testVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              # If test.matrix or test.parallel strategy for Visual Studio Test jobs
+              ${{ if or(parameters.testMatrix, gt(parameters.testParallel, 1)) }}:
+                strategy:
+                  ${{ if test.matrix }}:
+                    matrix: ${{ test.matrix }}
+                  ${{ if not(test.matrix) }}:
+                    parallel: ${{ test.parallel }}
+              steps:
+                - template: steps/test/${{ parameters.testTemplate }}.yaml
+                  parameters:
+                    ${{ each param in parameters.buildParameters }}:
+                      ${{ param.key }}: ${{ param.value }}
+          # If jobs in testJobs
+          - ${{ if gt(length(parameters.testJobs), 0) }}:
+            - ${{ each job in parameters.testJobs }}:
+              # Insert each job, if job has steps
+              - ${{ if gt(length(job.steps), 0) }}:
+                - job: ${{ job.job }}
+                  # Insert job parameters
+                  ${{ each parameter in job }}:
+                    ${{ if notIn(parameter.key, 'job', 'steps', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each job
+                  ${{ if and(not(job.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(job.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If job does not have pool, then use testPool as default
+                  ${{ if not(job.pool) }}:
+                    pool: ${{ parameters.testPool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.testVariables, job.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.testVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in job.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  # Use parameters.testMatrix for each job if job.matrix is null
+                  ${{ if and(not(job.matrix), parameters.testMatrix) }}:
+                    strategy:
+                      matrix: ${{ parameters.testMatrix }}
+                      maxParallel: ${{ parameters.testMaxParallel }}
+                  steps: 
+                    - ${{ job.steps }}
+      # if steps in promoteSteps or template name in promoteTemplate and parameters in promoteParameters, then insert the promote job
+      ${{ if or(gt(length(parameters.promoteSteps), 0), and(parameters.promoteTemplate, parameters.promoteParameters)) }}:
+        promote:
+          # If promoteSteps, insert job and stepList
+          - ${{ if gt(length(parameters.promoteSteps), 0) }}:
+            - deployment: promoteSteps # job name must be unique within stage
+              displayName: 'Deployment Job for promoteSteps' # job display name
+              pool: ${{ parameters.deployPool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.promoteVariables, promote.variables) }}:
+                variables:
+                  ${{ each variable in parameters.promoteVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in promote.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into promoteSteps job
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      # Insert promoteSteps stepList
+                      - ${{ parameters.promoteSteps }}
+          # If promoteTemplate and promoteParameters, insert job and steps template
+          - ${{ if and(parameters.promoteTemplate, parameters.promoteParameters) }}:
+            - deployment: promote # deployment name unique to stage
+              displayName: 'Promote Deployment Job for ${{ parameters.promoteTemplate }}'
+              pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.promoteVariables, promote.variables) }}:
+                variables:
+                  ${{ each variable in parameters.promoteVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in promote.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      - template: steps/deploy/${{ parameters.promoteTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.promoteParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+          # If deployments in promoteJobs
+          - ${{ if gt(length(parameters.promoteJobs), 0) }}:
+            - ${{ each promote in parameters.promoteJobs }}:
+              # Insert each promote, if promote has strategy
+              - ${{ if gt(length(promote.strategy), 0) }}:
+                - deployment: ${{ promote.deployment }}
+                  # Insert promote parameters
+                  ${{ each parameter in promote }}:
+                    ${{ if notIn(parameter.key, 'deployment', 'strategy', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each promote
+                  ${{ if and(not(promote.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(promote.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If promote does not have pool, then use buildPool as default
+                  ${{ if not(promote.pool) }}:
+                    pool: ${{ parameters.promotePool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.promoteVariables, promote.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.promoteVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in promote.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  ${{ if and(parameters.environment, not(promote.environment)) }}:
+                    environment: ${{ parameters.environment }}
+                  strategy:
+                    ${{ promote.strategy }}
+      # if steps in rejectSteps or template name in rejectTemplate and parameters in rejectParameters, then insert the reject job
+      ${{ if or(gt(length(parameters.rejectSteps), 0), and(parameters.rejectTemplate, parameters.rejectParameters)) }}:
+        reject:
+          # If rejectSteps, insert job and stepList
+          - ${{ if gt(length(parameters.rejectSteps), 0) }}:
+            - deployment: rejectSteps # job name must be unique within stage
+              displayName: 'Deployment Job for rejectSteps' # job display name
+              pool: ${{ parameters.deployPool }} # param passed to pool of code jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.rejectVariables, reject.variables) }}:
+                variables:
+                  ${{ each variable in parameters.rejectVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in reject.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into rejectSteps job
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      # Insert rejectSteps stepList
+                      - ${{ parameters.rejectSteps }}
+          # If rejectTemplate and rejectParameters, insert job and steps template
+          - ${{ if and(parameters.rejectTemplate, parameters.rejectParameters) }}:
+            - deployment: reject # deployment name unique to stage
+              displayName: 'Reject Deployment Job for ${{ parameters.rejectTemplate }}'
+              pool: ${{ parameters.deployPool }} # param passed to pool of deployment jobs
+              # Inserts variables into jobs
+              ${{ if or(parameters.rejectVariables, reject.variables) }}:
+                variables:
+                  ${{ each variable in parameters.rejectVariables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+                  ${{ each variable in reject.variables }}:
+                    ${{ variable.key }}: ${{ variable.value }}
+              ${{ if parameters.environment }}:
+                environment: ${{ parameters.environment }}
+              # Insert timeout values for each job
+              ${{ if gt(parameters.timeoutInMinutes, 0) }}:
+                timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+              ${{ if gt(parameters.cancelTimeoutInMinutes, 0) }}:
+                cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+              # Insert stepList into testSteps job
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      - template: steps/deploy/${{ parameters.rejectTemplate }}.yaml
+                        parameters:
+                          ${{ each param in parameters.rejectParameters }}:
+                            ${{ param.key }}: ${{ param.value }}
+          # If deployments in rejectJobs
+          - ${{ if gt(length(parameters.rejectJobs), 0) }}:
+            - ${{ each reject in parameters.rejectJobs }}:
+              # Insert each reject, if reject has strategy
+              - ${{ if gt(length(reject.strategy), 0) }}:
+                - deployment: ${{ reject.deployment }}
+                  # Insert reject parameters
+                  ${{ each parameter in reject }}:
+                    ${{ if notIn(parameter.key, 'deployment', 'strategy', 'variables') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  # Insert timeout values for each reject
+                  ${{ if and(not(reject.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(reject.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  # If reject does not have pool, then use buildPool as default
+                  ${{ if not(reject.pool) }}:
+                    pool: ${{ parameters.rejectPool }}
+                  # Inserts variables into jobs
+                  ${{ if or(parameters.rejectVariables, reject.variables) }}:
+                    variables:
+                      ${{ each variable in parameters.rejectVariables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                      ${{ each variable in reject.variables }}:
+                        ${{ variable.key }}: ${{ variable.value }}
+                  ${{ if and(parameters.environment, not(reject.environment)) }}:
+                    environment: ${{ parameters.environment }}
+                  strategy:
+                    ${{ reject.strategy }}

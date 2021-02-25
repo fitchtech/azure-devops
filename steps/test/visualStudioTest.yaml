@@ -1,0 +1,265 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: artifactName # artifactName or projects required
+  type: string
+  default: ''
+# Replace Tokens in files
+- name: replaceTokens # Enable replace tokens task. Useful for updating configuration settings in files like appsettings
+  type: boolean
+  default: false
+- name: replaceTokensRoot
+  type: string
+  default: '$(Pipeline.Workspace)'
+- name: replaceTokensTargets
+  type: object
+  default: |
+    **appsettings.*.json
+# Use dotNet Type and Version
+- name: dotNetType
+  type: string
+  default: sdk
+  values:
+  - sdk
+  - runtime
+- name: dotNetVersion
+  type: string
+  default: ''
+# dotNet restore/build 
+- name: dotNetProjects # projects required to dotNet build a project before vsTest tasks
+  type: string
+  default: ''
+- name: dotNetArguments
+  type: string
+  default: ''
+- name: dotNetFeedRestore
+  type: string
+  default: ''
+- name: dotNetConfiguration
+  type: string
+  default: Release
+# Get Azure KeyVault as Variables for Replace Tokens
+- name: keyVaultName
+  type: string
+  default: ''
+- name: keyVaultSubscription
+  type: string
+  default: ''
+- name: keyVaultSecretFilter
+  type: string
+  default: '*'
+# VSTest Platform Installer
+- name: packageFeedSelector
+  type: string
+  default: nugetOrg
+  values:
+  - nugetOrg
+  - customFeed
+- name: versionSelector
+  type: string
+  default: latestStable
+  values:
+  - latestStable
+  - latestPreRelease
+  - specificVersion
+- name: testPlatformVersion # Required when versionSelector is specificVersion
+  type: string
+  default: '16.8.3'
+- name: vsTestVersion
+  type: string
+  default: toolsInstaller
+# VSTest Task Params
+- name: testPlan # test plan ID number. Select a test plan number containing test suites with automated test cases.
+  type: number
+  default: 0
+- name: testSuite # test suite ID within the test plan. Select one or more test suites containing automated test cases. Test case work items must be associated with an automated test method.
+  type: number
+  default: 0
+- name: testConfiguration # test configuration number required if using testPlan and testSuite. Select Test Configuration.
+  type: number
+  default: 523
+- name: testAssemblies # Run tests from the specified files. When not using testPlan or testSuite. The file paths are relative to the search folder. Supports multiple lines of minimatch patterns.
+  type: object
+  default: ''
+- name: testSearchFolder # Folder to search for the test assemblies.
+  type: string
+  default: $(Pipeline.Workspace)
+- name: testResultsFolder
+  type: string
+  default: $(Agent.TempDirectory)\TestResults
+- name: testRunTitle
+  type: string
+  default: 'Visual Studio Test'
+- name: testDiagnosticsEnabled
+  type: boolean
+  default: false
+- name: testCollectDumpOn
+  type: string
+  default: onAbortOnly
+  values:
+  - always
+  - onAbortOnly
+  - never
+- name: runInParallel
+  type: boolean
+  default: true
+- name: rerunMaxAttempts # Maximum number of times a failed test should be retried. When greater than 0 rerunFailedTests is true
+  type: number
+  default: 0
+- name: minimumExpectedTests # the minimum number of tests that should be run for the task to succeed. Total tests run is calculated as the sum of passed, failed and aborted tests.
+  type: number
+  default: 1
+- name: continueOnError # If vsTest has failure, continue on error
+  type: boolean
+  default: false
+- name: platform # Build platform against which the tests should be reported. If you have defined a variable for platform in your build task, use that here.
+  type: string
+  default: 'Any CPU'
+- name: distributionBatchType
+  type: string
+  default: basedOnTestCases
+  values:
+  - basedOnTestCases
+  - basedOnExecutionTime
+  - basedOnAssembly
+- name: customBatchSizeValue # Optional when distributionBatchType is basedOnTestCases. Set to value greater than 0 to enable custom batch sizing
+  type: number
+  default: 0
+- name: customRunTimePerBatchValue # Optional when distributionBatchType is BasedOnExecutionTime
+  type: number
+  default: 0
+- name: codeCoverageEnabled
+  type: boolean
+  default: false
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishEnabled
+  type: boolean
+  default: true
+- name: publishArtifact
+  type: string
+  default: '$(Build.DefinitionName)_$(System.JobName)'
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    ${{ if and(parameters.artifactName, not(parameters.projects)) }}:
+      artifact: ${{ parameters.artifactName }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if or(parameters.projects, parameters.artifactName) }}:
+  - template: ../build/dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      command: build
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments }}
+      configuration: ${{ parameters.dotNetConfiguration }}
+- ${{ if and(parameters.keyVaultName, parameters.keyVaultSubscription) }}:
+  - task: AzureKeyVault@1
+    displayName: 'Get Azure Key Vault ${{ parameters.keyVaultName }}'
+    inputs:
+      azureSubscription: '${{ parameters.keyVaultSubscription }}'
+      KeyVaultName: '${{ parameters.keyVaultName }}'
+      SecretsFilter: '${{ parameters.keyVaultSecretFilter }}'
+- ${{ if parameters.replaceTokens }}:
+  - task: replacetokens@3
+    displayName: 'Replace tokens in ${{ parameters.replaceTokensRoot }}'
+    inputs:
+      rootDirectory: '${{ parameters.replaceTokensRoot }}'
+      targetFiles: ${{ parameters.replaceTokensTargets }}
+      encoding: 'auto'
+      writeBOM: true
+      actionOnMissing: 'warn'
+      keepToken: false
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      useLegacyPattern: false
+      enableTelemetry: false
+      verbosity: 'detailed'
+- ${{ if eq(parameters.vsTestVersion, 'toolsInstaller') }}:
+  - task: VisualStudioTestPlatformInstaller@1
+    displayName: 'Visual Studio Test Platform Installer'
+    inputs:
+      packageFeedSelector: '${{ parameters.packageFeedSelector }}'
+      versionSelector: '${{ parameters.versionSelector }}'
+      ${{ if eq(parameters.versionSelector, 'specificVersion') }}:
+        testPlatformVersion: '${{ parameters.testPlatformVersion }}'
+- task: VSTest@2
+  displayName: '${{ parameters.displayName }}'
+  continueOnError: ${{ parameters.continueOnError }}
+  inputs:
+    # Distribution batch type runs its tests at the same time and results are published for the batch
+    distributionBatchType: '${{ parameters.distributionBatchType }}'
+    # If distributionBatchType is BasedOnTestCases and customBatchSizeValue greater than 0 the batchingBasedOnAgentOptions is customBatchSize
+    ${{ if and(eq(parameters.distributionBatchType, 'BasedOnTestCases'), gt(parameters.customBatchSizeValue, 0)) }}:
+      batchingBasedOnAgentsOption: customBatchSize
+      customBatchSizeValue: ${{ parameters.customBatchSizeValue }}
+    # If customBatchSizeValue is default of 0 then use autoBatchSize
+    ${{ if and(eq(parameters.distributionBatchType, 'BasedOnTestCases'), eq(parameters.customBatchSizeValue, 0)) }}:
+      batchingBasedOnAgentsOption: autoBatchSize
+    # If distributionBatchType is basedOnExecutionTime and customRunTimePerBatchValue greater than 0 the batchingBasedOnExecutionTimeOption is customTimeBatchSize
+    ${{ if and(eq(parameters.distributionBatchType, 'basedOnExecutionTime'), gt(parameters.customRunTimePerBatchValue, 0)) }}:
+      customRunTimePerBatchValue: ${{ parameters.customRunTimePerBatchValue }}
+      batchingBasedOnExecutionTimeOption: customTimeBatchSize
+    # If customTimeBatchSize is default of 0 then use autoBatchSize
+    ${{ if and(eq(parameters.distributionBatchType, 'basedOnExecutionTime'), eq(parameters.customRunTimePerBatchValue, 0)) }}:
+      batchingBasedOnExecutionTimeOption: autoBatchSize
+    # If testPlan and testSuite has values testSelector is testPlan
+    ${{ if and(parameters.testPlan, parameters.testSuite, not(parameters.testAssemblies)) }}:
+      testSelector: testPlan
+      testPlan: ${{ parameters.testPlan }}
+      testSuite: ${{ parameters.testSuite }}
+      testConfiguration: ${{ parameters.testConfiguration }}
+    # If testAssemblies has values and not testPlan or testSuite, then testSelector is testAssemblies
+    ${{ if and(parameters.testAssemblies, not(parameters.testPlan), not(parameters.testSuite)) }}:
+      testSelector: testAssemblies
+      testAssemblyVer2: ${{ parameters.testAssemblies }}
+    testRunTitle: '${{ parameters.testRunTitle }}'
+    collectDumpOn: '${{ parameters.testCollectDumpOn }}'
+    searchFolder: '${{ parameters.testSearchFolder }}'
+    resultsFolder: '${{ parameters.testResultsFolder }}'
+    diagnosticsEnabled: ${{ parameters.testDiagnosticsEnabled }}
+    runInParallel: ${{ parameters.runInParallel }}
+    # If rerunMaxAttempts value greater than 0 then rerunFailedTests is true, else false
+    ${{ if gt(parameters.rerunMaxAttempts, 0) }}:
+      rerunFailedTests: true
+      rerunMaxAttempts: ${{ parameters.rerunMaxAttempts }}
+    ${{ if eq(parameters.rerunMaxAttempts, 0) }}:
+      rerunFailedTests: false
+    minimumExpectedTests: ${{ parameters.minimumExpectedTests }}
+    codeCoverageEnabled: ${{ parameters.codeCoverageEnabled }}
+    vsTestVersion: '${{ parameters.vsTestVersion }}'
+    platform: '${{ parameters.platform }}'
+    configuration: '${{ parameters.configuration }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if parameters.publishEnabled }}:
+      publish: '${{ parameters.testResultsFolder }}'
+      artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

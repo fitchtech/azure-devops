@@ -1,0 +1,192 @@
+parameters:
+- name: clean
+  type: boolean
+  default: false
+# preSteps
+- name: preSteps
+  type: stepList
+  default: []
+- name: checkout
+  type: string
+  default: self
+- name: submodules
+  type: string
+  default: false
+- name: download
+  type: string
+  default: current
+- name: downloadArtifact
+  type: string
+  default: ''
+# postSteps
+- name: postSteps
+  type: stepList
+  default: []
+- name: publishArtifact # Set artifact name to enable publish artifacts from parameters.outputDir
+  type: string
+  default: ''
+# Use dotNet
+- name: dotNetType
+  type: string
+  default: sdk
+  values:
+  - sdk
+  - runtime
+- name: dotNetVersion
+  type: string
+  default: ''
+# dotNet Build and Restore Params
+- name: dotNetProjects # dotNet projects or vs solution for dotNet build and restore
+  type: string
+- name: dotNetFeedRestore # default dotNet artifact feed
+  type: string
+  default: ''
+- name: dotNetArguments # default dotNet build arguments
+  type: string
+  default: ''
+- name: dotNetCommand
+  type: string
+  default: build
+  values:
+  - restore
+  - build
+  - publish
+- name: outputDir
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)'
+# SonarQube Prepare
+- name: sonarCloud # Use instead of parameters.sonarQube when using SonarCloud instead of self hosted, this is the service connection name. 
+  type: string
+  default: ''
+- name: organization # Required when using SonarCloud instead of SonarQube
+  type: string
+  default: ''
+- name: sonarQube # SonarQube Service Connection Name
+  type: string
+  default: ''
+- name: scannerMode
+  type: string
+  default: MSBuild
+  values:
+  - MSBuild
+  - CLI
+  - Other
+- name: configFile # More information is available at http://redirect.sonarsource.com/doc/install-configure-scanner-tfs-ts.html
+  type: string
+  default: ''
+- name: projectKey # MSBuild or CLI project Key. The SonarQube project unique key, i.e. 'sonar.projectKey'
+  type: string
+  default: ''
+- name: projectName # The SonarQube project name, i.e. 'sonar.projectName'
+  type: string
+  default: ''
+- name: projectVersion # The SonarQube project version, i.e. 'sonar.projectVersion'
+  type: string
+  default: '$(Build.BuildId)'
+- name: extraProperties # Additional properties that will be passed to the scanner, \n# Put one key=value per line, example:\n# sonar.exclusions=**/*.bin
+  type: string
+  default: 'sonar.coverage.exclusions=**/**Tests*.cs,**/**Wrapper*.cs,**/**Façade*.cs,**/**Creator*.cs,**/**Program.cs'
+- name: cliSources # Path to the root directory containing source files. This value is set to the 'sonar.sources' SonarQube property
+  type: string
+  default: '$(Build.Repository.LocalPath)'
+# SonarQube Analyze and Publish
+- name: sonarQubeAnalyze # True inserts the SonarQubeAnalyze task
+  type: boolean
+  default: true
+- name: sonarQubePublish # True inserts the SonarQubePublish task
+  type: boolean
+  default: true
+- name: pollingTimeoutSec
+  type: number
+  default: 300
+
+steps:
+- template: ../preSteps.yaml
+  parameters:
+    clean: ${{ parameters.clean }}
+    checkout: ${{ parameters.checkout }}
+    submodules: ${{ parameters.submodules }}
+    download: ${{ parameters.download }}
+    artifact: ${{ parameters.downloadArtifact }}
+    preSteps: ${{ parameters.preSteps }}
+- ${{ if parameters.sonarQube }}:
+  - task: SonarQubePrepare@4
+    displayName: 'Prepare analysis with SonarQube'
+    inputs:
+      SonarQube: '${{ parameters.sonarQube }}'
+      scannerMode: '${{ parameters.scannerMode }}'
+      extraProperties: '${{ parameters.extraProperties }}'
+      ${{ if eq(parameters.scannerMode, 'MSBuild') }}:
+        projectKey: '${{ parameters.projectKey }}'
+        projectName: '${{ parameters.projectName }}'
+        projectVersion: '${{ parameters.projectVersion }}'
+      ${{ if eq(parameters.scannerMode, 'CLI') }}:
+        ${{ if parameters.configFile }}:
+          configMode: file
+          configFile: ${{ parameters.configFile }}
+        ${{ if not(parameters.configFile) }}:
+          configMode: manual
+          cliProjectKey: '${{ parameters.projectKey }}'
+          cliProjectName: '${{ parameters.projectName }}'
+          cliProjectVersion: '${{ parameters.projectVersion }}'
+          cliSources: '${{ parameters.cliSources }}'
+- ${{ if parameters.sonarCloud }}:
+  - task: SonarCloudPrepare@1
+    displayName: 'Prepare analysis with SonarCloud'
+    inputs:
+      SonarCloud: '${{ parameters.sonarCloud }}'
+      organization: '${{ parameters.organization }}'
+      scannerMode: '${{ parameters.scannerMode }}'
+      extraProperties: '${{ parameters.extraProperties }}'
+      ${{ if eq(parameters.scannerMode, 'MSBuild') }}:
+        projectKey: '${{ parameters.projectKey }}'
+        projectName: '${{ parameters.projectName }}'
+        projectVersion: '${{ parameters.projectVersion }}'
+      ${{ if eq(parameters.scannerMode, 'CLI') }}:
+        ${{ if parameters.configFile }}:
+          configMode: file
+          configFile: ${{ parameters.configFile }}
+        ${{ if not(parameters.configFile) }}:
+          configMode: manual
+          cliProjectKey: '${{ parameters.projectKey }}'
+          cliProjectName: '${{ parameters.projectName }}'
+          cliProjectVersion: '${{ parameters.projectVersion }}'
+          cliSources: '${{ parameters.cliSources }}'
+- ${{ if parameters.dotNetProjects }}:
+  - template: ../build/dotNetCore.yaml
+    parameters:
+      clean: false
+      checkout: false
+      download: false
+      command: ${{ parameters.dotNetCommand }}
+      packageType: ${{ parameters.dotNetType }}
+      version: ${{ parameters.dotNetVersion }}
+      projects: ${{ parameters.dotNetProjects }}
+      feedRestore: ${{ parameters.dotNetFeedRestore }}
+      arguments: ${{ parameters.dotNetArguments }}
+      outputDir: ${{ parameters.dotNetOutput }}
+- ${{ if parameters.sonarQube }}:
+  - ${{ if parameters.sonarQubeAnalyze }}:
+    - task: SonarQubeAnalyze@4
+      displayName: 'Run SonarQube Analysis'
+  - ${{ if parameters.sonarQubePublish }}:
+    - task: SonarQubePublish@4
+      displayName: 'Publish SonarQube Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '${{ parameters.pollingTimeoutSec }}'
+- ${{ if parameters.sonarCloud }}:
+  - ${{ if parameters.sonarQubeAnalyze }}:
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run SonarQube Analysis'
+  - ${{ if parameters.sonarQubePublish }}:
+    - task: SonarCloudPublish@1
+      displayName: 'Publish SonarQube Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '${{ parameters.pollingTimeoutSec }}'
+- template: ../postSteps.yaml
+  parameters:
+    postSteps: ${{ parameters.postSteps }}
+    ${{ if parameters.publishArtifact }}:
+      publish: ${{ parameters.outputDir }}
+      artifact: ${{ parameters.publishArtifact }}
+    clean: ${{ parameters.clean }}

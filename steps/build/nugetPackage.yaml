@@ -15,54 +15,94 @@ parameters:
 - name: download
   type: string
   default: current
-- name: artifactName # projectFile or artifactName param required
+- name: downloadArtifact
   type: string
   default: ''
 # postSteps
 - name: postSteps
   type: stepList
   default: []
-# dotNet type and version
-- name: dotNetType
+- name: publishArtifact
   type: string
-  default: 'sdk'
-  values:
-  - 'sdk'
-  - 'runtime'
-- name: dotNetVersion
-  type: string
-  default: '3.1.x'
-# dotNet Restore and Build
-- name: projectFile # projectFile or artifactName param required
-  type: string
-  default: ''
-- name: dotNetFeed # Default ADO VSTS artifact feed for restore and push
-  type: string
-  default: ''
-- name: dotNetBuildArguments 
-  type: string
-  default: ''
-# dotNet Pack
-- name: includeSymbols # Publish Symbols
+  default: '$(Build.BuildNumber)_$(System.StageName)_$(Agent.JobName)'
+- name: publishEnabled # Publish a pipeline artifact of build and pack outputDir
   type: boolean
   default: true
+# dotNet type and version
+- name: packageType
+  type: string
+  default: sdk
+  values:
+  - sdk
+  - runtime
+- name: version
+  type: string
+  default: ''
+# dotNet Restore and Build
+- name: projects # Optional file match pattern to build or publish projects
+  type: string
+  default: ''
+- name: command
+  type: string
+  default: build
+  values:
+  - build
+  - publish
+- name: arguments 
+  type: string
+  default: ''
+- name: feedRestore # feed for dotNet restore
+  type: string
+  default: ''
+- name: externalEndpoints
+  type: string
+  default: ''
+- name: includeNuGetOrg
+  type: boolean
+  default: true
+# dotNet Pack
+- name: searchPatternPack # Required to enable pack. Pattern to search for csproj or nuspec files. Separate multiple patterns with semicolon. Exclude patterns with a ! prefix e.g. **/*.csproj;!**/*.Tests.csproj
+  type: string
+  default: ''
+- name: searchPatternPush # enables dotNet push after dotNet pack
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+- name: feedPublish # dotNet push feed to publish of dotNet pack output NuGet package
+  type: string
+  default: ''
+- name: includeSymbols # dotNet pack includeSymbols
+  type: boolean
+  default: false
+- name: publishSymbols # Enable Publish Symbols task after dotNet pack
+  type: boolean
+  default: false
 - name: versioningScheme # byEnvVar is default, set value or EnvVar
   type: string
-  default: 'byEnvVar'
+  default: byEnvVar
   values:
-  - 'off'
-  - 'byPrereleaseNumber'
-  - 'byEnvVar'
-  - 'byBuildNumber'
+  - off
+  - byPrereleaseNumber
+  - byEnvVar
+  - byBuildNumber
 - name: versionEnvVar # Name of environment variable to use for version number
   type: string
-  default: 'NugetVersion'
-- name: dotNetPackConfig
+  default: NugetVersion
+- name: majorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 1
+- name: minorVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
+- name: patchVersion # Required when versioningScheme is byPrereleaseNumber
+  type: number
+  default: 0
+# dotNet Restore, Build, Publish, Pack, and Push
+- name: configuration
   type: string
-  default: 'Debug'
-- name: dotNetPush # enables dotNet push after dotNet pack
-  type: boolean
-  default: true
+  default: Release
+- name: outputDir
+  type: string
+  default: '$(Build.ArtifactStagingDirectory)'
 
 steps:
 - template: ../preSteps.yaml
@@ -71,36 +111,49 @@ steps:
     checkout: ${{ parameters.checkout }}
     submodules: ${{ parameters.submodules }}
     download: ${{ parameters.download }}
-    artifact: ${{ parameters.artifactName }}
+    artifact: ${{ parameters.downloadArtifact }}
     preSteps: ${{ parameters.preSteps }}
-- ${{ if and(not(parameters.artifactName), parameters.projectFile) }}:
-  - template: ../build/dotNetCore.yaml
+- ${{ if parameters.projects }}:
+  - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: build
-      dotNetType: ${{ parameters.dotNetType }}
-      dotNetVersion: ${{ parameters.dotNetVersion }}
-      dotNetProjects: ${{ parameters.projectFile }}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      dotNetArguments: ${{ parameters.dotNetBuildArguments}}
-- ${{ if or(parameters.projectFile, parameters.artifactName) }}:
-  - template: ../build/dotNetCore.yaml
+      packageType: ${{ parameters.packageType }}
+      version: ${{ parameters.version }}
+      command: ${{ parameters.command }}
+      configuration: ${{ parameters.configuration }}
+      projects: ${{ parameters.projects }}
+      arguments: ${{ parameters.arguments}}
+      feedRestore: ${{ parameters.feedRestore }}
+      outputDir: ${{ parameters.outputDir }}
+      publishEnabled: false
+- ${{ if parameters.searchPatternPack }}:
+  - template: dotNetCore.yaml
     parameters:
       clean: false
       checkout: false
       download: false
-      dotNetCommand: pack
-      dotNetPush: ${{ parameters.dotNetPush}}
-      dotNetPackConfig: ${{ parameters.dotNetPackConfig}}
-      dotNetFeed: ${{ parameters.dotNetFeed }}
-      includeSymbols: ${{ parameters.includeSymbols}}
+      version: ''
+      searchPatternPack: ${{ parameters.searchPatternPack }}
+      searchPatternPush: '${{ parameters.searchPatternPush }}'
+      configuration: ${{ parameters.configuration }}
+      feedRestore: ${{ parameters.feedRestore }}
+      feedPublish: ${{ parameters.feedPublish }}
+      externalEndpoints: ${{ parameters.externalEndpoints }}
+      includeSymbols: ${{ parameters.includeSymbols }}
+      publishSymbols: ${{ parameters.publishSymbols }}
       versioningScheme: ${{ parameters.versioningScheme }}
       versionEnvVar: ${{ parameters.versionEnvVar }}
+      majorVersion: ${{ parameters.majorVersion }}
+      minorVersion: ${{ parameters.minorVersion }}
+      patchVersion: ${{ parameters.patchVersion }}
+      outputDir: ${{ parameters.outputDir }}
+      publishEnabled: false
 - template: ../postSteps.yaml
   parameters:
     postSteps: ${{ parameters.postSteps }}
-    publish: ''
-    artifact: ''
+    ${{ if parameters.publishEnabled }}:
+      artifact: '${{ parameters.publishArtifact }}'
+      publish: '${{ parameters.outputDir }}'
     clean: ${{ parameters.clean }}
