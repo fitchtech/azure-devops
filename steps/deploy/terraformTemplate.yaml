@@ -166,7 +166,7 @@ steps:
           backendAWSBucketName: ${{ parameters.bucketName }}
           backendAWSKey: ${{ parameters.backendKey }}
         ${{ and(eq(parameters.provider, 'gcp'), parameters.serviceConnection, parameters.bucketName) }}:
-          backendServiceAWS: ${{ parameters.serviceConnection }}
+          backendServiceGCP: ${{ parameters.serviceConnection }}
           backendGCPBucketName: ${{ parameters.bucketName }}
           backendGCPPrefix: ${{ parameters.backendKey }}
 - ${{ if and(parameters.publishPlan, parameters.publishEnabled) }}:
