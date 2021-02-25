@@ -122,6 +122,47 @@ parameters:
   - build
   - publish
 
+# Build: Terraform Plan, Validate, and Publish Artifact of Plan and Output Variables
+- name: terraformTemplates
+  type: object
+  default: ''
+# terraformTemplates:
+  # - job: 'terraformTemplate1' # job name must be unique
+  #   workingDirectory: '$(Build.Repository.LocalPath)/template1'
+  # - job: 'terraformTemplate2' # job name must be unique
+  #   workingDirectory: '$(Build.Repository.LocalPath)/template2'
+  #   # Example where terraformTemplate2 dependsOn terraformTemplate1 succeeded
+  #   dependsOn: terraformTemplate1
+  #   commands:
+  # # - command: commandOptions
+  #   - init: ''
+  #   - plan: '-var "foo=bar"'
+  #   - validate: ''
+- name: terraformVersion # The version of Terraform which should be installed on the agent if not already present
+  type: string
+  default: ''
+- name: terraformServiceConnection # Required service connection name for provider, default serviceConnection for all terraformTemplates jobs and terraformDeployments
+  type: string
+  default: ''
+- name: terraformResourceGroup # Required for AzurRM provider, default resourceGroup for all terraformTemplates jobs and terraformDeployments. The name of the resource group which contains the storage account selected below.
+  type: string
+  default: ''
+- name: terraformStorageAccount # Required for AzurRM provider, default storageAccount for terraformTemplates jobs and terraformDeployments. The name of the storage account which contains the Azure Blob container selected below.
+  type: string
+  default: ''
+- name: terraformContainer # Required for AzurRM provider, default containerName for terraformTemplates jobs and terraformDeployments. The name of the Azure Blob container in which to store the Terraform remote state file.
+  type: string
+  default: ''
+- name: terraformDirectory # Default workingDirectory containing the Terraform configuration files for all terraformTemplates jobs and terraformDeployments
+  type: string
+  default: $(Build.Repository.LocalPath)
+- name: terraformProvider
+  default: azurerm
+  values:
+    - azurerm
+    - aws
+    - gcp
+
 # Build: Stage Params
 - name: buildPool # Pool param of build stage jobs
   type: object
@@ -131,11 +172,11 @@ parameters:
   type: string
   default: self
 
-# Deploy: ARM Templates
-- name: armSubscription # Azure subscription service connection name for ARM template deployments
+# Deploy: ARM Templates or Terraform Templates
+- name: armSubscription # Default Azure subscription service connection name for ARM template deployments
   type: string
   default: ''
-- name: armResourceGroup # Azure Resource Group within the subscription for ARM template deployments
+- name: armResourceGroup # Default Azure Resource Group within the subscription for ARM template deployments
   type: string
   default: ''
 # Deploy: Multiple ARM Templates
@@ -154,11 +195,30 @@ parameters:
   #   parameters: parameters3.json
   #   subscription: subscriptionServiceConnectionName # Overrides parameters.armSubscription
   #   resourceGroup: resourceGroupName # Overrides parameters.armResourceGroup
-  #   # Example when armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
+  #   # Example where armTemplate3 dependsOn armTemplate1 and armTemplate2 succeeded
   #   dependsOn:
   #     - armTemplate1
   #     - armTemplate2
-
+- name: terraformDeployments
+  type: object
+  default: ''
+# terraformDeployments:
+  # - deployment: 'terraformDeploy1' # deployment name must be unique
+  #   workingDirectory: '$(Build.Repository.LocalPath)/template1'
+  #   commands:
+  # # - command: commandOptions
+  #   - init
+  #   - apply
+  # - deployment: 'terraformDeploy2' # deployment name must be unique
+  #   workingDirectory: '$(Build.Repository.LocalPath)/template2'
+  #   # Example where terraformDeploy2 dependsOn terraformDeploy1 succeeded
+  #   dependsOn: terraformDeploy1
+  #   commands:
+  # # - command: commandOptions
+  #   - init: ''
+  #   - apply: '-var "foo=bar"'
+  #   - destroy: ''
+  #     condition: failed()
 # Deploy: Kubernetes Manifests
 - name: kubernetesServiceConnection # Kubernetes Service Connection Name
   type: string
@@ -363,7 +423,7 @@ stages:
                         ${{ if and(parameters.dotNetVersion, not(sonarQube.dotNetVersion)) }}:
                           dotNetVersion: ${{ parameters.dotNetVersion }}
 
-      ${{ if or(gt(length(parameters.dockerBuilds), 0), gt(length(parameters.dotNetBuilds), 0), parameters.dotNetProjects, and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository)) }}:
+      ${{ if or(gt(length(parameters.dockerBuilds), 0), gt(length(parameters.dotNetBuilds), 0), parameters.dotNetProjects, and(parameters.dockerFile, parameters.containerRegistry, parameters.containerRepository), gt(length(parameters.terraformTemplates), 0)) }}:
       # build: jobList inserted into build stage in stages
         build:
           # For each dockerFile in dockerBuilds param, insert container image build job into build stage
@@ -484,7 +544,54 @@ stages:
                       dotNetVersion: ${{ parameters.dotNetVersion }}
                     checkout: ${{ parameters.buildCheckout }}
 
-      ${{ if or(gt(length(parameters.armDeployments), 0), gt(length(parameters.kubernetesDeployments), 0)) }}:
+          - ${{ if gt(length(parameters.terraformTemplates), 0) }}:
+            - ${{ each build in parameters.terraformTemplates }}:
+              - ${{ if and(build.job, or(build.serviceConnection, parameters.terraformServiceConnection), not(contains(join('-', build.commands), 'apply')), not(contains(join('-', build.commands), 'destroy'))) }}:
+                - job: ${{ build.job }} # job name must be unique within stage
+                  ${{ each parameter in build }}:
+                    ${{ if in(parameter.key, 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  ${{ if not(build.displayName) }}:
+                    displayName: 'Terraform Plan and Publish Artifacts' # If no build.displayName, use this as default
+                  ${{ if not(build.pool) }}:
+                    pool: ${{ parameters.buildPool }} # If no build.pool, use default parameters.buildPool
+                  ${{ if and(not(build.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(build.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  ${{ if not(build.dependsOn) }}:
+                    dependsOn: [] # job does not depend on other jobs
+                  steps:
+                    - template: steps/deploy/terraformTemplate.yaml
+                    # parameters within dotNetCore.yaml template
+                      parameters:
+                      # For each parameter in build, insert each item except job keys
+                        ${{ each parameter in build }}:
+                          ${{ if notIn(parameter.key, 'job', 'displayName', 'dependsOn', 'condition', 'strategy', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                            ${{ parameter.key }}: ${{ parameter.value }}
+                        ${{ if not(build.commands) }}:
+                          commands:
+                            - init
+                            - plan
+                            - validate
+                        ${{ if not(build.workingDirectory) }}:
+                          workingDirectory: ${{ parameters.terraformDirectory }}
+                        ${{ if not(build.checkout) }}:
+                          checkout: ${{ parameters.buildCheckout }}
+                        ${{ if and(not(build.terraformVersion), parameters.terraformVersion) }}:
+                          terraformVersion: ${{ parameters.terraformVersion }}
+                        ${{ if and(not(build.serviceConnection), parameters.terraformServiceConnection) }}:
+                          serviceConnection: ${{ parameters.terraformServiceConnection }}
+                        ${{ if and(not(build.resourceGroupName), parameters.terraformResourceGroup) }}:
+                          resourceGroupName: ${{ parameters.terraformResourceGroup }}
+                        ${{ if and(not(build.storageAccountName), parameters.terraformStorageAccount) }}:
+                          storageAccountName: ${{ parameters.terraformStorageAccount }}
+                        ${{ if and(not(build.containerName), parameters.terraformContainer) }}:
+                          containerName: ${{ parameters.terraformContainer }}
+                        ${{ if and(not(build.provider), parameters.terraformProvider) }}:
+                          provider: ${{ parameters.terraformProvider }}
+
+      ${{ if or(gt(length(parameters.armDeployments), 0), gt(length(parameters.kubernetesDeployments), 0), gt(length(parameters.terraformDeployments), 0)) }}:
       # deploy: deploymentList inserted into deploy stage in stages param
         deploy:
           - ${{ if gt(length(parameters.armDeployments), 0) }}:
@@ -612,6 +719,201 @@ stages:
                                 resourceGroup: ${{ parameters.armResourceGroup }}
                               ${{ if and(not(deployment.subscription), parameters.armSubscription) }}:
                                 subscription: ${{ parameters.armSubscription }}
+                      # Insert routeTraffic lifecycle hook stepList
+                      ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                        routeTraffic:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.routeTraffic }}
+                      # Insert postRouteTraffic lifecycle hook stepList
+                      ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                        postRouteTraffic:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.postRouteTraffic }}
+                      # Insert onFailure and onSuccess stepList
+                      ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                        on:
+                          ${{ if gt(length(deployment.onFailure), 0) }}:
+                            failure:
+                              ${{ if deployment.pool }}:
+                                pool: ${{ deployment.pool }}
+                              ${{ if not(deployment.pool) }}:
+                                pool: ${{ parameters.deployPool }}
+                              steps:
+                                - ${{ deployment.onFailure }}
+                          ${{ if gt(length(deployment.onSuccess), 0) }}:
+                            success:
+                              ${{ if deployment.pool }}:
+                                pool: ${{ deployment.pool }}
+                              ${{ if not(deployment.pool) }}:
+                                pool: ${{ parameters.deployPool }}
+                              steps:
+                                - ${{ deployment.onSuccess }}
+
+          - ${{ if gt(length(parameters.terraformDeployments), 0) }}:
+            # For each deployment item in terraformDeployments parameter insert terraform deployment jobs
+            - ${{ each deployment in parameters.terraformDeployments }}:
+              # If deployment key, strategy, and serviceConnection have values; insert terraform template deployment job
+              - ${{ if and(deployment.deployment, deployment.strategy, or(deployment.serviceConnection, parameters.terraformServiceConnection)) }}:
+                - deployment: ${{ deployment.deployment }} # deployment name unique to stage
+                  ${{ each parameter in deployment }}:
+                    ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  ${{ if not(deployment.displayName) }}:
+                    displayName: 'Deploy Terraform Template ${{ deployment.strategy }}'
+                  ${{ if not(deployment.pool) }}:
+                    pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  ${{ if not(deployment.dependsOn) }}:
+                    dependsOn: []
+                  ${{ if and(not(deployment.environment), parameters.environment) }}:
+                    environment: ${{ parameters.environment }}
+                  strategy:
+                    ${{ deployment.strategy }}:
+                      # Insert preDeploy lifecycle hook stepList
+                      ${{ if gt(length(deployment.preDeploy), 0) }}:
+                        preDeploy:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.preDeploy }}
+                      deploy:
+                        steps:
+                          - template: steps/deploy/terraformTemplate.yaml
+                            parameters:
+                              ${{ each parameter in deployment }}:
+                                ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                  ${{ parameter.key }}: ${{ parameter.value }}
+                              ${{ if not(deployment.commands) }}:
+                                commands:
+                                  - init
+                                  - plan
+                                  - validate
+                                  - apply
+                              ${{ if not(deployment.workingDirectory) }}:
+                                workingDirectory: ${{ parameters.terraformDirectory }}
+                              ${{ if not(deployment.checkout) }}:
+                                checkout: ${{ parameters.deployCheckout }}
+                              ${{ if and(not(deployment.terraformVersion), parameters.terraformVersion) }}:
+                                terraformVersion: ${{ parameters.terraformVersion }}
+                              ${{ if and(not(deployment.serviceConnection), parameters.terraformServiceConnection) }}:
+                                serviceConnection: ${{ parameters.terraformServiceConnection }}
+                              ${{ if and(not(deployment.resourceGroupName), parameters.terraformResourceGroup) }}:
+                                resourceGroupName: ${{ parameters.terraformResourceGroup }}
+                              ${{ if and(not(deployment.storageAccountName), parameters.terraformStorageAccount) }}:
+                                storageAccountName: ${{ parameters.terraformStorageAccount }}
+                              ${{ if and(not(deployment.containerName), parameters.terraformContainer) }}:
+                                containerName: ${{ parameters.terraformContainer }}
+                              ${{ if and(not(deployment.provider), parameters.terraformProvider) }}:
+                                provider: ${{ parameters.terraformProvider }}
+                      # Insert routeTraffic lifecycle hook stepList
+                      ${{ if gt(length(deployment.routeTraffic), 0) }}:
+                        routeTraffic:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.routeTraffic }}
+                      # Insert postRouteTraffic lifecycle hook stepList
+                      ${{ if gt(length(deployment.postRouteTraffic), 0) }}:
+                        postRouteTraffic:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.postRouteTraffic }}
+                      # Insert onFailure and onSuccess stepList
+                      ${{ if or(gt(length(deployment.onFailure), 0), gt(length(deployment.onSuccess), 0)) }}:
+                        on:
+                          ${{ if gt(length(deployment.onFailure), 0) }}:
+                            failure:
+                              ${{ if deployment.pool }}:
+                                pool: ${{ deployment.pool }}
+                              ${{ if not(deployment.pool) }}:
+                                pool: ${{ parameters.deployPool }}
+                              steps:
+                                - ${{ deployment.onFailure }}
+                          ${{ if gt(length(deployment.onSuccess), 0) }}:
+                            success:
+                              ${{ if deployment.pool }}:
+                                pool: ${{ deployment.pool }}
+                              ${{ if not(deployment.pool) }}:
+                                pool: ${{ parameters.deployPool }}
+                              steps:
+                                - ${{ deployment.onSuccess }}
+
+              # If deployment key, serviceConnection, and resource group have values; insert terraform template deployment job
+              - ${{ if and(deployment.deployment, or(not(deployment.strategy), eq(deployment.strategy, 'runOnce')), or(deployment.serviceConnection, parameters.terraformServiceConnection)) }}:
+                - deployment: ${{ deployment.deployment }} # deployment name unique to stage
+                  ${{ each parameter in deployment }}:
+                    ${{ if in(parameter.key, 'environment', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                      ${{ parameter.key }}: ${{ parameter.value }}
+                  ${{ if not(deployment.displayName) }}:
+                    displayName: 'Deploy terraform Template ${{ deployment.template }}'
+                  ${{ if not(deployment.pool) }}:
+                    pool: ${{ parameters.deployPool }} # param passed to pool of deploy stage jobs
+                  ${{ if and(not(deployment.timeoutInMinutes), gt(parameters.timeoutInMinutes, 0)) }}:
+                    timeoutInMinutes: ${{ parameters.timeoutInMinutes }}
+                  ${{ if and(not(deployment.cancelTimeoutInMinutes), gt(parameters.cancelTimeoutInMinutes, 0)) }}:
+                    cancelTimeoutInMinutes: ${{ parameters.cancelTimeoutInMinutes }}
+                  ${{ if not(deployment.dependsOn) }}:
+                    dependsOn: []
+                  ${{ if and(not(deployment.environment), parameters.environment) }}:
+                    environment: ${{ parameters.environment }}
+                  strategy:
+                    runOnce:
+                      # Insert preDeploy lifecycle hook stepList
+                      ${{ if gt(length(deployment.preDeploy), 0) }}:
+                        preDeploy:
+                          ${{ if deployment.pool }}:
+                            pool: ${{ deployment.pool }}
+                          ${{ if not(deployment.pool) }}:
+                            pool: ${{ parameters.deployPool }}
+                          steps:
+                            - ${{ deployment.preDeploy }}
+                      deploy:
+                        steps:
+                          - template: steps/deploy/terraformTemplate.yaml
+                            parameters:
+                              ${{ each parameter in deployment }}:
+                                ${{ if notIn(parameter.key, 'deployment', 'environment', 'strategy', 'displayName', 'dependsOn', 'condition', 'continueOnError', 'pool', 'workspace', 'container', 'timeoutInMinutes', 'cancelTimeoutInMinutes', 'variables', 'services') }}:
+                                  ${{ parameter.key }}: ${{ parameter.value }}
+                              ${{ if not(deployment.commands) }}:
+                                commands:
+                                  - init
+                                  - plan
+                                  - validate
+                                  - apply
+                              ${{ if not(deployment.workingDirectory) }}:
+                                workingDirectory: ${{ parameters.terraformDirectory }}
+                              ${{ if not(deployment.checkout) }}:
+                                checkout: ${{ parameters.deployCheckout }}
+                              ${{ if and(not(deployment.terraformVersion), parameters.terraformVersion) }}:
+                                terraformVersion: ${{ parameters.terraformVersion }}
+                              ${{ if and(not(deployment.serviceConnection), parameters.terraformServiceConnection) }}:
+                                serviceConnection: ${{ parameters.terraformServiceConnection }}
+                              ${{ if and(not(deployment.resourceGroupName), parameters.terraformResourceGroup) }}:
+                                resourceGroupName: ${{ parameters.terraformResourceGroup }}
+                              ${{ if and(not(deployment.storageAccountName), parameters.terraformStorageAccount) }}:
+                                storageAccountName: ${{ parameters.terraformStorageAccount }}
+                              ${{ if and(not(deployment.containerName), parameters.terraformContainer) }}:
+                                containerName: ${{ parameters.terraformContainer }}
+                              ${{ if and(not(deployment.provider), parameters.terraformProvider) }}:
+                                provider: ${{ parameters.terraformProvider }}
                       # Insert routeTraffic lifecycle hook stepList
                       ${{ if gt(length(deployment.routeTraffic), 0) }}:
                         routeTraffic:
