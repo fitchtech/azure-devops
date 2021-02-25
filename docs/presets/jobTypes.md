@@ -160,6 +160,19 @@ extends:
   # dockerArgs: '' # string | default docker build arguments for all docker build jobs
   # dockerContext: $(Build.Repository.LocalPath) # this is the default context. Use param to override
   # dockerFile: '' # string | Use when you have a single docker file and single build job.
+  # terraformTemplates: [] | list of jobs for Terraform -init, -plan, and -validate using steps/deploy/terraformTemplates.yaml with all params for each job. Commands can not contain terraform apply or destroy
+    terraformTemplates:
+      - job: 'terraformTemplate1' # job name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template1'
+      - job: 'terraformTemplate2' # job name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template2'
+        # Example where terraformTemplate2 dependsOn terraformTemplate1 succeeded
+        dependsOn: terraformTemplate1
+        commands:
+      # - command: commandOptions
+        - init: ''
+        - plan: '-var "foo=bar"'
+        - validate: ''
   # buildPool:
   #   vmImage: 'Ubuntu-16.04' # This is the default pool for all build stage jobs. Use param to override default
   # buildCheckout: self # default repository resource to checkout for all build jobs
@@ -172,6 +185,25 @@ extends:
         parameters: 'parameters1.json' # Optional: ARM parameters file name
       # subscription: serviceConnectionName # Override default parameters.armSubscription
       # resourceGroup: resourceGroupName # Override default parameters.armResourceGroup
+  # terraformDeployments: [] | list of jobs for steps/deploy/terraformTemplates.yaml with all params for each job. Run terraform -init, -plan, -validate, -apply, and -destroy | commands: -command: commandOptions
+    terraformDeployments:
+      - deployment: 'terraformDeploy1' # deployment name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template1'
+      # commands: init | plan | validate | apply | destroy | can be list of items, e.g. -command OR list of -command: commandOptions -key: value list map
+        commands:
+      # - command
+        - init
+        - apply
+      - deployment: 'terraformDeploy2' # deployment name must be unique
+        workingDirectory: '$(Build.Repository.LocalPath)/template2'
+        # Example where terraformDeploy2 dependsOn terraformDeploy1 succeeded
+        dependsOn: terraformDeploy1
+        commands:
+      # - command: commandOptions
+        - init: ''
+        - apply: '-var "foo=bar"'
+        - destroy: ''
+          condition: failed()
     kubernetesServiceConnection: serviceConnectionName # Default service connection for all kubernetes deployment jobs
   # kubernetesDeployments: [] | list of jobs for steps/deploy/kubeManifest.yaml with all params for each job
     kubernetesDeployments:
