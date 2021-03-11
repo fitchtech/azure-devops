@@ -1,4 +1,4 @@
-# Azure Automations as Code
+# Azure DevOps Pipelines Automations as Code
 
 - [Azure Automations as Code](#azure-automations-as-code)
   - [Introduction](#introduction)
