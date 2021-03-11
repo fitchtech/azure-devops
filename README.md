@@ -1,6 +1,6 @@
-# Azure DevOps Pipelines Automations as Code
+# Azure DevOps Pipelines with Automation as Code
 
-- [Azure Automations as Code](#azure-automations-as-code)
+- [Azure DevOps Pipelines with Automation as Code](#azure-devops-pipelines-with-automation-as-code)
   - [Introduction](#introduction)
   - [Getting Started](#getting-started)
     - [Repository Resource](#repository-resource)
@@ -40,7 +40,7 @@
 
 ## Introduction
 
-Managing Azure Automation as Code is the final piece to managing the entire lifecycle of your Azure cloud resources. Azure Pipeline templates in a centralized repository resource provide developers a method to quickly create multistage pipelines with flexible parameters for standardizing the steps of jobs in each stage. Predefining automation tasks for code analysis, build, deployment, and testing of Azure resources with gated or automatic releases.
+Managing Azure DevOps Pipelines with Automation as Code is the final piece to managing the entire lifecycle of your Azure cloud resources. Azure Pipeline templates in a centralized repository resource provide developers a method to quickly create multistage pipelines with flexible parameters for standardizing the steps of jobs in each stage. Predefining automation tasks for code analysis, build, deployment, and testing of Azure resources with gated or automatic releases.
 
 Traditionally, managing Azure classic build and release pipelines throughout an organization was difficult and easy for configuration to vary across projects with many snowflake pipelines. Putting the burden on developers and engineers to manage their pipelines manually. Taking the time away from experimentation and innovation. While Azure Pipeline YAML allows you to create multistage pipelines as code, defining the tasks inside of each repository is challenging. Often leading to inefficient steps and increased failure rate of builds and deployments.
 
